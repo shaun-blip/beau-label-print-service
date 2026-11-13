@@ -1,0 +1,26 @@
+# Render blueprint. In Render: New > Blueprint, and point it at the repository that holds this folder.
+services:
+  - type: web
+    name: beaubottles-label-print
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    disk:
+      name: designs
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: SHOPIFY_SHOP
+        sync: false
+      - key: SHOPIFY_CLIENT_ID
+        sync: false
+      - key: SHOPIFY_CLIENT_SECRET
+        sync: false
+      - key: SHOPIFY_WEBHOOK_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: ADMIN_KEY
+        generateValue: true
