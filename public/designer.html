@@ -236,6 +236,9 @@ textarea.names{min-height:150px;line-height:1.45;resize:vertical}
 .pl[aria-pressed="true"]{border:2px solid var(--ink)}
 .pl svg{width:100%;height:auto;display:block}
 .alert{background:var(--pink);padding:12px 16px;font-size:15px;font-weight:500}
+.sheetwarn{display:block;margin-top:10px;background:var(--pink);padding:12px 16px;font-size:14px;font-weight:500;line-height:1.5}
+.linkbtn{background:none;border:0;padding:0;margin:0;font:inherit;font-weight:700;color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer;min-height:auto}
+.linkbtn:hover{opacity:.72}
 .check{display:flex;gap:12px;align-items:flex-start;cursor:pointer}
 .check input{width:20px;height:20px;margin:3px 0 0;flex:none;accent-color:var(--ink)}
 .row{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
@@ -3153,7 +3156,9 @@ function render(){
     $("rnotehint").hidden = !(state.path === "ready" && foldWords(t, cur).dropped);
     $("pernote").innerHTML = `Each sheet has <strong>${per} ${sizeNow().name.toLowerCase()} labels</strong> (${sizeNow().label}).`;
     $("ordersum").innerHTML = namesMode() ? `<strong>${Math.max(1, Math.ceil(list.length / per))} ${Math.ceil(list.length / per) > 1 ? "sheets" : "sheet"} · ${list.length} labels</strong>` : `<strong>${sh} · ${tot} labels</strong>`;
-    if (namesMode()){ const pg = Math.max(1, Math.ceil(list.length / per)); note.innerHTML = `<strong>${pg} ${pg > 1 ? "sheets" : "sheet"} · ${list.length} labels.</strong> Your list of names sets this: one label for each name.`; }
+    if (namesMode()){ const pg = Math.max(1, Math.ceil(list.length / per)), rem = list.length % per, blanks = rem ? per - rem : 0;
+      note.innerHTML = `<strong>${pg} ${pg > 1 ? "sheets" : "sheet"} · ${list.length} labels.</strong> Your list of names sets this: one label for each name.`
+        + (blanks ? `<span class="sheetwarn">Sheets are sold whole, so your last sheet has <strong>${blanks} blank ${blanks === 1 ? "label" : "labels"}</strong> you'd still pay for. <button type="button" class="linkbtn" id="fillnames">Add ${blanks} more ${blanks === 1 ? "name" : "names"}</button> or <button type="button" class="linkbtn" id="fillrepeat">fill the sheet by repeating your names</button>.</span>` : ""); }
     else
     note.innerHTML = `<strong>${sh} · ${tot} labels.</strong> ` + (
       spanReady() ? (q > 1 ? "Your mix is spread across all of them. Change how many of each under Choose your wording." : "Add a sheet to choose more sayings.")
@@ -3415,6 +3420,10 @@ pick("rmodes", ".chip", b => { state.rmode = b.dataset.id; state.sel = 0; buildQ
 document.addEventListener("click", e => { if (e.target.id === "showsay"){ state.want = "ready"; state.sel = 0; applyOccasion(); $("hr").scrollIntoView({block:"start"}); } });
 document.addEventListener("click", e => { if (e.target.id === "qtydiff"){ state.mixAll = true; state.scopePicked = true; state.qty = Math.min(state.qty, 5); state.sel = 0; syncMix(); buildModes(); changed(); } });
 pick("mixscope", ".chip", b => { state.mixAll = b.dataset.id === "all"; state.scopePicked = true; state.sel = 0; syncMix(); buildModes(); changed(); });
+// Names mode: sheets sell whole, so offer to top up a part-full last sheet (add names, or repeat the ones entered).
+function fillNamesToSheet(){ const per = perSheet(), cur = nameList(); if (!cur.length) return; const target = Math.min(MAX_NAMES, Math.ceil(cur.length / per) * per); const out = cur.slice(); for (let i = 0; out.length < target; i++) out.push(cur[i % cur.length]); state.names = out.join("\n"); if ($("names").value !== state.names) $("names").value = state.names; buildModes(); changed(); }
+document.addEventListener("click", e => { if (e.target.id === "fillnames"){ const n = $("names"); n.focus(); try { n.setSelectionRange(n.value.length, n.value.length); } catch {} n.scrollIntoView({block:"center"}); } });
+document.addEventListener("click", e => { if (e.target.id === "fillrepeat"){ fillNamesToSheet(); } });
 $("rnote").addEventListener("input", e => { state.rnote = e.target.value; changed(); });
 pick("groups", ".chip", b => { state.group = b.dataset.id; state.sub = 0; state.want = "ready"; applyOccasion(); });
 pick("subs", ".chip", b => { state.sub = +b.dataset.id; state.want = "ready"; applyOccasion(); });
