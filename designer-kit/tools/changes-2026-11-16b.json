@@ -1,0 +1,42 @@
+[
+ {
+  "change": "html: bundle box",
+  "find": "        <p class=\"wrapsum\" id=\"wrapsum\" aria-live=\"polite\" hidden></p>\n      </section>",
+  "replace": "        <p class=\"wrapsum\" id=\"wrapsum\" aria-live=\"polite\" hidden></p>\n        <div class=\"bundle\"><div class=\"bt\">Build a bundle, unlock free wraps</div><div class=\"hint\" id=\"bundlenote\" aria-live=\"polite\"></div></div>\n      </section>"
+ },
+ {
+  "change": "js: bundle note",
+  "find": "  $(\"wrapsum\").hidden = !total;",
+  "replace": "  const TIERS = [[39, 2], [79, 5], [119, 10]], got = TIERS.filter(t => cost >= t[0]).pop(), next = TIERS.find(t => cost < t[0]);\n  $(\"bundlenote\").innerHTML = (!total ? \"Spend $39 on wraps for 2 free wraps, $79 for 5, or $119 for 10. You choose your free wraps in the cart.\"\n      : (got ? `<strong>You've unlocked ${got[1]} free wraps.</strong> You'll choose them in the cart. ` : \"\") + (next ? `Add $${(next[0] - cost).toFixed(2)} more in wraps to get ${next[1]} free.` : \"That's our top tier.\"))\n    + \" Label sheets don't count toward a bundle.\";\n  $(\"wrapsum\").hidden = !total;"
+ },
+ {
+  "change": "css: wrap row",
+  "find": ".wrapgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}",
+  "replace": "/* one row that swipes sideways, so it can hold a whole collection */\n.wraprow{position:relative;min-width:0}\n.steps>section{grid-template-columns:minmax(0,1fr)}   /* lets the row scroll inside the step in place of widening it */\n.wrapgrid{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 24px) / 3);gap:12px;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:thin;padding-bottom:8px}\n.wrapcard{scroll-snap-align:start}\n.wrapnav{position:absolute;top:62px;z-index:2;width:42px;height:42px;border-radius:50%;border:1px solid var(--ink);background:#fff;color:var(--ink);font-size:24px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0 0 3px;box-shadow:0 2px 8px rgba(27,36,64,.18)}\n#wrapprev{left:-14px} #wrapnext{right:-14px}\n@media (max-width:600px){.wrapgrid{grid-auto-columns:42%} #wrapprev{left:-6px} #wrapnext{right:-6px}}"
+ },
+ {
+  "change": "html: wrap row",
+  "find": "        <div class=\"wrapgrid\" id=\"wrapcards\"></div>",
+  "replace": "        <div class=\"wraprow\"><button type=\"button\" class=\"wrapnav\" id=\"wrapprev\" aria-label=\"Earlier wraps\" hidden>\u2039</button>\n        <div class=\"wrapgrid\" id=\"wrapcards\" tabindex=\"0\" role=\"group\" aria-label=\"Wraps\"></div>\n        <button type=\"button\" class=\"wrapnav\" id=\"wrapnext\" aria-label=\"More wraps\" hidden>\u203a</button></div>\n        <p class=\"hint\" id=\"wrapswipe\" hidden></p>"
+ },
+ {
+  "change": "js: wrap row helpers",
+  "find": "function buildWraps(){",
+  "replace": "// The wrap row: arrows show only when there is more to see in that direction.\nfunction syncWrapNav(){\n  const g = $(\"wrapcards\"), over = g.scrollWidth > g.clientWidth + 4;\n  $(\"wrapprev\").hidden = !over || g.scrollLeft < 4;\n  $(\"wrapnext\").hidden = !over || g.scrollLeft + g.clientWidth > g.scrollWidth - 4;\n  $(\"wrapswipe\").hidden = !over;\n  $(\"wrapswipe\").textContent = `Swipe or use the arrows to see all ${g.children.length} wraps.`;\n}\nfunction buildWraps(){"
+ },
+ {
+  "change": "js: keep the row where it was",
+  "find": "  $(\"wrapcards\").innerHTML = WRAPS.map((w, i) => {",
+  "replace": "  const keepScroll = $(\"wrapcards\").scrollLeft;   // adding a wrap redraws the row; stay on the card they tapped\n  $(\"wrapcards\").innerHTML = WRAPS.map((w, i) => {"
+ },
+ {
+  "change": "js: restore the row",
+  "find": "  const total = state.wraps.reduce((a, w) => a + wrapQty(w), 0), cost = total * wrapEach();",
+  "replace": "  $(\"wrapcards\").scrollLeft = keepScroll; syncWrapNav();\n  const total = state.wraps.reduce((a, w) => a + wrapQty(w), 0), cost = total * wrapEach();"
+ },
+ {
+  "change": "js: wrap row events",
+  "find": "function wrapsChanged(){ $(\"output\").hidden = true; buildViews(); buildWraps(); render(); }",
+  "replace": "function wrapsChanged(){ $(\"output\").hidden = true; buildViews(); buildWraps(); render(); }\n$(\"wrapcards\").addEventListener(\"scroll\", syncWrapNav, {passive:true});\naddEventListener(\"resize\", syncWrapNav);\n$(\"wrapprev\").addEventListener(\"click\", () => $(\"wrapcards\").scrollBy({left:-$(\"wrapcards\").clientWidth * .9, behavior:\"smooth\"}));\n$(\"wrapnext\").addEventListener(\"click\", () => $(\"wrapcards\").scrollBy({left:$(\"wrapcards\").clientWidth * .9, behavior:\"smooth\"}));"
+ }
+]

@@ -1,0 +1,278 @@
+:root{
+  /* Layout: the product-page split from the site redesign. Label preview pinned on the left,
+     build steps on the right; on phones the preview pins to the top while the steps scroll under it. */
+  --ink:#1B2440;
+  --bg:#FFFDF8;
+  --blue:#C5DDF0;
+  --blue-soft:#DCE5F6;
+  --pink:#F3CFDA;
+  --cream:#F6EBD3;
+  --line:#E6E1D6;
+  --font-display:"Playfair Display", Georgia, serif;
+  --font-body:"Jost", system-ui, sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.5}
+a{color:var(--ink)}
+a:hover{color:#3A4A7A}
+button,input,select,textarea{font-family:inherit;color:var(--ink);border-radius:0}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+
+/* site chrome */
+.bar{background:var(--blue);text-align:center;padding:10px 16px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:500}
+.site{border-bottom:1px solid var(--line)}
+.site-in{max-width:1280px;margin:0 auto;padding:20px 32px 0;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+.util{font-size:13px;letter-spacing:.14em;text-transform:uppercase;text-decoration:none;min-height:44px;display:flex;align-items:center}
+.utils{display:flex;gap:24px}
+.logo{width:260px;height:auto;aspect-ratio:1145.46 / 248;display:block}
+.mainnav{max-width:1280px;margin:0 auto;padding:6px 32px 8px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px 36px;font-size:13px;letter-spacing:.16em;text-transform:uppercase;font-weight:500}
+.mainnav a{text-decoration:none;min-height:44px;display:flex;align-items:center;gap:8px}
+.mainnav a[aria-current]{box-shadow:inset 0 -2px 0 var(--ink)}
+.tagnew{background:var(--pink);padding:2px 8px;font-size:10px;letter-spacing:.14em}
+.menu{display:none}
+.crumbs{max-width:1280px;margin:0 auto;padding:20px 32px 0;font-size:13px;letter-spacing:.06em}
+
+/* page */
+.shop{max-width:1280px;margin:0 auto;padding:28px 32px 72px;display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start}
+.stage{flex:1 1 420px;min-width:0;position:sticky;top:20px}
+.frame{background:#fff;border:1px solid var(--line);border-radius:320px 320px 0 0;aspect-ratio:1 / 1.08;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:20% 12% 8%}
+#preview{width:100%;height:auto;display:block;box-shadow:0 10px 30px rgba(27,36,64,.18)}
+.which{font-size:14px;font-weight:500;text-align:center}
+.peek,.peekclose{display:none}
+.size{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;text-align:center}
+.views{justify-content:center;margin-top:16px}
+#scene{width:100%;max-height:min(56vh,470px);display:block;margin:0 auto}
+.frame.tall{padding:9% 10% 5%}
+.scenenote{text-align:center;font-size:13px}
+.panel{flex:1 1 480px;min-width:0}
+.how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:20px;background:var(--cream);padding:20px 16px}
+.howstep{display:grid;gap:4px;justify-items:center;text-align:center;align-content:start}
+.howstep svg{height:124px;width:auto;display:block}
+.hn{font-family:var(--font-display);font-size:18px;margin-top:6px}
+.ht{font-weight:600;font-size:15px;line-height:1.25}
+.hd{font-size:13.5px;line-height:1.4}
+/* one row that swipes sideways, so it can hold a whole collection */
+.wraprow{position:relative;min-width:0}
+.steps>section{grid-template-columns:minmax(0,1fr)}   /* lets the row scroll inside the step in place of widening it */
+.wrapgrid{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 24px) / 3);gap:12px;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:thin;padding-bottom:8px}
+.wrapcard{scroll-snap-align:start}
+.wrapnav{position:absolute;top:62px;z-index:2;width:42px;height:42px;border-radius:50%;border:1px solid var(--ink);background:#fff;color:var(--ink);font-size:24px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0 0 3px;box-shadow:0 2px 8px rgba(27,36,64,.18)}
+#wrapprev{left:-14px} #wrapnext{right:-14px}
+@media (max-width:600px){.wrapgrid{grid-auto-columns:42%} #wrapprev{left:-6px} #wrapnext{right:-6px}}
+.wrapcard{border:1px solid var(--line);background:#fff;padding:10px;display:grid;gap:6px;justify-items:center;text-align:center}
+.wrapcard[data-on="true"]{border:2px solid var(--ink);padding:9px}
+.wrapcard svg{height:150px;width:auto;display:block}
+.wrapcard .k{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:500}
+.wrapcard .nm{font-family:var(--font-display);font-size:17px;line-height:1.2}
+.wrapcard .add{width:100%;padding:10px 8px;min-height:44px}
+.bundle{background:var(--cream);padding:16px 18px;display:grid;gap:4px}
+.bundle .bt{font-family:var(--font-display);font-style:italic;font-size:20px}
+.eyebrow{font-size:12px;letter-spacing:.28em;text-transform:uppercase;font-weight:500;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,50px);line-height:1.08;margin:12px 0 0;text-wrap:balance}
+.lede{font-size:17px;margin:10px 0 0;max-width:520px}
+p{margin:0;max-width:65ch}
+.hint{font-size:14px}
+/* the name or note: its own step on a tinted card, so it is not missed */
+.namecard{background:var(--blue);border:1px solid #9fc4e3;padding:18px 18px 16px;display:grid;gap:10px}
+.namecard label.f{font-size:13px}
+.namecard input{font-size:18px;padding:14px 14px;background:#fff}
+.linkbtn{background:none;border:0;padding:8px 2px;margin:0 6px;font:inherit;font-weight:600;color:inherit;text-decoration:underline;cursor:pointer}
+.nudge{display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px}
+/* options a design cannot change: faded and switched off, with a short reason above them */
+.locked{opacity:.34;filter:grayscale(.5);pointer-events:none;user-select:none}
+.lockline{display:flex;gap:9px;align-items:flex-start;font-size:14px;line-height:1.4;margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);background:#fff}
+.lockline svg{flex:none;margin-top:2px}
+
+.steps{counter-reset:step;margin-top:26px}
+.steps>section{counter-increment:step;border-top:1px solid var(--line);padding:26px 0;display:grid;gap:14px}
+.box{display:grid;gap:14px}
+h2{font-family:var(--font-display);font-weight:400;font-size:26px;line-height:1.15;margin:0;display:flex;align-items:baseline;gap:14px;text-wrap:balance}
+h2 .n{font-size:20px;flex:none}
+h2 .n::before{content:counter(step, decimal-leading-zero)}
+
+.chips,.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.chip{background:transparent;border:1px solid var(--ink);padding:11px 16px;min-height:44px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:#fff}
+.chips.small{gap:8px}
+.chips.small .chip{padding:8px 12px;min-height:38px;font-size:11px;letter-spacing:.12em;border-color:var(--line);background:#fff}
+.chips.small .chip[aria-pressed="true"]{background:var(--blue);border-color:var(--ink);color:var(--ink)}
+.callout{background:var(--blue);padding:14px 18px;font-size:15px}
+.callout details{margin-top:8px}
+.callout summary{cursor:pointer;font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;min-height:32px;display:flex;align-items:center;gap:8px}
+.callout summary::before{content:"+";font-size:18px;line-height:1}
+.callout details[open] summary::before{content:"−"}
+.callout summary::-webkit-details-marker{display:none}
+.callout ul{margin:6px 0 2px;padding-left:20px;columns:2;column-gap:28px}
+.callout li{break-inside:avoid;padding:2px 0}
+.fitnote{margin-top:8px;font-size:14px}
+@media (max-width:600px){.callout ul{columns:1}}
+
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.tpl{padding:6px 6px 9px;border:1px solid var(--line);background:#fff;cursor:pointer;display:grid;gap:7px}
+.tpl[aria-pressed="true"]{border:2px solid var(--ink);padding:5px 5px 8px}
+.tpl{position:relative}
+.tpl .star,.starkey{background:var(--ink);color:#fff;font-style:normal;font-size:11px;line-height:1;display:inline-grid;place-items:center;width:20px;height:20px}
+.tpl .star{position:absolute;top:0;left:0}
+.tpl[aria-pressed="true"] .star{top:-1px;left:-1px}
+.starkey{vertical-align:-4px;margin:0 2px}
+/* a question the customer has to answer before ordering */
+.ask{display:grid;gap:10px}
+.ask-t{font-size:16px;font-weight:600;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.ask-tag{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;background:var(--ink);color:#fff;padding:4px 8px}
+.ask.need{border:2px solid var(--ink);background:var(--blue-soft);padding:14px 16px}
+.ask.need .chip{background:#fff}
+.ask .chip small{display:block;margin-top:4px;font-size:12.5px;letter-spacing:0;text-transform:none;font-weight:400}
+.chips.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.chips.two .chip{text-align:left;padding:12px 16px}
+.tpl svg{width:100%;height:auto;display:block}
+.tpl span{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:500;line-height:1.3}
+
+.saygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.say{border:1px solid var(--line);background:#fff;padding:12px 10px;min-height:84px;display:grid;gap:3px;align-content:center;justify-items:center;text-align:center;cursor:pointer}
+.say[aria-pressed="true"]{border:2px solid var(--ink);padding:11px 9px;background:var(--blue-soft)}
+.say .k{font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:500}
+.say .m{font-family:var(--font-display);font-size:19px;line-height:1.2}
+.say .b{font-size:13px;font-style:italic}
+div.say{cursor:default}
+.say[data-on="true"]{border:2px solid var(--ink);padding:11px 9px;background:var(--blue-soft)}
+.say[data-on="false"] .k,.say[data-on="false"] .m,.say[data-on="false"] .b{opacity:.5}
+.stepper{display:flex;align-items:center;border:1px solid var(--ink);background:#fff;margin-top:8px}
+.stepper button{width:40px;height:40px;background:transparent;border:0;font-size:20px;line-height:1;cursor:pointer}
+.stepper button:disabled{opacity:.3;cursor:not-allowed}
+.stepper span{min-width:30px;text-align:center;font-size:16px;font-variant-numeric:tabular-nums}
+.linkbtn{background:none;border:0;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer}
+#qtynote{margin:10px 0 0}
+.sub{display:grid;gap:14px}
+.sub[hidden]{display:none}
+.extra{border:1px solid #9fc4e3;background:#fff;padding:16px 18px;display:grid;gap:12px}
+.uprow{display:flex;flex-wrap:wrap;gap:12px 22px}
+.extra-t{font-size:17px;font-weight:600}
+.labstrip{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.labstrip .ls{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:500;flex-basis:100%;margin-top:4px}
+.labstrip button{min-width:40px;height:40px;border:1px solid var(--line);background:#fff;cursor:pointer;font:inherit;font-size:14px;font-variant-numeric:tabular-nums}
+.labstrip button[aria-pressed="true"]{border:2px solid var(--ink);background:var(--blue-soft);font-weight:500}
+.labnav{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.labnav span{text-align:center;font-size:14px}
+.labnav .btn{padding-left:16px;padding-right:16px}
+.wrapcard .stepper{margin-top:0}
+.wrapcard .stepper button{width:32px;height:38px}
+.wrapcard .stepper span{min-width:26px}
+.wrapcard .linkbtn{font-size:12.5px}
+.wrapsum{font-size:15px}
+.idlemsg{display:none}
+@media (max-width:879px){.stage.idle{display:none}}
+/* from tablet width up the preview always sits beside the steps; without this it wrapped above them and its sticky panel covered the page */
+@media (min-width:880px){.shop{flex-wrap:nowrap}.stage{flex:1 1 380px}.panel{flex:1.25 1 440px}}
+@media (min-width:880px) and (max-width:1099px){.shop{gap:32px;padding-left:24px;padding-right:24px}}
+.qtyf{max-width:160px}
+#make{width:100%}
+.psep{grid-column:1 / -1;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:500;padding-top:4px}
+.sw{width:36px;height:36px;border-radius:50%;border:2px solid #fff;outline:1px solid var(--line);cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{outline:2px solid var(--ink)}
+.colorrow{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.own{display:flex;gap:10px;align-items:center;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;padding:4px 14px 4px 5px;min-height:44px;border:1px solid var(--ink);cursor:pointer}
+.own[data-on="true"]{background:var(--blue)}
+input[type=color]{width:32px;height:32px;padding:0;border:0;background:none;cursor:pointer}
+.palname{font-size:14px}
+
+.fontgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.fontopt{display:grid;gap:2px;justify-items:center;padding:12px 8px 10px;border:1px solid var(--line);background:#fff;cursor:pointer}
+.fontopt[aria-pressed="true"]{border:2px solid var(--ink);padding:11px 7px 9px}
+.fontopt .big{font-size:26px;line-height:1.25;white-space:nowrap}
+.fontopt .small{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:500}
+
+.logobox{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:center}
+.vh{position:absolute;opacity:0;width:1px;height:1px;overflow:hidden}
+.vh:focus-visible + .filebtn{outline:2px solid var(--ink);outline-offset:3px}
+.logothumb{height:44px;max-width:120px;object-fit:contain;background:#fff;border:1px solid var(--line);padding:3px}
+
+.fields{display:grid;gap:14px}
+label.f{display:grid;gap:6px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-weight:500}
+.frow{display:flex;justify-content:space-between;gap:8px}
+.count{letter-spacing:.04em;font-weight:400;font-variant-numeric:tabular-nums;text-transform:none}
+input[type=text],textarea{caret-color:var(--ink);-webkit-user-select:text;user-select:text}
+input[type=text],select,textarea.names{font-size:16px;letter-spacing:0;text-transform:none;font-weight:400;padding:13px 14px;border:1px solid var(--ink);background:#fff;width:100%}
+input[type=text]:disabled{background:#F4F1EA;border-color:var(--line);color:#6B7086}
+textarea.names{min-height:150px;line-height:1.45;resize:vertical}
+
+.order{background:var(--cream);padding:22px;display:grid;gap:16px}
+.order-title{font-family:var(--font-display);font-style:italic;font-size:22px;line-height:1.2}
+.proof{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:260px;overflow-y:auto;padding:3px}
+.pl{padding:0;border:1px solid var(--line);background:#fff;cursor:pointer;overflow:hidden;line-height:0}
+.pl[aria-pressed="true"]{border:2px solid var(--ink)}
+.pl svg{width:100%;height:auto;display:block}
+.alert{background:var(--pink);padding:12px 16px;font-size:15px;font-weight:500}
+.check{display:flex;gap:12px;align-items:flex-start;cursor:pointer}
+.check input{width:20px;height:20px;margin:3px 0 0;flex:none;accent-color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.row label.f{flex:0 0 110px}
+.btn{background:var(--ink);color:#fff;border:1px solid var(--ink);padding:17px 30px;font-size:13px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;text-align:center;cursor:pointer;flex:1 1 220px}
+.btn:disabled{background:#B5B9C6;border-color:#B5B9C6;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);flex:0 1 auto;justify-self:start;padding:13px 22px}
+.filebtn{display:inline-block}
+.trust{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:500}
+
+/* what the team receives */
+.band{background:var(--blue-soft)}
+.band-in{max-width:1280px;margin:0 auto;padding:64px 32px;display:grid;gap:14px}
+.band h2{font-size:clamp(30px,4vw,42px);justify-content:center;text-align:center}
+.band .eyebrow,.band>.band-in>p{justify-content:center;text-align:center;margin:0 auto}
+.out{display:grid;gap:24px;margin-top:22px}
+@media (min-width:880px){.out{grid-template-columns:minmax(0,1fr) minmax(0,400px);align-items:start}}
+.sheets{display:grid;gap:14px}
+.sheet{width:100%;height:auto;display:block;background:#fff;border:1px solid var(--line)}
+.sheet .guide{fill:none;stroke:#9AA3BD;stroke-width:1;stroke-dasharray:5 4}
+.card{background:var(--bg);border:2px solid var(--ink);padding:28px;display:grid;gap:16px}
+dl{display:grid;grid-template-columns:auto 1fr;margin:0;font-size:15px}
+dt,dd{border-bottom:1px solid var(--ink);padding:10px 0;margin:0}
+dd{font-weight:600;text-align:right;overflow-wrap:anywhere;padding-left:16px}
+textarea.code{width:100%;height:120px;font:12px/1.4 ui-monospace,Menlo,monospace;border:1px solid var(--ink);padding:8px}
+
+.foot{border-top:1px solid var(--line)}
+.foot-in{max-width:1280px;margin:0 auto;padding:40px 32px 36px;display:flex;flex-wrap:wrap;gap:16px 40px;align-items:center;justify-content:space-between;font-size:15px}
+
+@media (max-width:879px){
+  .site-in{padding:12px 16px 10px}
+  .logo{width:190px}
+  .mainnav,.util.search,.util.account{display:none}
+  .menu{display:flex}
+  .crumbs{padding:14px 16px 0}
+  .shop{padding:0 16px 48px;gap:20px}
+  .stage{flex-basis:100%;top:0;z-index:5;background:var(--bg);margin:0 -16px;padding:12px 16px 10px;border-bottom:1px solid var(--line)}
+  .frame{border:0;border-radius:0;aspect-ratio:auto;padding:0;background:none;gap:8px}
+  #preview{max-width:230px;margin:0 auto;box-shadow:0 4px 14px rgba(27,36,64,.18)}
+  #scene{max-height:210px}
+  .frame.tall{padding:0}
+  .size,.scenenote{display:none}
+  .views{margin-top:8px}
+  .chips.small.views .chip{min-height:40px;padding:8px 12px}
+  .how{padding:16px 10px;gap:8px}
+  .howstep svg{height:96px}
+  .wrapcard svg{height:110px}
+  .wrapcard .nm{font-size:15px}
+  .which{font-size:13px}
+  /* while typing, the pinned preview shrinks to a slim bar so the keyboard leaves room for the fields */
+  .stage.typing{padding:8px 16px}
+  .stage.typing .frame{flex-direction:row;align-items:center;justify-content:center;gap:14px}
+  .stage.typing #preview{width:auto;height:112px;max-width:none;margin:0}
+  .stage.typing #scene{width:auto;height:112px;max-height:none}
+  .stage.typing .views{display:none}
+  /* On a phone the pinned preview is a slim bar by default; tapping it opens the full preview with the bottle and wrap views. */
+  .stage:not(.open){padding:8px 16px}
+  .stage:not(.open) .frame{flex-direction:row;align-items:center;justify-content:flex-start;gap:14px;cursor:pointer}
+  .stage:not(.open) #preview{width:auto;height:84px;max-width:46vw;margin:0}
+  .stage:not(.open) #scene{width:auto;height:84px;max-height:none;margin:0}
+  .stage:not(.open) .views,.stage:not(.open) .which{display:none}
+  .stage:not(.open) .peek{display:grid;gap:4px;text-align:left;background:none;border:0;padding:6px 0;font:inherit;color:inherit;min-width:0;flex:1}
+  .peek-n{font-size:14px;font-weight:600;line-height:1.25}
+  .peek-h{font-size:11px;letter-spacing:.16em;text-transform:uppercase;text-decoration:underline}
+  .stage.open #preview{max-width:300px}
+  .stage.open #scene{max-height:300px}
+  .stage.open:not(.typing) .peekclose{display:block;margin:10px auto 0;background:none;border:0;padding:8px 12px;font:inherit;font-size:11px;letter-spacing:.16em;text-transform:uppercase;text-decoration:underline;color:inherit}
+  .band-in{padding:44px 16px}
+  .card{padding:20px}
+  .foot-in{padding:28px 16px}
+}
+[hidden]{display:none !important}

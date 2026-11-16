@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BeauBottles Label Designer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sacramento&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ms+Madi&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Whisper&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="designer-fonts.css">
+<link rel="stylesheet" href="designer.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<image id="xm-bwreath" width="681" height="650" href="assets/xm-bwreath.webp"/>
+<image id="xm-bbow" width="300" height="102" href="assets/xm-bbow.webp"/>
+<image id="xm-bswag" width="560" height="244" href="assets/xm-bswag.webp"/>
+<image id="xm-born1" width="143" height="170" href="assets/xm-born1.webp"/>
+<image id="xm-born2" width="151" height="185" href="assets/xm-born2.webp"/>
+<image id="xm-born3" width="139" height="150" href="assets/xm-born3.webp"/>
+<image id="xm-born4" width="139" height="170" href="assets/xm-born4.webp"/>
+<image id="xm-born5" width="131" height="185" href="assets/xm-born5.webp"/>
+<image id="xm-born6" width="137" height="165" href="assets/xm-born6.webp"/>
+<image id="xm-born7" width="102" height="180" href="assets/xm-born7.webp"/>
+<image id="xm-bstar1" width="29" height="170" href="assets/xm-bstar1.webp"/>
+<image id="xm-bstar2" width="26" height="210" href="assets/xm-bstar2.webp"/>
+<image id="xm-bstar3" width="22" height="95" href="assets/xm-bstar3.webp"/>
+<image id="xm-bbranch" width="420" height="150" href="assets/xm-bbranch.webp"/>
+<image id="xm-wc_house" width="334" height="280" href="assets/xm-wc_house.webp"/>
+<image id="xm-wc_mitt1" width="151" height="230" href="assets/xm-wc_mitt1.webp"/>
+<image id="xm-wc_mitt2" width="156" height="230" href="assets/xm-wc_mitt2.webp"/>
+<image id="xm-wc_cup" width="215" height="220" href="assets/xm-wc_cup.webp"/>
+<image id="xm-wc_gift" width="210" height="215" href="assets/xm-wc_gift.webp"/>
+<image id="xm-wc_bell" width="157" height="225" href="assets/xm-wc_bell.webp"/>
+<image id="xm-wc_cookie" width="159" height="190" href="assets/xm-wc_cookie.webp"/>
+<image id="xm-wc_orn1" width="154" height="185" href="assets/xm-wc_orn1.webp"/>
+<image id="xm-wc_orn2" width="153" height="185" href="assets/xm-wc_orn2.webp"/>
+<image id="xm-wc_orn3" width="146" height="190" href="assets/xm-wc_orn3.webp"/>
+<image id="xm-wc_orn4" width="161" height="190" href="assets/xm-wc_orn4.webp"/>
+<image id="xm-wc_cone" width="134" height="185" href="assets/xm-wc_cone.webp"/>
+<image id="xm-wc_cane" width="214" height="230" href="assets/xm-wc_cane.webp"/>
+<image id="xm-wc_snow1" width="103" height="110" href="assets/xm-wc_snow1.webp"/>
+<image id="xm-wc_snow2" width="95" height="95" href="assets/xm-wc_snow2.webp"/>
+<image id="xm-mcscript" width="900" height="252" href="assets/xm-mcscript.webp"/>
+<image id="xm-garland" width="1150" height="563" href="assets/xm-garland.webp"/>
+<image id="xm-cwreath" width="626" height="640" href="assets/xm-cwreath.webp"/>
+<image id="xm-hwreath" width="624" height="640" href="assets/xm-hwreath.webp"/>
+<image id="xm-mcrope" width="1000" height="501" href="assets/xm-mcrope.webp"/>
+<image id="xm-tree" width="529" height="680" href="assets/xm-tree.webp"/>
+<image id="xm-nutcracker" width="404" height="760" href="assets/xm-nutcracker.webp"/>
+<image id="xm-ny1" width="163" height="305" href="assets/xm-ny1.webp"/>
+<image id="xm-ny2" width="119" height="240" href="assets/xm-ny2.webp"/>
+<image id="xm-ny3" width="269" height="444" href="assets/xm-ny3.webp"/>
+<image id="xm-ny4" width="158" height="221" href="assets/xm-ny4.webp"/>
+<image id="xm-ny5" width="239" height="176" href="assets/xm-ny5.webp"/>
+<image id="xm-ny6" width="97" height="246" href="assets/xm-ny6.webp"/>
+<image id="xm-ny7" width="105" height="156" href="assets/xm-ny7.webp"/>
+<image id="xm-ny8" width="308" height="200" href="assets/xm-ny8.webp"/>
+<image id="xm-ny9" width="167" height="288" href="assets/xm-ny9.webp"/>
+<image id="xm-nybunting" width="520" height="201" href="assets/xm-nybunting.webp"/>
+<image id="xm-ck1" width="129" height="280" href="assets/xm-ck1.webp"/>
+<image id="xm-ck2" width="155" height="265" href="assets/xm-ck2.webp"/>
+<image id="xm-ck3" width="167" height="244" href="assets/xm-ck3.webp"/>
+<image id="xm-ck4" width="96" height="264" href="assets/xm-ck4.webp"/>
+<image id="xm-ck5" width="130" height="297" href="assets/xm-ck5.webp"/>
+<image id="xm-ck6" width="158" height="263" href="assets/xm-ck6.webp"/>
+<image id="xm-ck7" width="158" height="266" href="assets/xm-ck7.webp"/>
+<image id="xm-ck8" width="173" height="245" href="assets/xm-ck8.webp"/>
+<image id="xm-ck9" width="150" height="279" href="assets/xm-ck9.webp"/>
+<image id="xm-ck10" width="122" height="212" href="assets/xm-ck10.webp"/>
+<image id="xm-ckbottle" width="104" height="336" href="assets/xm-ckbottle.webp"/><image id="xm-bb_stork_pink" width="420" height="576" href="assets/xm-bb_stork_pink.webp"/><image id="xm-bb_stork_green" width="420" height="565" href="assets/xm-bb_stork_green.webp"/><image id="xm-bb_stork_blue" width="420" height="557" href="assets/xm-bb_stork_blue.webp"/><image id="xm-bb_horse_pink" width="520" height="462" href="assets/xm-bb_horse_pink.webp"/><image id="xm-bb_horse_blue" width="520" height="462" href="assets/xm-bb_horse_blue.webp"/><image id="xm-bb_onesie_pink" width="400" height="440" href="assets/xm-bb_onesie_pink.webp"/><image id="xm-bb_onesie_blue" width="400" height="441" href="assets/xm-bb_onesie_blue.webp"/><image id="xm-bb_bottles" width="520" height="521" href="assets/xm-bb_bottles.webp"/><image id="xm-bb_pacifiers" width="520" height="522" href="assets/xm-bb_pacifiers.webp"/><image id="xm-bb_frame_blue" width="640" height="766" href="assets/xm-bb_frame_blue.webp"/><image id="xm-bb_frame_pink" width="640" height="767" href="assets/xm-bb_frame_pink.webp"/><image id="xm-bb_line_blue" width="640" height="308" href="assets/xm-bb_line_blue.webp"/><image id="xm-bb_line_pink" width="640" height="324" href="assets/xm-bb_line_pink.webp"/><image id="xm-bb_block_boy" width="560" height="439" href="assets/xm-bb_block_boy.webp"/><image id="xm-bb_block_girl" width="560" height="379" href="assets/xm-bb_block_girl.webp"/><image id="xm-bb_script_boy" width="560" height="525" href="assets/xm-bb_script_boy.webp"/><image id="xm-bb_script_girl" width="560" height="522" href="assets/xm-bb_script_girl.webp"/><image id="xm-bb_heorshe" width="520" height="680" href="assets/xm-bb_heorshe.webp"/><image id="xm-bb_whatwill" width="480" height="518" href="assets/xm-bb_whatwill.webp"/><image id="xm-bb_teampink" width="520" height="369" href="assets/xm-bb_teampink.webp"/><image id="xm-bb_teamblue" width="520" height="366" href="assets/xm-bb_teamblue.webp"/><image id="xm-sp_flag" width="260" height="258" href="assets/xm-sp_flag.webp"/><image id="xm-sp_mug" width="300" height="360" href="assets/xm-sp_mug.webp"/><image id="xm-sp_clover4" width="220" height="296" href="assets/xm-sp_clover4.webp"/><image id="xm-sp_shamrock" width="360" height="492" href="assets/xm-sp_shamrock.webp"/><image id="xm-sp_shamrock2" width="340" height="306" href="assets/xm-sp_shamrock2.webp"/><image id="xm-sp_lights" width="360" height="229" href="assets/xm-sp_lights.webp"/><image id="xm-sp_bunting" width="520" height="296" href="assets/xm-sp_bunting.webp"/><image id="xm-sp_hat" width="360" height="311" href="assets/xm-sp_hat.webp"/><image id="xm-sp_horseshoe" width="280" height="296" href="assets/xm-sp_horseshoe.webp"/><image id="xm-sp_c1" width="760" height="246" href="assets/xm-sp_c1.webp"/><image id="xm-sp_c2" width="620" height="359" href="assets/xm-sp_c2.webp"/><image id="xm-sp_c3" width="480" height="546" href="assets/xm-sp_c3.webp"/><image id="xm-sp_c4" width="520" height="271" href="assets/xm-sp_c4.webp"/><image id="xm-sp_belucky" width="420" height="334" href="assets/xm-sp_belucky.webp"/><image id="xm-sp_lucky" width="460" height="422" href="assets/xm-sp_lucky.webp"/><image id="xm-sp_pot" width="760" height="387" href="assets/xm-sp_pot.webp"/><image id="xm-sp_brush" width="700" height="742" href="assets/xm-sp_brush.webp"/><image id="xm-vd_script" width="900" height="579" href="assets/xm-vd_script.webp"/><image id="xm-vd_heartbox" width="620" height="574" href="assets/xm-vd_heartbox.webp"/><image id="xm-vd_scallop" width="700" height="807" href="assets/xm-vd_scallop.webp"/><image id="xm-vd_retro" width="860" height="748" href="assets/xm-vd_retro.webp"/><image id="xm-gr_capdiploma" width="420" height="295" href="assets/xm-gr_capdiploma.webp"/><image id="xm-gr_bow" width="260" height="236" href="assets/xm-gr_bow.webp"/><image id="xm-gr_disco" width="260" height="364" href="assets/xm-gr_disco.webp"/><image id="xm-gr_cake" width="280" height="368" href="assets/xm-gr_cake.webp"/><image id="xm-gr_toast" width="260" height="345" href="assets/xm-gr_toast.webp"/><image id="xm-gr_scroll" width="520" height="732" href="assets/xm-gr_scroll.webp"/><image id="xm-gr_cap1" width="300" height="153" href="assets/xm-gr_cap1.webp"/><image id="xm-gr_cap2" width="300" height="220" href="assets/xm-gr_cap2.webp"/><image id="xm-gr_cap3" width="320" height="244" href="assets/xm-gr_cap3.webp"/><image id="xm-gr_cap4" width="340" height="317" href="assets/xm-gr_cap4.webp"/><image id="xm-gr_capfloral" width="380" height="310" href="assets/xm-gr_capfloral.webp"/><image id="xm-gr_diploma" width="360" height="131" href="assets/xm-gr_diploma.webp"/><image id="xm-gr_t_gradparty1" width="560" height="253" href="assets/xm-gr_t_gradparty1.webp"/><image id="xm-gr_t_gradparty2" width="560" height="482" href="assets/xm-gr_t_gradparty2.webp"/><image id="xm-gr_t_gradparty3" width="640" height="281" href="assets/xm-gr_t_gradparty3.webp"/><image id="xm-gr_t_gradparty4" width="460" height="302" href="assets/xm-gr_t_gradparty4.webp"/><image id="xm-gr_congrats1" width="560" height="400" href="assets/xm-gr_congrats1.webp"/><image id="xm-gr_congrats2" width="560" height="223" href="assets/xm-gr_congrats2.webp"/><image id="xm-gr_congrats3" width="560" height="301" href="assets/xm-gr_congrats3.webp"/><image id="xm-gr_cheers1" width="560" height="373" href="assets/xm-gr_cheers1.webp"/><image id="xm-gr_cheers2" width="560" height="295" href="assets/xm-gr_cheers2.webp"/><image id="xm-gr_cheers3" width="560" height="361" href="assets/xm-gr_cheers3.webp"/><image id="xm-gr_congrats" width="800" height="539" href="assets/xm-gr_congrats.webp"/><image id="xm-gr_rainbow" width="900" height="334" href="assets/xm-gr_rainbow.webp"/><image id="xm-j4_flag" width="460" height="772" href="assets/xm-j4_flag.webp"/><image id="xm-j4_liberty" width="380" height="877" href="assets/xm-j4_liberty.webp"/><image id="xm-j4_hat" width="420" height="495" href="assets/xm-j4_hat.webp"/><image id="xm-j4_rocket1" width="300" height="296" href="assets/xm-j4_rocket1.webp"/><image id="xm-j4_rocket2" width="260" height="403" href="assets/xm-j4_rocket2.webp"/><image id="xm-j4_donut1" width="220" height="221" href="assets/xm-j4_donut1.webp"/><image id="xm-j4_donut2" width="230" height="139" href="assets/xm-j4_donut2.webp"/><image id="xm-j4_heart" width="300" height="296" href="assets/xm-j4_heart.webp"/><image id="xm-j4_glasses1" width="300" height="110" href="assets/xm-j4_glasses1.webp"/><image id="xm-j4_glasses2" width="290" height="129" href="assets/xm-j4_glasses2.webp"/><image id="xm-j4_star1" width="170" height="177" href="assets/xm-j4_star1.webp"/><image id="xm-j4_star2" width="150" height="161" href="assets/xm-j4_star2.webp"/><image id="xm-j4_balloon1" width="240" height="528" href="assets/xm-j4_balloon1.webp"/><image id="xm-j4_balloons2" width="420" height="605" href="assets/xm-j4_balloons2.webp"/><image id="xm-j4_fw1" width="300" height="286" href="assets/xm-j4_fw1.webp"/><image id="xm-j4_fw2" width="300" height="351" href="assets/xm-j4_fw2.webp"/><image id="xm-j4_fw3" width="300" height="280" href="assets/xm-j4_fw3.webp"/><image id="xm-j4_4july" width="700" height="703" href="assets/xm-j4_4july.webp"/><image id="xm-j4_bunting" width="700" height="703" href="assets/xm-j4_bunting.webp"/><image id="xm-j4_happy4th" width="760" height="761" href="assets/xm-j4_happy4th.webp"/><image id="xm-j4_starwreath" width="760" height="761" href="assets/xm-j4_starwreath.webp"/><image id="xm-j4_burst" width="900" height="903" href="assets/xm-j4_burst.webp"/><image id="xm-j4_script" width="900" height="700" href="assets/xm-j4_script.webp"/><image id="xm-hk_w_donut" width="330" height="248" href="assets/xm-hk_w_donut.webp"/><image id="xm-hk_w_dreidel" width="330" height="400" href="assets/xm-hk_w_dreidel.webp"/><image id="xm-hk_w_candle" width="150" height="485" href="assets/xm-hk_w_candle.webp"/><image id="xm-hk_w_coin1" width="220" height="141" href="assets/xm-hk_w_coin1.webp"/><image id="xm-hk_w_coin2" width="200" height="184" href="assets/xm-hk_w_coin2.webp"/><image id="xm-hk_w_cup" width="210" height="402" href="assets/xm-hk_w_cup.webp"/><image id="xm-hk_w_menorah" width="620" height="666" href="assets/xm-hk_w_menorah.webp"/><image id="xm-hk_w_star" width="300" height="334" href="assets/xm-hk_w_star.webp"/><image id="xm-hk_s_menorah" width="560" height="646" href="assets/xm-hk_s_menorah.webp"/><image id="xm-hk_s_star" width="260" height="272" href="assets/xm-hk_s_star.webp"/><image id="xm-hk_s_donut" width="280" height="197" href="assets/xm-hk_s_donut.webp"/><image id="xm-hk_s_donuts" width="380" height="232" href="assets/xm-hk_s_donuts.webp"/><image id="xm-hk_s_coin" width="200" height="201" href="assets/xm-hk_s_coin.webp"/><image id="xm-hk_s_candle" width="190" height="338" href="assets/xm-hk_s_candle.webp"/><image id="xm-hk_s_gift" width="330" height="318" href="assets/xm-hk_s_gift.webp"/><image id="xm-hk_s_dreidel" width="230" height="456" href="assets/xm-hk_s_dreidel.webp"/><image id="xm-hk_s_dreidel2" width="360" height="264" href="assets/xm-hk_s_dreidel2.webp"/><image id="xm-hk_brush" width="760" height="181" href="assets/xm-hk_brush.webp"/><image id="xm-hk_k_star" width="240" height="275" href="assets/xm-hk_k_star.webp"/><image id="xm-hk_k_book" width="280" height="298" href="assets/xm-hk_k_book.webp"/><image id="xm-hk_k_cup" width="220" height="321" href="assets/xm-hk_k_cup.webp"/><image id="xm-hk_k_bunting" width="330" height="349" href="assets/xm-hk_k_bunting.webp"/><image id="xm-hk_k_title" width="760" height="506" href="assets/xm-hk_k_title.webp"/><image id="xm-hk_k_dreidels" width="330" height="322" href="assets/xm-hk_k_dreidels.webp"/><image id="xm-hk_title" width="900" height="290" href="assets/xm-hk_title.webp"/><image id="xm-hk_bluemenorah" width="420" height="405" href="assets/xm-hk_bluemenorah.webp"/><image id="xm-hk_garden_l" width="420" height="966" href="assets/xm-hk_garden_l.webp"/><image id="xm-hk_garden_r" width="420" height="999" href="assets/xm-hk_garden_r.webp"/><image id="xm-hk_goldmenorah" width="520" height="668" href="assets/xm-hk_goldmenorah.webp"/><image id="xm-hk_dove" width="520" height="502" href="assets/xm-hk_dove.webp"/><image id="xm-hk_dreidelbow" width="460" height="822" href="assets/xm-hk_dreidelbow.webp"/><image id="xm-wd_n1" width="258" height="168" href="assets/xm-wd_n1.webp"/><image id="xm-wd_n2" width="293" height="167" href="assets/xm-wd_n2.webp"/><image id="xm-wd_n3" width="311" height="169" href="assets/xm-wd_n3.webp"/><image id="xm-wd_n4" width="296" height="168" href="assets/xm-wd_n4.webp"/><image id="xm-wd_n5" width="287" height="169" href="assets/xm-wd_n5.webp"/><image id="xm-wd_n6" width="258" height="163" href="assets/xm-wd_n6.webp"/><image id="xm-wd_n7" width="335" height="162" href="assets/xm-wd_n7.webp"/><image id="xm-wd_n8" width="313" height="164" href="assets/xm-wd_n8.webp"/><image id="xm-wd_n9" width="272" height="159" href="assets/xm-wd_n9.webp"/><image id="xm-wd_n10" width="241" height="160" href="assets/xm-wd_n10.webp"/><image id="xm-wd_n11" width="352" height="165" href="assets/xm-wd_n11.webp"/><image id="xm-wd_n12" width="374" height="164" href="assets/xm-wd_n12.webp"/><image id="xm-wd_n13" width="397" height="163" href="assets/xm-wd_n13.webp"/><image id="xm-wd_n14" width="408" height="163" href="assets/xm-wd_n14.webp"/><image id="xm-wd_n15" width="352" height="164" href="assets/xm-wd_n15.webp"/><image id="xm-wd_n16" width="371" height="157" href="assets/xm-wd_n16.webp"/><image id="xm-wd_n17" width="431" height="151" href="assets/xm-wd_n17.webp"/><image id="xm-wd_n18" width="390" height="158" href="assets/xm-wd_n18.webp"/><image id="xm-wd_n19" width="383" height="152" href="assets/xm-wd_n19.webp"/><image id="xm-wd_n20" width="363" height="151" href="assets/xm-wd_n20.webp"/><image id="xm-wd_n21" width="501" height="152" href="assets/xm-wd_n21.webp"/><image id="xm-wd_n22" width="433" height="124" href="assets/xm-wd_n22.webp"/><image id="xm-wd_n23" width="452" height="127" href="assets/xm-wd_n23.webp"/><image id="xm-wd_n24" width="442" height="129" href="assets/xm-wd_n24.webp"/><image id="xm-wd_n25" width="435" height="128" href="assets/xm-wd_n25.webp"/><image id="xm-wd_n26" width="413" height="123" href="assets/xm-wd_n26.webp"/><image id="xm-wd_n27" width="506" height="131" href="assets/xm-wd_n27.webp"/><image id="xm-wd_n28" width="493" height="137" href="assets/xm-wd_n28.webp"/><image id="xm-wd_n29" width="462" height="133" href="assets/xm-wd_n29.webp"/><image id="xm-wd_n30" width="294" height="140" href="assets/xm-wd_n30.webp"/><image id="xm-wd_tableno" width="433" height="175" href="assets/xm-wd_tableno.webp"/><image id="xm-wd_headtable" width="516" height="173" href="assets/xm-wd_headtable.webp"/><image id="xm-wd_twigtop" width="1100" height="128" href="assets/xm-wd_twigtop.webp"/><image id="xm-wd_twigbot" width="1100" height="124" href="assets/xm-wd_twigbot.webp"/><image id="xm-wd_circle" width="800" height="733" href="assets/xm-wd_circle.webp"/><image id="xm-wd_roses" width="700" height="290" href="assets/xm-wd_roses.webp"/><image id="xm-wd_d_bottle" width="150" height="307" href="assets/xm-wd_d_bottle.webp"/><image id="xm-wd_d_glasses" width="300" height="256" href="assets/xm-wd_d_glasses.webp"/><image id="xm-wd_d_heartcake" width="270" height="295" href="assets/xm-wd_d_heartcake.webp"/><image id="xm-wd_d_coupe" width="170" height="249" href="assets/xm-wd_d_coupe.webp"/><image id="xm-wd_d_bouquet" width="190" height="367" href="assets/xm-wd_d_bouquet.webp"/><image id="xm-wd_d_bow" width="200" height="126" href="assets/xm-wd_d_bow.webp"/><image id="xm-wd_d_bands" width="190" height="164" href="assets/xm-wd_d_bands.webp"/><image id="xm-wd_d_cake" width="300" height="443" href="assets/xm-wd_d_cake.webp"/><image id="xm-wd_d_candles" width="190" height="471" href="assets/xm-wd_d_candles.webp"/><image id="xm-wd_d_hearts" width="190" height="140" href="assets/xm-wd_d_hearts.webp"/><image id="xm-wd_d_tower" width="360" height="499" href="assets/xm-wd_d_tower.webp"/><image id="xm-wd_d_shoe" width="250" height="206" href="assets/xm-wd_d_shoe.webp"/><image id="xm-wd_d_bucket" width="190" height="347" href="assets/xm-wd_d_bucket.webp"/><image id="xm-wd_cake1" width="520" height="784" href="assets/xm-wd_cake1.webp"/><image id="xm-wd_cake2" width="520" height="946" href="assets/xm-wd_cake2.webp"/><image id="xm-wd_cake3" width="520" height="710" href="assets/xm-wd_cake3.webp"/><image id="xm-wd_savedate1" width="560" height="1015" href="assets/xm-wd_savedate1.webp"/><image id="xm-wd_weddingday1" width="560" height="486" href="assets/xm-wd_weddingday1.webp"/><image id="xm-wd_weddingday2" width="560" height="580" href="assets/xm-wd_weddingday2.webp"/><image id="xm-wd_happywedding" width="560" height="633" href="assets/xm-wd_happywedding.webp"/><image id="xm-wd_mrmrs" width="560" height="738" href="assets/xm-wd_mrmrs.webp"/><image id="xm-wd_savedate2" width="560" height="923" href="assets/xm-wd_savedate2.webp"/><image id="xm-wd_justmarried" width="560" height="483" href="assets/xm-wd_justmarried.webp"/><image id="xm-wd_celebratelove" width="560" height="554" href="assets/xm-wd_celebratelove.webp"/><image id="xm-wd_lovestory" width="560" height="531" href="assets/xm-wd_lovestory.webp"/><image id="xm-wd_loveday" width="560" height="526" href="assets/xm-wd_loveday.webp"/><image id="xm-wd_rings" width="1100" height="293" href="assets/xm-wd_rings.webp"/><image id="xm-wd_anniv" width="1000" height="401" href="assets/xm-wd_anniv.webp"/><image id="xm-wd_saidyes" width="900" height="656" href="assets/xm-wd_saidyes.webp"/><image id="xm-wd_engaged" width="860" height="614" href="assets/xm-wd_engaged.webp"/><image id="xm-wd_happywed" width="760" height="681" href="assets/xm-wd_happywed.webp"/><image id="xm-wd_ring" width="520" height="687" href="assets/xm-wd_ring.webp"/><image id="xm-wd_wreath" width="1000" height="962" href="assets/xm-wd_wreath.webp"/><image id="xm-wd_g1" width="96" height="345" href="assets/xm-wd_g1.webp"/><image id="xm-wd_g7" width="200" height="340" href="assets/xm-wd_g7.webp"/><image id="xm-wd_g3" width="175" height="376" href="assets/xm-wd_g3.webp"/><image id="xm-wd_g5" width="173" height="405" href="assets/xm-wd_g5.webp"/><image id="xm-wd_g2" width="212" height="333" href="assets/xm-wd_g2.webp"/><image id="xm-wd_g9" width="199" height="361" href="assets/xm-wd_g9.webp"/><image id="xm-wd_g6" width="200" height="368" href="assets/xm-wd_g6.webp"/><image id="xm-wd_g4" width="206" height="347" href="assets/xm-wd_g4.webp"/><image id="xm-wd_g0" width="253" height="330" href="assets/xm-wd_g0.webp"/><image id="xm-wd_g8" width="206" height="332" href="assets/xm-wd_g8.webp"/><image id="xm-bd_l1" width="720" height="556" href="assets/xm-bd_l1.webp"/><image id="xm-bd_l2" width="720" height="526" href="assets/xm-bd_l2.webp"/><image id="xm-bd_l3" width="720" height="350" href="assets/xm-bd_l3.webp"/><image id="xm-bd_l4" width="720" height="495" href="assets/xm-bd_l4.webp"/><image id="xm-bd_l5" width="720" height="354" href="assets/xm-bd_l5.webp"/><image id="xm-bd_l6" width="720" height="521" href="assets/xm-bd_l6.webp"/><image id="xm-bd_b1" width="600" height="566" href="assets/xm-bd_b1.webp"/><image id="xm-bd_b2" width="600" height="470" href="assets/xm-bd_b2.webp"/><image id="xm-bd_b3" width="600" height="563" href="assets/xm-bd_b3.webp"/><image id="xm-bd_b4" width="600" height="864" href="assets/xm-bd_b4.webp"/><image id="xm-bd_b5" width="600" height="611" href="assets/xm-bd_b5.webp"/><image id="xm-bd_b6" width="600" height="472" href="assets/xm-bd_b6.webp"/><image id="xm-bd_b7" width="600" height="466" href="assets/xm-bd_b7.webp"/><image id="xm-bd_b8" width="600" height="557" href="assets/xm-bd_b8.webp"/><image id="xm-bd_b9" width="600" height="716" href="assets/xm-bd_b9.webp"/><image id="xm-bd_b10" width="600" height="709" href="assets/xm-bd_b10.webp"/><image id="xm-bd_w1" width="760" height="485" href="assets/xm-bd_w1.webp"/><image id="xm-bd_w2" width="760" height="380" href="assets/xm-bd_w2.webp"/><image id="xm-bd_w3" width="760" height="442" href="assets/xm-bd_w3.webp"/><image id="xm-bd_w4" width="760" height="486" href="assets/xm-bd_w4.webp"/><image id="xm-bd_w5" width="760" height="565" href="assets/xm-bd_w5.webp"/><image id="xm-bd_w6" width="760" height="554" href="assets/xm-bd_w6.webp"/><image id="xm-bd_w7" width="760" height="451" href="assets/xm-bd_w7.webp"/><image id="xm-bd_w8" width="760" height="495" href="assets/xm-bd_w8.webp"/><image id="xm-bd_w9" width="760" height="381" href="assets/xm-bd_w9.webp"/><image id="xm-bd_makewish" width="760" height="574" href="assets/xm-bd_makewish.webp"/><image id="xm-bd_candles" width="760" height="783" href="assets/xm-bd_candles.webp"/><image id="xm-bd_balloon" width="860" height="679" href="assets/xm-bd_balloon.webp"/><image id="xm-bd_cupcake" width="520" height="807" href="assets/xm-bd_cupcake.webp"/><image id="xm-bd_wish" width="760" height="724" href="assets/xm-bd_wish.webp"/><image id="xm-bd_bunting" width="1100" height="538" href="assets/xm-bd_bunting.webp"/><image id="xm-bd_pinkhb" width="900" height="222" href="assets/xm-bd_pinkhb.webp"/><image id="xm-bd_goldhb" width="900" height="246" href="assets/xm-bd_goldhb.webp"/><image id="xm-tg_hat" width="620" height="521" href="assets/xm-tg_hat.webp"/><image id="xm-tg_feather1" width="170" height="784" href="assets/xm-tg_feather1.webp"/><image id="xm-tg_feather2" width="150" height="737" href="assets/xm-tg_feather2.webp"/><image id="xm-tg_feather3" width="190" height="623" href="assets/xm-tg_feather3.webp"/><image id="xm-tg_leaf1" width="330" height="174" href="assets/xm-tg_leaf1.webp"/><image id="xm-tg_leaf2" width="250" height="491" href="assets/xm-tg_leaf2.webp"/><image id="xm-tg_leaf3" width="240" height="307" href="assets/xm-tg_leaf3.webp"/><image id="xm-tg_leaf4" width="330" height="159" href="assets/xm-tg_leaf4.webp"/><image id="xm-tg_berry1" width="190" height="395" href="assets/xm-tg_berry1.webp"/><image id="xm-tg_berry2" width="90" height="333" href="assets/xm-tg_berry2.webp"/><image id="xm-tg_berry3" width="150" height="383" href="assets/xm-tg_berry3.webp"/><image id="xm-tg_pump1" width="620" height="525" href="assets/xm-tg_pump1.webp"/><image id="xm-tg_pump2" width="460" height="440" href="assets/xm-tg_pump2.webp"/><image id="xm-tg_pump3" width="450" height="356" href="assets/xm-tg_pump3.webp"/><image id="xm-tg_pump4" width="300" height="279" href="assets/xm-tg_pump4.webp"/><image id="xm-tg_pump5" width="440" height="342" href="assets/xm-tg_pump5.webp"/><image id="xm-tg_tendril1" width="560" height="323" href="assets/xm-tg_tendril1.webp"/><image id="xm-tg_tendril2" width="240" height="446" href="assets/xm-tg_tendril2.webp"/><image id="xm-tg_vine1" width="480" height="421" href="assets/xm-tg_vine1.webp"/><image id="xm-tg_vine2" width="320" height="376" href="assets/xm-tg_vine2.webp"/><image id="xm-tg_cornucopia" width="680" height="663" href="assets/xm-tg_cornucopia.webp"/><image id="xm-tg_tom" width="560" height="586" href="assets/xm-tg_tom.webp"/><image id="xm-tg_white" width="430" height="583" href="assets/xm-tg_white.webp"/><image id="xm-tg_hen" width="440" height="379" href="assets/xm-tg_hen.webp"/><image id="xm-tg_leaftop" width="1100" height="366" href="assets/xm-tg_leaftop.webp"/><image id="xm-tg_leafbot" width="1100" height="367" href="assets/xm-tg_leafbot.webp"/><image id="xm-tg_leafring" width="1000" height="972" href="assets/xm-tg_leafring.webp"/><image id="xm-tg_brush" width="900" height="422" href="assets/xm-tg_brush.webp"/><image id="xm-tg_calli" width="1000" height="321" href="assets/xm-tg_calli.webp"/><image id="xm-tg_fallyall" width="820" height="789" href="assets/xm-tg_fallyall.webp"/><image id="xm-tg_givethanks" width="1000" height="476" href="assets/xm-tg_givethanks.webp"/><image id="xm-tg_sticker" width="1000" height="715" href="assets/xm-tg_sticker.webp"/>
+<image id="xm-poin1" width="270" height="260" href="assets/xm-poin1.webp"/>
+<image id="xm-poin2" width="237" height="260" href="assets/xm-poin2.webp"/>
+<image id="xm-berry1" width="163" height="200" href="assets/xm-berry1.webp"/>
+<image id="xm-berry2" width="187" height="250" href="assets/xm-berry2.webp"/>
+<image id="xm-pine1" width="198" height="300" href="assets/xm-pine1.webp"/>
+<image id="xm-pine2" width="98" height="200" href="assets/xm-pine2.webp"/>
+<image id="xm-pine3" width="93" height="200" href="assets/xm-pine3.webp"/>
+<image id="xm-pine4" width="113" height="190" href="assets/xm-pine4.webp"/>
+<image id="xm-leaf1" width="131" height="280" href="assets/xm-leaf1.webp"/>
+<image id="xm-lights" width="1050" height="456" href="assets/xm-lights.webp"/>
+<image id="xm-nb_nut" width="207" height="620" href="assets/xm-nb_nut.webp"/>
+<image id="xm-nb_king" width="259" height="620" href="assets/xm-nb_king.webp"/>
+<image id="xm-nb_mouse" width="504" height="520" href="assets/xm-nb_mouse.webp"/>
+<image id="xm-nb_dancer" width="350" height="560" href="assets/xm-nb_dancer.webp"/>
+<image id="xm-nb_fairy" width="364" height="560" href="assets/xm-nb_fairy.webp"/>
+<image id="xm-nb_tree" width="215" height="320" href="assets/xm-nb_tree.webp"/>
+<image id="xm-nb_orn1" width="135" height="190" href="assets/xm-nb_orn1.webp"/>
+<image id="xm-nb_orn2" width="114" height="240" href="assets/xm-nb_orn2.webp"/>
+<image id="xm-nb_bell" width="100" height="170" href="assets/xm-nb_bell.webp"/>
+<image id="xm-nb_candy" width="230" height="127" href="assets/xm-nb_candy.webp"/>
+<image id="xm-nb_bow" width="136" height="150" href="assets/xm-nb_bow.webp"/>
+<image id="xm-nb_house" width="85" height="190" href="assets/xm-nb_house.webp"/>
+<image id="xm-nb_cane1" width="111" height="160" href="assets/xm-nb_cane1.webp"/>
+<image id="xm-nb_cane2" width="123" height="170" href="assets/xm-nb_cane2.webp"/>
+<image id="xm-nb_mint1" width="64" height="64" href="assets/xm-nb_mint1.webp"/>
+<image id="xm-nb_mint2" width="64" height="64" href="assets/xm-nb_mint2.webp"/>
+<image id="xm-nb_star1" width="78" height="80" href="assets/xm-nb_star1.webp"/>
+<image id="xm-nb_star2" width="87" height="90" href="assets/xm-nb_star2.webp"/>
+<image id="xm-nb_sprig1" width="142" height="150" href="assets/xm-nb_sprig1.webp"/>
+<image id="xm-nb_sprig2" width="170" height="110" href="assets/xm-nb_sprig2.webp"/>
+<image id="xm-nb_sprig3" width="86" height="170" href="assets/xm-nb_sprig3.webp"/>
+<image id="xm-gb1" width="181" height="294" href="assets/xm-gb1.webp"/>
+<image id="xm-gb2" width="139" height="240" href="assets/xm-gb2.webp"/>
+<image id="xm-gb3" width="231" height="253" href="assets/xm-gb3.webp"/>
+<image id="xm-gb4" width="180" height="236" href="assets/xm-gb4.webp"/>
+<image id="xm-gb5" width="138" height="241" href="assets/xm-gb5.webp"/>
+<image id="xm-gbstar" width="148" height="146" href="assets/xm-gbstar.webp"/>
+<image id="xm-gbflake" width="57" height="64" href="assets/xm-gbflake.webp"/>
+<image id="xm-sp1" width="148" height="211" href="assets/xm-sp1.webp"/>
+<image id="xm-sp2" width="119" height="310" href="assets/xm-sp2.webp"/>
+<image id="xm-sp3" width="138" height="403" href="assets/xm-sp3.webp"/>
+<image id="xm-sp4" width="140" height="252" href="assets/xm-sp4.webp"/>
+<image id="xm-sp5" width="150" height="254" href="assets/xm-sp5.webp"/>
+<image id="xm-frame1" width="595" height="860" href="assets/xm-frame1.webp"/>
+<image id="xm-frame2" width="613" height="860" href="assets/xm-frame2.webp"/>
+<image id="xm-frame3" width="585" height="860" href="assets/xm-frame3.webp"/>
+<image id="xm-frame4" width="603" height="860" href="assets/xm-frame4.webp"/>
+<image id="xm-frame5" width="627" height="860" href="assets/xm-frame5.webp"/>
+<image id="xm-frame6" width="590" height="860" href="assets/xm-frame6.webp"/>
+<image id="xm-ny_party" width="410" height="520" href="assets/xm-ny_party.webp"/>
+<image id="xm-ny_cheers" width="425" height="520" href="assets/xm-ny_cheers.webp"/>
+<image id="xm-ny_sparkle" width="487" height="520" href="assets/xm-ny_sparkle.webp"/>
+<image id="xm-ny_countdown" width="355" height="520" href="assets/xm-ny_countdown.webp"/>
+<image id="xm-ny_vibes" width="280" height="520" href="assets/xm-ny_vibes.webp"/>
+<image id="xm-psanta" width="462" height="560" href="assets/xm-psanta.webp"/>
+<image id="xm-ptile" width="440" height="440" href="assets/xm-ptile.webp"/>
+<image id="xm-bucket" width="536" height="640" href="assets/xm-bucket.webp"/>
+<image id="xm-tartan" width="400" height="340" href="assets/xm-tartan.webp"/>
+<image id="xm-ribbon" width="1280" height="853" preserveAspectRatio="none" href="assets/xm-ribbon.webp"/>
+<image id="bot-champagnew" width="471" height="1749" preserveAspectRatio="none" href="assets/bot-champagnew.webp"/>
+<image id="bot-proseccow" width="484" height="1724" preserveAspectRatio="none" href="assets/bot-proseccow.webp"/>
+<image id="bot-miniw" width="331" height="1107" preserveAspectRatio="none" href="assets/bot-miniw.webp"/>
+<image id="bot-champagne" width="380" height="1400" preserveAspectRatio="none" href="assets/bot-champagne.webp"/>
+<image id="bot-prosecco" width="392" height="1397" preserveAspectRatio="none" href="assets/bot-prosecco.webp"/>
+<image id="bot-mini" width="417" height="1398" preserveAspectRatio="none" href="assets/bot-mini.webp"/>
+<image id="art-strand-champagne" width="400" height="300" preserveAspectRatio="none" href="assets/art-strand-champagne.webp"/>
+<image id="art-strand-champagne-s" width="400" height="300" preserveAspectRatio="none" href="assets/art-strand-champagne-s.webp"/>
+<image id="art-strand-prosecco" width="300" height="300" preserveAspectRatio="none" href="assets/art-strand-prosecco.webp"/>
+<image id="art-strand-prosecco-s" width="300" height="300" preserveAspectRatio="none" href="assets/art-strand-prosecco-s.webp"/>
+<image id="art-garland-champagne" width="400" height="300" preserveAspectRatio="none" href="assets/art-garland-champagne.jpg"/>
+<image id="art-garland-champagne-s" width="400" height="300" preserveAspectRatio="none" href="assets/art-garland-champagne-s.jpg"/>
+<image id="art-garland-prosecco" width="300" height="300" preserveAspectRatio="none" href="assets/art-garland-prosecco.jpg"/>
+<image id="art-garland-prosecco-s" width="300" height="300" preserveAspectRatio="none" href="assets/art-garland-prosecco-s.jpg"/>
+<image id="art-tree" width="400" height="300" preserveAspectRatio="none" href="assets/art-tree.jpg"/>
+<image id="art-tree-s" width="400" height="300" preserveAspectRatio="none" href="assets/art-tree-s.jpg"/><linearGradient id="cyl" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".3"/><stop offset=".28" stop-color="#000" stop-opacity="0"/><stop offset=".55" stop-color="#fff" stop-opacity=".14"/><stop offset=".78" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".32"/></linearGradient><filter id="wc" x="-15%" y="-15%" width="130%" height="130%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G" result="d"/><feGaussianBlur in="d" stdDeviation="0.5"/></filter></defs></svg>
+
+<div class="bar">Free U.S. shipping over $40 &nbsp;·&nbsp; Same-day ship by 3:30 PM ET</div>
+<header class="site">
+  <div class="site-in">
+    <a class="util search" href="#">Search</a>
+    <a class="util menu" href="#">Menu</a>
+    <a href="#" aria-label="BeauBottles home"><svg class="logo" viewBox="0 0 1145.46 248.00" role="img" aria-label="Beau Bottles. Dress the Bottle.">
+<g transform="translate(40.000 50.000) scale(0.50995) translate(-60.570 -199.500)"><path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 151.484375 287.277344 C 187.613281 289.457031 207.976562 302.566406 207.976562 328.929688 C 207.976562 360.0625 182.738281 376.738281 138.804688 376.738281 L 64.597656 376.738281 C 62.832031 376.738281 61.574219 375.480469 61.574219 373.71875 C 61.574219 372.078125 62.832031 370.816406 64.597656 370.816406 L 70.3125 370.816406 C 74.804688 370.816406 77.628906 367.351562 77.628906 363.625 L 77.628906 218.128906 C 77.628906 214.402344 74.804688 210.933594 70.3125 210.933594 L 64.597656 210.933594 C 62.832031 210.933594 61.574219 209.675781 61.574219 208.035156 C 61.574219 206.273438 62.832031 205.011719 64.597656 205.011719 L 133.21875 205.011719 C 167.648438 205.011719 197.121094 215.375 197.121094 245.644531 C 197.121094 265.941406 182.664062 282.757812 151.484375 287.28125 Z M 107.320312 218.125 L 107.320312 285.773438 L 127.226562 285.773438 C 148.082031 285.773438 165.191406 271.234375 165.191406 247.613281 C 165.191406 226.566406 154.136719 211.058594 126.488281 210.933594 L 114.390625 210.933594 C 110.140625 210.933594 107.320312 214.523438 107.320312 218.125 M 131.699219 370.816406 C 160.199219 370.816406 175.921875 353.542969 175.921875 329.292969 C 175.921875 306.636719 159.957031 291.941406 131.699219 291.941406 L 107.316406 291.941406 L 107.316406 363.621094 C 107.316406 367.347656 110.140625 370.8125 114.632812 370.8125 L 131.699219 370.8125 Z M 401.761719 287.257812 C 401.761719 290.867188 399.898438 291.871094 395.785156 291.871094 L 275.210938 291.871094 C 275.511719 334.976562 288.351562 371.671875 328.195312 371.671875 C 367.558594 371.671875 386.726562 343.28125 391.753906 330.175781 C 392.632812 328.042969 393.644531 327.539062 394.78125 327.539062 C 396.667969 327.539062 397.3125 328.917969 397.3125 330.453125 C 397.3125 335.988281 378.238281 378.898438 326.972656 378.898438 C 272.207031 378.898438 243.160156 340.085938 243.160156 290.3125 C 243.160156 240.539062 271.53125 202.972656 322.460938 202.972656 C 373.269531 202.972656 401.765625 237.488281 401.765625 287.257812 Z M 275.238281 286.453125 L 369.707031 286.570312 C 369.707031 243.339844 359.914062 209.160156 322.457031 209.160156 C 286.109375 209.160156 275.816406 244.355469 275.238281 286.453125 M 581.097656 363.105469 C 582.480469 363.105469 583.507812 364.246094 583.507812 366.027344 C 583.507812 370.625 574 378.78125 558.996094 378.78125 C 544.4375 378.78125 534.625 370.101562 534.625 354.617188 L 534.625 345.050781 C 527.699219 363.996094 512.480469 378.902344 486.507812 378.902344 C 457.097656 378.902344 438.910156 361 438.910156 336.703125 C 438.910156 309.304688 459.921875 293.472656 500.023438 291.050781 L 533.765625 289.429688 L 533.765625 241.15625 C 533.765625 222.394531 523.183594 208.804688 495.417969 208.804688 C 475.71875 208.804688 457.890625 219.117188 457.890625 231.152344 C 457.890625 237.648438 466.660156 238.585938 466.660156 247.738281 C 466.660156 254.425781 461.011719 258.546875 455.230469 258.546875 C 449.0625 258.546875 442.636719 253.902344 442.636719 242.785156 C 442.636719 221.355469 464.992188 202.851562 499.839844 202.851562 C 541.992188 202.851562 563.328125 219.484375 563.328125 246.527344 L 563.328125 360.609375 C 563.328125 367.152344 565.980469 369.390625 569.660156 369.390625 C 572.800781 369.390625 575.4375 367.707031 577.800781 364.761719 C 578.6875 363.980469 579.824219 363.105469 581.097656 363.105469 Z M 496.21875 368.566406 C 518.320312 368.566406 533.757812 345.960938 533.757812 316.238281 L 533.757812 295.367188 L 501.003906 297.21875 C 479.90625 298.628906 467.414062 313.863281 467.414062 333.085938 C 467.414062 356.335938 480.460938 368.566406 496.21875 368.566406 M 772.671875 370.816406 C 774.4375 370.816406 775.695312 372.082031 775.695312 373.722656 C 775.695312 375.484375 774.433594 376.746094 772.667969 376.746094 L 731.699219 376.746094 L 731.699219 326.394531 C 722.117188 360.921875 698.757812 378.90625 668.800781 378.90625 C 644.175781 378.90625 620.972656 367.671875 620.972656 329.269531 L 620.972656 218.132812 C 620.972656 214.40625 618.148438 210.941406 613.65625 210.941406 L 607.9375 210.941406 C 606.171875 210.941406 604.914062 209.679688 604.914062 208.039062 C 604.914062 206.277344 606.171875 205.015625 607.9375 205.015625 L 650.539062 205.015625 L 650.539062 332.691406 C 650.539062 356.230469 659.234375 368.503906 678.347656 368.503906 C 707.179688 368.503906 730.074219 339.308594 730.074219 290.691406 L 730.074219 218.132812 C 730.074219 214.40625 727.25 210.941406 722.757812 210.941406 L 717.039062 210.941406 C 715.277344 210.941406 714.015625 209.679688 714.015625 207.917969 C 714.015625 206.277344 715.277344 205.015625 717.039062 205.015625 L 759.640625 205.015625 L 759.640625 363.503906 C 759.640625 367.476562 762.707031 370.820312 766.957031 370.820312 L 772.671875 370.820312 Z M 772.671875 370.816406 "/></g><g transform="translate(435.185 40.000) scale(0.24268) translate(-893.000 -58.660)"><path fill-rule="nonzero" fill="rgb(77.2995%, 86.698914%, 94.099426%)" fill-opacity="1" d="M 937.886719 126.625 C 937.886719 147.683594 932.007812 185.382812 923.761719 221.875 L 938.039062 221.875 C 942.898438 216.554688 949.890625 213.214844 957.664062 213.214844 C 965.441406 213.214844 972.429688 216.554688 977.289062 221.875 L 993.601562 221.875 C 984.1875 180.992188 978.304688 137.433594 978.304688 126.625 C 978.304688 106.421875 981.457031 116.8125 981.457031 104.113281 C 981.457031 87.972656 989.855469 59.660156 957.664062 59.660156 C 926.625 59.660156 934.132812 89.578125 934.132812 104.113281 C 934.136719 116.8125 937.886719 107.289062 937.886719 126.625 "/><path fill-rule="nonzero" fill="rgb(77.2995%, 86.698914%, 94.099426%)" fill-opacity="1" d="M 1003.1875 257.667969 L 977.292969 257.667969 C 972.433594 262.992188 965.441406 266.324219 957.667969 266.324219 C 949.898438 266.324219 942.90625 262.988281 938.046875 257.667969 L 914.753906 257.667969 C 912.875 264.34375 910.957031 270.746094 909.015625 276.714844 C 894 322.898438 897.464844 430.847656 897.464844 471.832031 C 897.464844 496.65625 897.003906 519.167969 957.664062 519.167969 C 1018.328125 519.167969 1021.621094 503.007812 1021.621094 471.832031 C 1021.621094 440.660156 1028.550781 320.589844 1010.070312 276.714844 C 1007.683594 271.046875 1005.382812 264.605469 1003.1875 257.667969 M 1016.421875 474 C 1016.421875 474 995.539062 480.042969 959.253906 480.042969 C 922.972656 480.042969 902.085938 474 902.085938 474 L 902.085938 370.6875 C 902.085938 370.6875 938.917969 374.539062 959.253906 374.539062 C 979.589844 374.539062 1016.421875 370.6875 1016.421875 370.6875 Z M 1016.421875 474 "/></g><g transform="translate(498.323 50.000) scale(0.50995) translate(-1140.820 -199.500)"><path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 1231.730469 287.285156 C 1267.855469 289.460938 1288.222656 302.570312 1288.222656 328.9375 C 1288.222656 360.066406 1262.984375 376.746094 1219.046875 376.746094 L 1144.839844 376.746094 C 1143.074219 376.746094 1141.816406 375.488281 1141.816406 373.722656 C 1141.816406 372.082031 1143.074219 370.824219 1144.839844 370.824219 L 1150.558594 370.824219 C 1155.050781 370.824219 1157.875 367.355469 1157.875 363.628906 L 1157.875 218.132812 C 1157.875 214.40625 1155.050781 210.941406 1150.558594 210.941406 L 1144.839844 210.941406 C 1143.074219 210.941406 1141.816406 209.683594 1141.816406 208.039062 C 1141.816406 206.277344 1143.074219 205.015625 1144.839844 205.015625 L 1213.460938 205.015625 C 1247.890625 205.015625 1277.367188 215.378906 1277.367188 245.648438 C 1277.367188 265.945312 1262.90625 282.761719 1231.730469 287.285156 Z M 1187.5625 218.132812 L 1187.5625 285.777344 L 1207.46875 285.777344 C 1228.324219 285.777344 1245.433594 271.238281 1245.433594 247.617188 C 1245.433594 226.570312 1234.378906 211.0625 1206.734375 210.9375 L 1194.636719 210.9375 C 1190.386719 210.9375 1187.5625 214.527344 1187.5625 218.132812 M 1211.945312 370.820312 C 1240.445312 370.820312 1256.164062 353.546875 1256.164062 329.296875 C 1256.164062 306.640625 1240.203125 291.945312 1211.945312 291.945312 L 1187.5625 291.945312 L 1187.5625 363.625 C 1187.5625 367.351562 1190.382812 370.820312 1194.878906 370.820312 Z M 1406.542969 202.980469 C 1458.175781 202.980469 1489.675781 240.550781 1489.675781 290.320312 C 1489.675781 340.089844 1458.175781 378.90625 1406.542969 378.90625 C 1354.785156 378.90625 1323.40625 340.09375 1323.40625 290.320312 C 1323.40625 240.546875 1354.789062 202.980469 1406.542969 202.980469 M 1406.542969 372.710938 C 1444.824219 372.710938 1457.625 334.101562 1457.625 290.324219 C 1457.625 246.550781 1444.824219 209.179688 1406.542969 209.179688 C 1368.261719 209.179688 1355.460938 246.546875 1355.460938 290.324219 C 1355.460938 334.105469 1368.261719 372.710938 1406.542969 372.710938 M 1658.28125 205.015625 L 1658.289062 250.839844 C 1658.289062 252.601562 1657.027344 253.859375 1655.261719 253.859375 C 1653.621094 253.859375 1652.363281 252.601562 1652.363281 250.839844 L 1652.363281 243.457031 C 1652.363281 225.476562 1641.675781 210.941406 1620.300781 210.941406 L 1610.078125 210.941406 C 1605.707031 210.941406 1602.761719 214.164062 1602.761719 217.644531 L 1602.761719 364.003906 C 1602.761719 367.605469 1605.707031 370.828125 1610.078125 370.828125 L 1615.796875 370.828125 C 1617.558594 370.828125 1618.820312 372.085938 1618.820312 373.726562 C 1618.820312 375.492188 1617.558594 376.75 1615.796875 376.75 L 1560.160156 376.75 C 1558.394531 376.75 1557.136719 375.492188 1557.136719 373.726562 C 1557.136719 372.085938 1558.394531 370.828125 1560.160156 370.828125 L 1565.878906 370.828125 C 1570.25 370.828125 1573.195312 367.730469 1573.195312 364.125 L 1573.195312 217.644531 C 1573.195312 214.164062 1570.25 210.941406 1565.878906 210.941406 L 1558.414062 210.941406 C 1535.660156 210.941406 1523.59375 224.097656 1523.59375 246.210938 L 1523.59375 250.835938 C 1523.59375 252.601562 1522.335938 253.859375 1520.570312 253.859375 C 1518.925781 253.859375 1517.667969 252.601562 1517.667969 250.835938 L 1517.667969 205.019531 L 1658.28125 205.019531 Z M 1819.0625 205.015625 L 1819.070312 250.839844 C 1819.070312 252.601562 1817.8125 253.859375 1816.046875 253.859375 C 1814.402344 253.859375 1813.144531 252.601562 1813.144531 250.839844 L 1813.144531 243.457031 C 1813.144531 225.476562 1802.457031 210.941406 1781.082031 210.941406 L 1770.859375 210.941406 C 1766.488281 210.941406 1763.542969 214.164062 1763.542969 217.644531 L 1763.542969 364.003906 C 1763.542969 367.605469 1766.488281 370.828125 1770.859375 370.828125 L 1776.578125 370.828125 C 1778.34375 370.828125 1779.601562 372.085938 1779.601562 373.726562 C 1779.601562 375.492188 1778.34375 376.75 1776.578125 376.75 L 1720.941406 376.75 C 1719.179688 376.75 1717.917969 375.492188 1717.917969 373.726562 C 1717.917969 372.085938 1719.179688 370.828125 1720.941406 370.828125 L 1726.660156 370.828125 C 1731.03125 370.828125 1733.976562 367.730469 1733.976562 364.125 L 1733.976562 217.644531 C 1733.976562 214.164062 1731.03125 210.941406 1726.660156 210.941406 L 1719.195312 210.941406 C 1696.441406 210.941406 1684.375 224.097656 1684.375 246.210938 L 1684.375 250.835938 C 1684.375 252.601562 1683.117188 253.859375 1681.351562 253.859375 C 1679.710938 253.859375 1678.449219 252.601562 1678.449219 250.835938 L 1678.449219 205.019531 L 1819.0625 205.019531 Z M 1962.457031 329.28125 C 1964.097656 329.28125 1965.355469 330.542969 1965.355469 332.308594 L 1965.355469 376.746094 L 1844.792969 376.746094 C 1843.027344 376.746094 1841.769531 375.488281 1841.769531 373.726562 C 1841.769531 372.082031 1843.027344 370.824219 1844.792969 370.824219 L 1850.507812 370.824219 C 1854.878906 370.824219 1857.824219 367.726562 1857.824219 364.121094 L 1857.824219 217.640625 C 1857.824219 214.160156 1854.878906 210.9375 1850.507812 210.9375 L 1844.792969 210.9375 C 1843.027344 210.9375 1841.769531 209.679688 1841.769531 208.039062 C 1841.769531 206.273438 1843.027344 205.015625 1844.792969 205.015625 L 1900.425781 205.015625 C 1902.191406 205.015625 1903.453125 206.273438 1903.453125 208.039062 C 1903.453125 209.679688 1902.191406 210.9375 1900.425781 210.9375 L 1894.710938 210.9375 C 1890.339844 210.9375 1887.394531 214.160156 1887.394531 217.640625 L 1887.394531 364 C 1887.394531 367.601562 1890.339844 370.824219 1894.710938 370.824219 L 1927.367188 370.824219 C 1948.375 370.824219 1959.429688 353.40625 1959.429688 336.410156 L 1959.429688 332.304688 C 1959.429688 330.539062 1960.691406 329.28125 1962.457031 329.28125 Z M 2149.898438 287.265625 C 2149.898438 290.871094 2148.035156 291.875 2143.921875 291.875 L 2023.347656 291.875 C 2023.648438 334.984375 2036.488281 371.675781 2076.332031 371.675781 C 2115.695312 371.675781 2134.863281 343.285156 2139.894531 330.179688 C 2140.769531 328.046875 2141.78125 327.542969 2142.917969 327.542969 C 2144.804688 327.542969 2145.449219 328.921875 2145.449219 330.457031 C 2145.449219 335.992188 2126.375 378.902344 2075.109375 378.902344 C 2020.34375 378.902344 1991.296875 340.09375 1991.296875 290.316406 C 1991.296875 240.542969 2019.667969 202.976562 2070.597656 202.976562 C 2121.40625 202.976562 2149.902344 237.492188 2149.902344 287.261719 Z M 2023.375 286.457031 L 2117.84375 286.574219 C 2117.84375 243.34375 2108.050781 209.167969 2070.59375 209.167969 C 2034.246094 209.167969 2023.949219 244.363281 2023.375 286.457031 M 2241.488281 378.90625 C 2209.019531 378.90625 2184.789062 360.425781 2184.789062 339.007812 C 2184.789062 328.210938 2191.402344 322.25 2198.71875 322.25 C 2204.71875 322.25 2211.269531 326.207031 2211.269531 334.269531 C 2211.269531 343.207031 2202.007812 345.832031 2202.007812 352.347656 C 2202.007812 364.089844 2222.902344 372.582031 2238.570312 372.582031 C 2261.890625 372.582031 2282.207031 360.8125 2282.207031 337.300781 C 2282.207031 293.148438 2188.808594 310.070312 2188.808594 249.273438 C 2188.808594 221.039062 2212.234375 202.851562 2248.46875 202.851562 C 2278.476562 202.851562 2304.058594 219.453125 2304.058594 240.382812 C 2304.058594 251.542969 2297.445312 257.632812 2290.253906 257.632812 C 2284.132812 257.632812 2277.582031 253.550781 2277.582031 245.484375 C 2277.582031 236.058594 2286.722656 234.417969 2286.722656 227.902344 C 2286.722656 216.53125 2265.824219 209.171875 2250.28125 209.171875 C 2230.46875 209.171875 2210.382812 216.5625 2210.382812 240.71875 C 2210.382812 281.242188 2307.679688 267.261719 2307.679688 329.238281 C 2307.679688 352.929688 2285.882812 378.910156 2241.488281 378.910156 Z M 2241.488281 378.90625 "/><path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 2314.390625 213.742188 L 2316.03125 213.742188 C 2317.894531 213.742188 2319.0625 212.753906 2319.0625 211.25 C 2319.0625 209.585938 2317.894531 208.824219 2316.097656 208.824219 C 2315.21875 208.824219 2314.660156 208.890625 2314.390625 208.957031 Z M 2311.648438 207.050781 C 2312.683594 206.871094 2314.234375 206.734375 2315.828125 206.734375 C 2318.003906 206.734375 2319.488281 207.09375 2320.5 207.949219 C 2321.328125 208.644531 2321.800781 209.699219 2321.800781 210.980469 C 2321.800781 212.933594 2320.476562 214.257812 2319.0625 214.773438 L 2319.0625 214.84375 C 2320.140625 215.246094 2320.789062 216.300781 2321.171875 217.761719 C 2321.644531 219.648438 2322.046875 221.398438 2322.363281 221.984375 L 2319.511719 221.984375 C 2319.285156 221.535156 2318.925781 220.300781 2318.5 218.414062 C 2318.074219 216.4375 2317.355469 215.808594 2315.78125 215.761719 L 2314.390625 215.761719 L 2314.390625 221.984375 L 2311.648438 221.984375 Z M 2311.648438 207.050781 "/><path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 2316.558594 203.0625 C 2310.328125 203.0625 2305.257812 208.128906 2305.257812 214.359375 C 2305.257812 220.589844 2310.328125 225.65625 2316.558594 225.65625 C 2322.789062 225.65625 2327.855469 220.589844 2327.855469 214.359375 C 2327.855469 208.128906 2322.789062 203.0625 2316.558594 203.0625 M 2316.558594 228.214844 C 2312.855469 228.214844 2309.378906 226.773438 2306.761719 224.15625 C 2304.144531 221.539062 2302.703125 218.058594 2302.703125 214.359375 C 2302.703125 210.660156 2304.144531 207.179688 2306.761719 204.5625 C 2309.378906 201.945312 2312.855469 200.503906 2316.558594 200.503906 C 2320.257812 200.503906 2323.738281 201.945312 2326.355469 204.5625 C 2328.96875 207.179688 2330.410156 210.660156 2330.410156 214.359375 C 2330.410156 218.058594 2328.96875 221.539062 2326.355469 224.15625 C 2323.738281 226.773438 2320.257812 228.214844 2316.558594 228.214844 "/></g><rect x="40.000" y="193.500" width="264.576" height="1" fill="#0a0a0a"/><path fill="#0a0a0a" d="M348.25605056890777 184.13000000000002V203.73000000000002H350.63605056890776V184.13000000000002ZM354.13605056890776 203.73000000000002Q356.99205056890776 203.73000000000002 359.20405056890775 202.49800000000002Q361.41605056890774 201.26600000000002 362.6760505689077 199.068Q363.9360505689078 196.87 363.9360505689078 193.93Q363.9360505689078 190.99 362.6760505689077 188.79200000000003Q361.41605056890774 186.59400000000002 359.20405056890775 185.36200000000002Q356.99205056890776 184.13000000000002 354.13605056890776 184.13000000000002H349.57205056890774V186.51000000000002H354.13605056890776Q355.78805056890775 186.51000000000002 357.16005056890776 187.02800000000002Q358.5320505689078 187.54600000000002 359.51205056890774 188.512Q360.49205056890776 189.478 361.0240505689078 190.85000000000002Q361.5560505689078 192.222 361.5560505689078 193.93Q361.5560505689078 195.638 361.0240505689078 197.01Q360.49205056890776 198.382 359.51205056890774 199.348Q358.5320505689078 200.31400000000002 357.16005056890776 200.83200000000002Q355.78805056890775 201.35000000000002 354.13605056890776 201.35000000000002H349.57205056890774V203.73000000000002Z M384.2360505689078 194.07000000000002 390.95605056890776 203.73000000000002H393.89605056890775L386.89605056890775 194.07000000000002ZM380.7360505689078 184.13000000000002V203.73000000000002H383.1160505689078V184.13000000000002ZM382.05205056890776 186.23000000000002H386.0560505689078Q387.31605056890777 186.23000000000002 388.2820505689078 186.67800000000003Q389.2480505689078 187.12600000000003 389.7940505689078 187.966Q390.34005056890777 188.806 390.34005056890777 190.01000000000002Q390.34005056890777 191.21400000000003 389.7940505689078 192.05400000000003Q389.2480505689078 192.894 388.2820505689078 193.342Q387.31605056890777 193.79000000000002 386.0560505689078 193.79000000000002H382.05205056890776V195.89000000000001H386.0560505689078Q387.9600505689078 195.89000000000001 389.45805056890777 195.17600000000002Q390.95605056890776 194.46200000000002 391.83805056890776 193.132Q392.72005056890777 191.80200000000002 392.72005056890777 190.01000000000002Q392.72005056890777 188.19000000000003 391.83805056890776 186.87400000000002Q390.95605056890776 185.55800000000002 389.45805056890777 184.84400000000002Q387.9600505689078 184.13000000000002 386.0560505689078 184.13000000000002H382.05205056890776Z M411.17205056890776 203.73000000000002H421.0560505689078V201.49H411.17205056890776ZM411.17205056890776 186.37H421.0560505689078V184.13000000000002H411.17205056890776ZM411.17205056890776 194.21H420.4960505689078V191.97000000000003H411.17205056890776ZM409.8560505689078 184.13000000000002V203.73000000000002H412.2360505689078V184.13000000000002Z M439.4240505689078 197.794 437.5200505689078 199.08200000000002Q438.1640505689078 200.37 439.1860505689078 201.50400000000002Q440.20805056890777 202.638 441.56605056890777 203.324Q442.9240505689078 204.01000000000002 444.5200505689078 204.01000000000002Q445.69605056890776 204.01000000000002 446.7740505689078 203.61800000000002Q447.85205056890777 203.22600000000003 448.70605056890776 202.49800000000002Q449.56005056890774 201.77 450.05005056890775 200.734Q450.54005056890776 199.698 450.54005056890776 198.41000000000003Q450.54005056890776 197.06600000000003 450.06405056890776 196.10000000000002Q449.58805056890776 195.13400000000001 448.8460505689078 194.44800000000004Q448.1040505689078 193.76200000000003 447.2360505689078 193.31400000000002Q446.36805056890773 192.866 445.58405056890774 192.586Q443.8760505689078 191.99800000000002 442.88205056890774 191.39600000000002Q441.8880505689078 190.794 441.46805056890776 190.108Q441.04805056890774 189.42200000000003 441.04805056890774 188.61Q441.04805056890774 187.65800000000002 441.77605056890775 186.88800000000003Q442.50405056890776 186.11800000000002 444.10005056890776 186.11800000000002Q445.24805056890773 186.11800000000002 446.04605056890773 186.56600000000003Q446.84405056890773 187.014 447.40405056890773 187.714Q447.96405056890774 188.41400000000002 448.32805056890777 189.14200000000002L450.37205056890775 187.966Q449.89605056890775 186.93 449.0560505689077 185.99200000000002Q448.21605056890775 185.05400000000003 447.02605056890775 184.45200000000003Q445.83605056890775 183.85000000000002 444.24005056890775 183.85000000000002Q442.58805056890776 183.85000000000002 441.30005056890775 184.50800000000004Q440.01205056890774 185.16600000000003 439.2840505689078 186.31400000000002Q438.5560505689078 187.46200000000002 438.5560505689078 188.918Q438.5560505689078 190.26200000000003 439.07405056890775 191.18600000000004Q439.5920505689078 192.11 440.4040505689078 192.74Q441.21605056890775 193.37 442.11205056890776 193.776Q443.0080505689078 194.18200000000002 443.73605056890773 194.43400000000003Q444.85605056890773 194.82600000000002 445.8500505689077 195.31600000000003Q446.84405056890773 195.806 447.4600505689077 196.59000000000003Q448.07605056890776 197.37400000000002 448.07605056890776 198.69000000000003Q448.07605056890776 200.03400000000002 447.12405056890776 200.90200000000002Q446.17205056890776 201.77 444.6040505689078 201.77Q443.42805056890774 201.77 442.50405056890776 201.26600000000002Q441.5800505689078 200.76200000000003 440.83805056890776 199.86600000000004Q440.09605056890774 198.97000000000003 439.4240505689078 197.794Z M468.20805056890777 197.794 466.30405056890777 199.08200000000002Q466.9480505689078 200.37 467.97005056890777 201.50400000000002Q468.99205056890776 202.638 470.35005056890776 203.324Q471.70805056890777 204.01000000000002 473.30405056890777 204.01000000000002Q474.48005056890776 204.01000000000002 475.5580505689078 203.61800000000002Q476.63605056890776 203.22600000000003 477.49005056890775 202.49800000000002Q478.34405056890773 201.77 478.83405056890774 200.734Q479.32405056890775 199.698 479.32405056890775 198.41000000000003Q479.32405056890775 197.06600000000003 478.84805056890775 196.10000000000002Q478.37205056890775 195.13400000000001 477.6300505689078 194.44800000000004Q476.8880505689078 193.76200000000003 476.0200505689078 193.31400000000002Q475.1520505689077 192.866 474.36805056890773 192.586Q472.66005056890776 191.99800000000002 471.66605056890774 191.39600000000002Q470.67205056890776 190.794 470.25205056890775 190.108Q469.83205056890773 189.42200000000003 469.83205056890773 188.61Q469.83205056890773 187.65800000000002 470.56005056890774 186.88800000000003Q471.28805056890775 186.11800000000002 472.88405056890775 186.11800000000002Q474.0320505689077 186.11800000000002 474.8300505689077 186.56600000000003Q475.6280505689077 187.014 476.1880505689077 187.714Q476.74805056890773 188.41400000000002 477.11205056890776 189.14200000000002L479.15605056890774 187.966Q478.68005056890775 186.93 477.8400505689077 185.99200000000002Q477.00005056890774 185.05400000000003 475.81005056890774 184.45200000000003Q474.62005056890774 183.85000000000002 473.02405056890774 183.85000000000002Q471.37205056890775 183.85000000000002 470.08405056890774 184.50800000000004Q468.79605056890773 185.16600000000003 468.0680505689078 186.31400000000002Q467.34005056890777 187.46200000000002 467.34005056890777 188.918Q467.34005056890777 190.26200000000003 467.85805056890774 191.18600000000004Q468.3760505689078 192.11 469.1880505689078 192.74Q470.00005056890774 193.37 470.89605056890775 193.776Q471.79205056890777 194.18200000000002 472.5200505689077 194.43400000000003Q473.6400505689077 194.82600000000002 474.6340505689077 195.31600000000003Q475.6280505689077 195.806 476.2440505689077 196.59000000000003Q476.86005056890775 197.37400000000002 476.86005056890775 198.69000000000003Q476.86005056890775 200.03400000000002 475.90805056890775 200.90200000000002Q474.95605056890776 201.77 473.3880505689078 201.77Q472.2120505689077 201.77 471.28805056890775 201.26600000000002Q470.36405056890777 200.76200000000003 469.62205056890775 199.86600000000004Q468.88005056890773 198.97000000000003 468.20805056890777 197.794Z M516.1440505689077 186.37H521.1840505689078V203.73000000000002H523.5640505689078V186.37H528.6040505689077V184.13000000000002H516.1440505689077Z M545.8800505689078 194.21H559.3200505689077V191.97000000000003H545.8800505689078ZM557.7240505689077 184.13000000000002V203.73000000000002H560.1040505689077V184.13000000000002ZM544.5640505689078 184.13000000000002V203.73000000000002H546.9440505689078V184.13000000000002Z M579.3400505689078 203.73000000000002H589.2240505689078V201.49H579.3400505689078ZM579.3400505689078 186.37H589.2240505689078V184.13000000000002H579.3400505689078ZM579.3400505689078 194.21H588.6640505689078V191.97000000000003H579.3400505689078ZM578.0240505689078 184.13000000000002V203.73000000000002H580.4040505689078V184.13000000000002Z M630.5800505689078 193.37H633.7440505689078Q635.5080505689078 193.37 636.8100505689079 192.866Q638.1120505689079 192.36200000000002 638.8400505689078 191.382Q639.5680505689079 190.40200000000002 639.5680505689079 189.03000000000003Q639.5680505689079 187.35000000000002 638.8400505689078 186.27200000000002Q638.1120505689079 185.19400000000002 636.8100505689079 184.66200000000003Q635.5080505689078 184.13000000000002 633.7440505689078 184.13000000000002H628.7040505689079V203.73000000000002H634.0240505689078Q635.9280505689079 203.73000000000002 637.4260505689078 203.10000000000002Q638.9240505689079 202.47000000000003 639.806050568908 201.19600000000003Q640.6880505689079 199.92200000000003 640.6880505689079 197.99Q640.6880505689079 196.64600000000002 640.1840505689079 195.666Q639.6800505689079 194.686 638.7700505689079 194.056Q637.8600505689078 193.42600000000002 636.6560505689079 193.11800000000002Q635.4520505689079 192.81000000000003 634.0240505689078 192.81000000000003H630.5800505689078V194.126H634.0240505689078Q634.9760505689078 194.126 635.7600505689079 194.36400000000003Q636.5440505689079 194.60200000000003 637.1180505689078 195.07800000000003Q637.6920505689078 195.55400000000003 638.0000505689079 196.25400000000002Q638.3080505689079 196.954 638.3080505689079 197.85000000000002Q638.3080505689079 199.05400000000003 637.7620505689079 199.894Q637.2160505689078 200.734 636.2500505689079 201.18200000000002Q635.2840505689079 201.63000000000002 634.0240505689078 201.63000000000002H631.0840505689079V186.23000000000002H633.7440505689078Q635.2280505689079 186.23000000000002 636.2080505689079 187.0Q637.1880505689079 187.77 637.1880505689079 189.17000000000002Q637.1880505689079 190.09400000000002 636.7400505689079 190.738Q636.2920505689078 191.382 635.5080505689078 191.71800000000002Q634.7240505689078 192.05400000000003 633.7440505689078 192.05400000000003H630.5800505689078Z M659.1680505689078 193.93Q659.1680505689078 191.71800000000002 660.1340505689078 189.98200000000003Q661.1000505689078 188.246 662.7800505689079 187.238Q664.4600505689078 186.23000000000002 666.5880505689078 186.23000000000002Q668.7440505689078 186.23000000000002 670.4100505689078 187.238Q672.0760505689078 188.246 673.0420505689078 189.98200000000003Q674.0080505689078 191.71800000000002 674.0080505689078 193.93Q674.0080505689078 196.14200000000002 673.0420505689078 197.87800000000004Q672.0760505689078 199.61400000000003 670.4100505689078 200.622Q668.7440505689078 201.63000000000002 666.5880505689078 201.63000000000002Q664.4600505689078 201.63000000000002 662.7800505689079 200.622Q661.1000505689078 199.61400000000003 660.1340505689078 197.87800000000004Q659.1680505689078 196.14200000000002 659.1680505689078 193.93ZM656.6480505689078 193.93Q656.6480505689078 196.05800000000002 657.3900505689078 197.906Q658.1320505689079 199.75400000000002 659.4760505689078 201.11200000000002Q660.8200505689078 202.47000000000003 662.6400505689078 203.24Q664.4600505689078 204.01000000000002 666.5880505689078 204.01000000000002Q668.7440505689078 204.01000000000002 670.5500505689079 203.24Q672.3560505689078 202.47000000000003 673.7000505689077 201.11200000000002Q675.0440505689078 199.75400000000002 675.7860505689077 197.906Q676.5280505689078 196.05800000000002 676.5280505689078 193.93Q676.5280505689078 191.77400000000003 675.7860505689077 189.94000000000003Q675.0440505689078 188.10600000000002 673.7000505689077 186.74800000000002Q672.3560505689078 185.39000000000001 670.5500505689079 184.62Q668.7440505689078 183.85000000000002 666.5880505689078 183.85000000000002Q664.4600505689078 183.85000000000002 662.6400505689078 184.62Q660.8200505689078 185.39000000000001 659.4760505689078 186.74800000000002Q658.1320505689079 188.10600000000002 657.3900505689078 189.94000000000003Q656.6480505689078 191.77400000000003 656.6480505689078 193.93Z M691.3680505689078 186.37H696.4080505689079V203.73000000000002H698.7880505689079V186.37H703.8280505689079V184.13000000000002H691.3680505689078Z M717.8280505689079 186.37H722.868050568908V203.73000000000002H725.248050568908V186.37H730.2880505689079V184.13000000000002H717.8280505689079Z M746.248050568908 184.13000000000002V203.73000000000002H756.328050568908V201.49H748.628050568908V184.13000000000002Z M773.604050568908 203.73000000000002H783.488050568908V201.49H773.604050568908ZM773.604050568908 186.37H783.488050568908V184.13000000000002H773.604050568908ZM773.604050568908 194.21H782.9280505689079V191.97000000000003H773.604050568908ZM772.2880505689079 184.13000000000002V203.73000000000002H774.6680505689079V184.13000000000002Z"/><rect x="826.888" y="193.500" width="264.576" height="1" fill="#0a0a0a"/>
+</svg></a>
+    <div class="utils">
+      <a class="util account" href="#">Account</a>
+      <a class="util" href="#">Cart (0)</a>
+    </div>
+  </div>
+  <nav class="mainnav" aria-label="Main">
+    <a href="#">Occasions</a>
+    <a href="#">Shop Wraps</a>
+    <a href="#">Mini Packs</a>
+    <a href="#" aria-current="page">Custom Labels <span class="tagnew">New</span></a>
+    <a href="#">Voilà Steamer</a>
+    <a href="#">Build a Bundle</a>
+    <a href="#">How To</a>
+  </nav>
+</header>
+<div class="crumbs"><a href="#">Home</a> &nbsp;/&nbsp; Custom Labels</div>
+
+<main>
+<div class="shop">
+  <aside class="stage idle" id="stage" aria-label="Your label">
+    <div class="frame" id="frame">
+      <div class="idlemsg"><div class="it">Your label appears here</div><div class="hint">Make your first choice and watch it take shape.</div></div>
+      <svg id="preview" viewBox="0 0 400 300" role="img" aria-label="Label preview"></svg>
+      <svg id="scene" viewBox="60 10 280 516" role="img" aria-label="Your label on a bottle" hidden></svg>
+      <div class="scenenote" id="scenenote" hidden></div>
+      <div class="which" id="which" hidden></div>
+      <div class="size" id="sizeline"></div>
+      <button type="button" class="peek" id="peek" aria-expanded="false"><span class="peek-n" id="peekname"></span><span class="peek-h">Tap to enlarge</span></button>
+    </div>
+    <div class="chips small views" id="views" role="group" aria-label="Preview"></div>
+    <button type="button" class="peekclose" id="peekclose">Make smaller</button>
+  </aside>
+
+  <div class="panel">
+    <div class="eyebrow"><span>Printed to order · Sold by the sheet</span><span class="tagnew">With or without a wrap</span></div>
+    <h1>Custom Bottle Labels</h1>
+    <p class="lede">Design a label for one of the bottles our wraps fit, and we print it for you. It goes right over the bottle's own label. Use it on its own, or add one of our wraps and your label shows through the clear window.</p>
+    <div class="how" aria-label="How it works">
+      <div class="howstep"><svg id="how1" viewBox="80 10 240 516" aria-hidden="true"></svg><div class="hn">01</div><div class="ht">Start with a bottle we fit</div><div class="hd">Veuve Clicquot, La Marca and the rest of our tested list.</div></div>
+      <div class="howstep"><svg id="how2" viewBox="80 10 240 516" aria-hidden="true"></svg><div class="hn">02</div><div class="ht">Cover it with your label</div><div class="hd">Your design sticks right over the bottle's own label.</div></div>
+      <div class="howstep"><svg id="how3" viewBox="80 10 240 516" aria-hidden="true"></svg><div class="hn">03</div><div class="ht">Add a wrap, if you like</div><div class="hd">Our wraps slide over the bottle. Your label shows through the clear window.</div></div>
+    </div>
+
+    <div class="steps">
+      <section aria-labelledby="h0">
+        <h2 id="h0"><span class="n"></span>Choose your bottle</h2>
+        <div class="chips" id="sizes" role="group" aria-label="Bottle"></div>
+        <div class="callout" id="sizenote"></div>
+        <p class="alert" id="sizegone" hidden aria-live="polite"></p>
+      </section>
+
+      <section aria-labelledby="hq">
+        <h2 id="hq"><span class="n"></span>How many sheets?</h2>
+        <p class="hint" id="pernote"></p>
+        <label class="f qtyf" for="qty" id="qtywrap">Sheets
+          <select id="qty"></select>
+        </label>
+        <p class="hint" id="qtynote" aria-live="polite"></p>
+      </section>
+
+      <section aria-labelledby="h1" id="sec-occ">
+        <h2 id="h1"><span class="n"></span>What's the occasion?</h2>
+        <div class="chips" id="groups" role="group" aria-label="Occasion type"></div>
+        <div class="chips small" id="subs" role="group" aria-label="Occasion"></div>
+      </section>
+
+      <section aria-labelledby="h2">
+        <h2 id="h2"><span class="n"></span>Pick a design</h2>
+        <div class="extra">
+          <div class="extra-t">Have a logo or a photo? Put it on your label.</div>
+        <p class="hint" id="logohint"></p>
+        <div class="uprow">
+        <div class="logobox">
+          <input type="file" id="logofile" class="vh" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+          <label class="btn ghost filebtn" for="logofile" id="logolabel">Upload a logo</label>
+          <img class="logothumb" id="logothumb" alt="Your logo" hidden>
+          <button class="chip" id="logoremove" hidden>Remove logo</button>
+        </div>
+        <div class="logobox">
+          <input type="file" id="photofile" class="vh" accept="image/jpeg,image/png,image/webp">
+          <label class="btn ghost filebtn" for="photofile" id="photolabel">Upload a photo</label>
+          <img class="logothumb" id="photothumb" alt="Your photo" hidden>
+          <button class="chip" id="photoremove" hidden>Remove photo</button>
+        </div>
+        </div>
+        <div class="alert" id="logowarn" hidden></div>
+        <label class="check" id="rightswrap" hidden><input type="checkbox" id="rights"><span>I own this logo or have permission to print it.</span></label>
+        <div class="chips small" id="photopos" role="group" aria-label="Which part of the photo to show" hidden></div>
+        <div class="alert" id="photowarn" hidden></div>
+        <label class="check" id="prightswrap" hidden><input type="checkbox" id="prights"><span>I took this photo or have permission to print it.</span></label>
+        </div>
+        <p class="hint" id="tplcount"></p>
+        <div class="grid" id="templates"></div>
+      </section>
+
+      <section aria-labelledby="hr">
+        <h2 id="hr"><span class="n"></span>Choose your wording</h2>
+        <div class="chips" id="paths" role="group" aria-label="Ready-made or your own words"></div>
+        <p class="hint" id="pathhint"></p>
+        <div class="sub" id="sec-ready">
+          <div id="rocc" hidden></div>
+          <div class="sub" id="sec-finish">
+            <div class="chips" id="rmodes" role="group" aria-label="How the sheet is filled"></div>
+            <p class="callout" id="rmodehint" aria-live="polite"></p>
+          </div>
+          <div class="sub" id="agewrap" hidden>
+            <label class="f qtyf" for="age">Which birthday?
+              <input type="text" inputmode="numeric" id="age" maxlength="3" autocomplete="off" placeholder="47"></label>
+            <p class="hint" id="agehint">Type any age from 21 up and the sayings below change to match.</p>
+          </div>
+          <p class="lockline" id="saylock" hidden><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>This design's headline is part of the artwork, so these sayings won't print on it. Add a name or note below and it prints under the headline.</span></p>
+          <div class="saygrid" id="rgrid" role="group" aria-label="Wording"></div>
+          <button class="btn ghost" id="rmore" hidden></button>
+        </div>
+        <div class="sub" id="sec-words">
+          <p class="callout" id="backtosay" hidden></p>
+        <div class="ask"><div class="ask-t">Should every label say the same thing?</div>
+        <div class="chips" id="modes" role="group" aria-label="How the sheet is filled"></div></div>
+        <div class="box" id="mixbox" hidden>
+          <div class="ask" id="scopeask"><div class="ask-t" id="scopeq"></div>
+          <div class="chips two" id="mixscope" role="group" aria-label="Sheets"></div></div>
+          <p class="hint" id="mixhint"></p>
+          <div class="labstrip" id="labstrip" role="group" aria-label="Choose a label to edit"></div>
+          <button class="btn ghost" id="copyall">Copy these words to every label</button>
+        </div>
+        <div class="box" id="namebox" hidden>
+          <label class="f" for="namefield">Put each name on the
+            <select id="namefield"></select>
+          </label>
+          <label class="f" for="names"><span class="frow"><span>Names, one per line</span><span class="count" id="namecount"></span></span>
+            <textarea class="names" id="names" spellcheck="false"></textarea>
+          </label>
+          <p class="hint">The other lines below stay the same on every label.</p>
+        </div>
+        <p class="hint">Leave any line blank to skip it. Long lines shrink to fit.</p>
+        <p class="lockline" id="fieldlock" hidden><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>This design's headline is part of the artwork. The faded lines won't print; the others print under the headline.</span></p>
+        <div class="fields" id="fields"></div>
+        <div class="labnav" id="labnav" hidden>
+          <button class="btn ghost" id="labprev">Previous</button>
+          <span id="labwhich" aria-live="polite"></span>
+          <button class="btn" id="labnext">Next label</button>
+        </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="hn" id="sec-name">
+        <h2 id="hn"><span class="n"></span>Make it yours</h2>
+        <div class="namecard">
+          <label class="f" for="rnote"><span class="frow"><span>Add a name or note</span><span class="count" id="rnotecount"></span></span>
+            <input type="text" id="rnote" maxlength="34" autocomplete="off" placeholder="For Linda · Love, Emma"></label>
+          <p class="hint">It prints on every label, under the saying. Try <em>For Linda · Love, Emma</em> or <em>The Carter Family · 2026</em>.</p>
+          <p class="hint" id="rnotehint" hidden>This label has room for three lines, so your name takes the place of the saying's last line. Shorten the name to keep both.</p>
+        </div>
+      </section>
+      <section aria-labelledby="h3">
+        <h2 id="h3"><span class="n"></span>Choose your colors</h2>
+        <p class="lockline" id="pallock" hidden><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span id="pallocktext"></span></p>
+        <div class="swatches" id="swatches" role="group" aria-label="Color palette"></div>
+        <div class="colorrow">
+          <label class="own" id="customwrap" for="custom"><input type="color" id="custom" value="#c47f8a">Use your own color</label>
+          <div class="chips" id="tones" role="group" aria-label="Background"></div>
+        </div>
+        <div class="palname" id="palname"></div>
+        <p class="hint" id="palhint" hidden>On this design your color fills the whole background. Tap "Use your own color" to pick any shade.</p>
+      </section>
+
+      <section aria-labelledby="hl">
+        <h2 id="hl"><span class="n"></span>Choose your lettering</h2>
+        <div class="fontgrid" id="fonts" role="group" aria-label="Lettering style"></div>
+      </section>
+
+      <section aria-labelledby="hw" id="sec-wrap">
+        <h2 id="hw"><span class="n"></span>Add a matching wrap</h2>
+        <p class="hint">Optional. A wrap dresses the whole bottle and your label shows through its clear window. Already have wraps, or using the label on its own? Skip this step.</p>
+        <p class="alert" id="wrapgone" hidden aria-live="polite"></p>
+        <div class="callout" id="wrapmatch"></div>
+        <div class="wraprow"><button type="button" class="wrapnav" id="wrapprev" aria-label="Earlier wraps" hidden>‹</button>
+        <div class="wrapgrid" id="wrapcards" tabindex="0" role="group" aria-label="Wraps"></div>
+        <button type="button" class="wrapnav" id="wrapnext" aria-label="More wraps" hidden>›</button></div>
+        <p class="hint" id="wrapswipe" hidden></p>
+        <p class="wrapsum" id="wrapsum" aria-live="polite" hidden></p>
+        <div class="bundle"><div class="bt">Build a bundle, unlock free wraps</div><div class="hint" id="bundlenote" aria-live="polite"></div></div>
+      </section>
+        </div>
+
+    <div class="order">
+      <div class="order-title">Check your label, then order</div>
+      <div id="proofwrap" class="box" hidden>
+        <div class="hint">Check every label. Tap one to see it larger.</div>
+        <div class="proof" id="proof"></div>
+      </div>
+      <div class="alert" id="alert" hidden></div>
+      <p class="callout nudge" id="namenudge" hidden><span>No name or note added yet.</span><button type="button" class="linkbtn" id="nameadd">Add one</button><button type="button" class="linkbtn" id="nameskip">Leave it off</button></p>
+      <label class="check"><input type="checkbox" id="approve"><span id="approvetext"></span></label>
+      <p class="wrapsum" id="ordersum" aria-live="polite"></p>
+      <button class="btn" id="make" disabled>Place sample order</button>
+      <div class="trust"><span>Printed to order</span><span>You approve every label</span><span>Fits our bottle wraps</span></div>
+    </div>
+  </div>
+</div>
+
+<section class="band" id="output" hidden aria-labelledby="h5">
+  <div class="band-in">
+    <div class="eyebrow">Prototype only · Customers never see this</div>
+    <h2 id="h5">What your team <em>receives.</em></h2>
+    <p>In the live version this arrives with the Shopify order as a print-ready PDF. Nobody has to open a design program.</p>
+    <div class="out">
+      <div class="sheets" id="sheets"></div>
+      <div class="card">
+        <dl id="ticket"></dl>
+        <button class="btn ghost" id="copy">Copy print file (SVG)</button>
+        <div class="hint" id="copied" aria-live="polite">Dashed lines show label edges on screen only. They are left out of the print file.</div>
+        <textarea class="code" id="fallback" hidden readonly aria-label="Print file code"></textarea>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="foot-in"><span>Decorative bottle wraps, redrawn every season.</span><span>© 2026 Beau Bottles</span></div>
+</footer>
+
+<script src="js/01-setup-and-wording.js"></script>
+<script src="js/02-drawing.js"></script>
+<script src="js/03-designs-classic.js"></script>
+<script src="js/04-designs-occasion.js"></script>
+<script src="js/05-designs-holiday-photo.js"></script>
+<script src="js/05b-designs-thanksgiving.js"></script>
+<script src="js/05c-designs-birthday.js"></script>
+<script src="js/05d-designs-wedding.js"></script>
+<script src="js/05e-designs-hanukkah.js"></script>
+<script src="js/05f-designs-july4.js"></script>
+<script src="js/05g-designs-graduation.js"></script>
+<script src="js/05h-designs-valentine.js"></script>
+<script src="js/05i-designs-stpatrick.js"></script>
+<script src="js/05j-designs-baby.js"></script>
+<script src="js/06-app.js"></script>
+<script src="js/07-print-and-events.js"></script>
+</body>
+</html>

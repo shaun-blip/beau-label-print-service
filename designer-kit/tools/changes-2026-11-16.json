@@ -1,0 +1,142 @@
+[
+ {
+  "change": "qty note: default wording",
+  "find": ": \"Every label prints the same.\");",
+  "replace": ": `All ${tot} labels will match. Want each label different? Choose that under Choose your wording.`);"
+ },
+ {
+  "change": "qty note: sheets not yet chosen",
+  "find": "multi ? (q > 1 ? `Each sheet is a copy of the first. <button type=\"button\" class=\"linkbtn\" id=\"qtydiff\">Make every sheet different</button>`",
+  "replace": "multi ? (q > 1 ? (needScope() ? \"Under Choose your wording, tell us whether every sheet is the same or different.\" : `Each sheet is a copy of the first. <button type=\"button\" class=\"linkbtn\" id=\"qtydiff\">Make every sheet different</button>`)"
+ },
+ {
+  "change": "design grid: no separator rows",
+  "find": "  $(\"templates\").innerHTML = made.length\n    ? `<div class=\"psep\">Made for ${esc(occ === \"Your occasion\" ? \"you\" : occ)}</div>` + made.map(tile).join(\"\") + `<div class=\"psep\">Classics for any occasion</div>` + any.map(tile).join(\"\")\n    : list.map(tile).join(\"\");",
+  "replace": "  // one continuous grid: a heading row between the two groups left empty spaces after the last design of each group\n  const star = `<i class=\"star\" aria-hidden=\"true\">\u2605</i>`;\n  $(\"templates\").innerHTML = made.map(t => tile(t).replace(\"<svg\", star + \"<svg\").replace(\"<span>\", `<span><b class=\"vh\">Made for ${esc(occ === \"Your occasion\" ? \"you\" : occ)}: </b>`)).join(\"\") + any.map(tile).join(\"\");\n  $(\"templates\").dataset.made = made.length; $(\"templates\").dataset.occ = occ === \"Your occasion\" ? \"you\" : occ;"
+ },
+ {
+  "change": "design count line",
+  "find": "$(\"tplcount\").textContent = `${shown} designs. The first ones are made for this occasion. Tap one to choose it. You'll set the words and colors next.`;",
+  "replace": "{ const g = $(\"templates\"), n = +g.dataset.made;\n    $(\"tplcount\").innerHTML = `<strong>${shown} designs.</strong> ` + (n ? `The first ${n}, marked <span class=\"starkey\" aria-hidden=\"true\">\u2605</span>, are made for ${esc(g.dataset.occ)}. The rest suit any occasion. ` : \"\") + \"Tap one to choose it. You'll set the words and colors next.\"; }"
+ },
+ {
+  "change": "css: star",
+  "find": ".tpl[aria-pressed=\"true\"]{border:2px solid var(--ink);padding:5px 5px 8px}",
+  "replace": ".tpl[aria-pressed=\"true\"]{border:2px solid var(--ink);padding:5px 5px 8px}\n.tpl{position:relative}\n.tpl .star,.starkey{background:var(--ink);color:#fff;font-style:normal;font-size:11px;line-height:1;display:inline-grid;place-items:center;width:20px;height:20px}\n.tpl .star{position:absolute;top:0;left:0}\n.tpl[aria-pressed=\"true\"] .star{top:-1px;left:-1px}\n.starkey{vertical-align:-4px;margin:0 2px}\n/* a question the customer has to answer before ordering */\n.ask{display:grid;gap:10px}\n.ask-t{font-size:16px;font-weight:600;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}\n.ask-tag{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;background:var(--ink);color:#fff;padding:4px 8px}\n.ask.need{border:2px solid var(--ink);background:var(--blue-soft);padding:14px 16px}\n.ask.need .chip{background:#fff}\n.ask .chip small{display:block;margin-top:4px;font-size:12.5px;letter-spacing:0;text-transform:none;font-weight:400}\n.chips.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}\n.chips.two .chip{text-align:left;padding:12px 16px}"
+ },
+ {
+  "change": "html: modes question",
+  "find": "        <div class=\"chips\" id=\"modes\" role=\"group\" aria-label=\"How the sheet is filled\"></div>",
+  "replace": "        <div class=\"ask\"><div class=\"ask-t\">Should every label say the same thing?</div>\n        <div class=\"chips\" id=\"modes\" role=\"group\" aria-label=\"How the sheet is filled\"></div></div>"
+ },
+ {
+  "change": "html: sheets question",
+  "find": "          <div class=\"chips\" id=\"mixscope\" role=\"group\" aria-label=\"Sheets\"></div>",
+  "replace": "          <div class=\"ask\" id=\"scopeask\"><div class=\"ask-t\" id=\"scopeq\"></div>\n          <div class=\"chips two\" id=\"mixscope\" role=\"group\" aria-label=\"Sheets\"></div></div>"
+ },
+ {
+  "change": "state flag",
+  "find": "age:50, rcounts:{}, mixAll:false, qty:1,",
+  "replace": "age:50, rcounts:{}, mixAll:false, scopePicked:false, qty:1,"
+ },
+ {
+  "change": "needScope",
+  "find": "const everySheet = () => state.path === \"custom\" && state.mode === \"mix\" && state.mixAll;",
+  "replace": "const everySheet = () => state.path === \"custom\" && state.mode === \"mix\" && state.mixAll;\n// More than one sheet of written labels: the customer has to say whether the sheets match before ordering.\nconst needScope = () => state.path === \"custom\" && state.mode === \"mix\" && state.qty > 1 && !state.scopePicked;"
+ },
+ {
+  "change": "buildModes: sheets question",
+  "find": "  $(\"mixscope\").innerHTML = chip(\"repeat\", \"Every sheet the same\", !state.mixAll) + chip(\"all\", \"Every sheet different\", state.mixAll);\n  $(\"mixhint\").textContent = state.mixAll\n    ? `${state.qty} ${state.qty === 1 ? \"sheet\" : \"sheets\"} of ${per} gives you ${state.qty * per} labels to write. Change the number of sheets in step 2. Type a label's words below, then tap Next label.`\n    : `One sheet holds ${per} labels. Type a label's words below, then tap Next label. Ordering more sheets repeats this one.`;",
+  "replace": "  { const q = state.qty, open = needScope();\n    $(\"scopeask\").hidden = q < 2; $(\"scopeask\").classList.toggle(\"need\", open);\n    $(\"scopeq\").innerHTML = `You're ordering ${q} sheets. Should they match?` + (open ? ` <span class=\"ask-tag\">Choose one</span>` : \"\");\n    $(\"mixscope\").innerHTML = chip(\"repeat\", `Every sheet the same<small>Write ${per} labels. We print that sheet ${q} times.</small>`, !open && !state.mixAll)\n      + chip(\"all\", `Every sheet different<small>Write all ${q * per} labels, ${per} to a sheet.</small>`, !open && state.mixAll);\n    $(\"mixhint\").textContent = q < 2\n      ? `One sheet holds ${per} labels. Type a label's words below, then tap Next label. Want more than ${per} different labels? Add sheets in step 2.`\n      : state.mixAll ? `${q} sheets of ${per} gives you ${q * per} labels to write. Type a label's words below, then tap Next label.`\n      : open ? \"Type a label's words below, then tap Next label.\"\n      : `Type a label's words below, then tap Next label. ${q === 2 ? \"Both\" : \"All \" + q} sheets print the same ${per} labels.`; }"
+ },
+ {
+  "change": "screen: block until answered",
+  "find": "  if (namesMode() && !list.length) return \"Add at least one name to your list.\";",
+  "replace": "  if (namesMode() && !list.length) return \"Add at least one name to your list.\";\n  if (needScope()) return `You're ordering ${state.qty} sheets. Under Choose your wording, choose whether every sheet is the same or different.`;"
+ },
+ {
+  "change": "pick scope",
+  "find": "pick(\"mixscope\", \".chip\", b => { state.mixAll = b.dataset.id === \"all\"; state.sel = 0;",
+  "replace": "pick(\"mixscope\", \".chip\", b => { state.mixAll = b.dataset.id === \"all\"; state.scopePicked = true; state.sel = 0;"
+ },
+ {
+  "change": "qtydiff link",
+  "find": "if (e.target.id === \"qtydiff\"){ state.mixAll = true; state.qty",
+  "replace": "if (e.target.id === \"qtydiff\"){ state.mixAll = true; state.scopePicked = true; state.qty"
+ },
+ {
+  "change": "qty change rebuilds the question",
+  "find": "  else if (!everySheet()){ render(); if (!$(\"output\").hidden) makeSheets(); }",
+  "replace": "  else if (!everySheet()){ buildModes(); render(); if (!$(\"output\").hidden) makeSheets(); }"
+ },
+ {
+  "change": "restored designs are already answered",
+  "find": "state.tplPicked = true; state.palEdited = true; state.edited = true; state.sel = 0;",
+  "replace": "state.tplPicked = true; state.palEdited = true; state.edited = true; state.scopePicked = true; state.sel = 0;"
+ },
+ {
+  "change": "html: bundle box removed",
+  "find": "        <div class=\"bundle\"><div class=\"bt\">Build a bundle, unlock free wraps</div><div class=\"hint\" id=\"bundlenote\" aria-live=\"polite\"></div></div>\n",
+  "replace": ""
+ },
+ {
+  "change": "js: bundle note removed",
+  "find": "  const TIERS = [[39, 2], [79, 5], [119, 10]], got = TIERS.filter(t => cost >= t[0]).pop(), next = TIERS.find(t => cost < t[0]);\n  $(\"bundlenote\").innerHTML = (!total ? \"Spend $39 on wraps for 2 free wraps, $79 for 5, or $119 for 10.\"\n      : (got ? `<strong>You've unlocked ${got[1]} free wraps.</strong> ` : \"\") + (next ? `Add $${(next[0] - cost).toFixed(2)} more in wraps to get ${next[1]} free.` : \"That's our top tier.\"))\n    + \" Label sheets don't count toward a bundle.\";\n",
+  "replace": ""
+ },
+ {
+  "change": "bottle preview: no seam lines",
+  "find": "preserveAspectRatio=\"none\"><use href=\"#lab${uid}\"/></svg>`;",
+  "replace": "preserveAspectRatio=\"none\"><use href=\"#lab${uid}\" opacity=\".999\"/></svg>`;   // drawn as one layer, so the strip's soft edge cannot let a lower color show as a line"
+ },
+ {
+  "change": "photoScene: real wrap photo",
+  "find": "function photoScene(inner, lw, lh, wrap, col, uid, key, tall){\n  if (wrap && BOT[key + \"w\"]){ key += \"w\"; wrap = null; }",
+  "replace": "let wrapShot = null;   // the store wrap now shown in the preview: {size, title}. Set by showWrap().\nfunction photoScene(inner, lw, lh, wrap, col, uid, key, tall){\n  if (wrap === \"shot\"){ if (wrapShot && wrapShot.size === key && BOT.shot){ key = \"shot\"; wrap = null; } else wrap = \"stripe\"; }\n  if (wrap && BOT[key + \"w\"]){ key += \"w\"; wrap = null; }"
+ },
+ {
+  "change": "scene note names the wrap",
+  "find": "$(\"scenenote\").textContent = state.view === \"wrap\" ? \"Example wrap. Your label shows through the clear window.\" :",
+  "replace": "$(\"scenenote\").textContent = state.view === \"wrap\" ? (state.lastWrap === \"shot\" && wrapShot && wrapShot.size === state.size ? wrapShot.title + \". Your label shows through the clear window.\" : \"Example wrap. Your label shows through the clear window.\") :"
+ },
+ {
+  "change": "showWrap()",
+  "find": "/* ---------- hand-off to the store: save a design",
+  "replace": "/* ---------- a real wrap in the preview ----------\n   showWrap({image, title}) puts a store wrap photo in the \"In a wrap\" preview with the customer's label on it.\n   showWrap(null) goes back to the sample wrap. It resolves to true when the photo was used.\n   It relies on the store's main product photo being shot the same way for every wrap: one bottle, upright, centred, on white.\n   The label then sits in the same place as on our own sample photo of that bottle size. A photo that isn't like that is refused and the sample stays. */\nlet wrapShotCall = 0;\nasync function showWrap(w){\n  const call = ++wrapShotCall, size = state.size, g = BOT[size + \"w\"];\n  const off = () => { wrapShot = null; if (state.lastWrap === \"shot\") state.lastWrap = \"stripe\"; buildViews(); render(); return false; };\n  if (!w || !w.image || !g) return off();\n  try {\n    const im = new Image(); im.crossOrigin = \"anonymous\"; im.src = w.image; await im.decode();\n    if (call !== wrapShotCall) return false;\n    const k = Math.min(1, 900 / Math.max(im.naturalWidth, im.naturalHeight)), cw = Math.round(im.naturalWidth * k), ch = Math.round(im.naturalHeight * k);\n    const c = document.createElement(\"canvas\"); c.width = cw; c.height = ch;\n    const x = c.getContext(\"2d\", {willReadFrequently:true}); x.drawImage(im, 0, 0, cw, ch);\n    const img = x.getImageData(0, 0, cw, ch), d = img.data, white = p => d[p * 4] > 232 && d[p * 4 + 1] > 232 && d[p * 4 + 2] > 232;\n    if (![0, cw - 1, (ch - 1) * cw, ch * cw - 1].every(white)) return off();   // not shot on white\n    // clear the white around the bottle, working in from the edges so white inside the wrap stays\n    const seen = new Uint8Array(cw * ch), q = [], push = p => { if (!seen[p] && white(p)){ seen[p] = 1; q.push(p); } };\n    for (let i = 0; i < cw; i++){ push(i); push((ch - 1) * cw + i); }\n    for (let j = 0; j < ch; j++){ push(j * cw); push(j * cw + cw - 1); }\n    while (q.length){ const p = q.pop(), px = p % cw; d[p * 4 + 3] = 0; if (px) push(p - 1); if (px < cw - 1) push(p + 1); if (p >= cw) push(p - cw); if (p < cw * (ch - 1)) push(p + cw); }\n    // find the bottle: its sides and its top. The height comes from the known shape, so a shadow under the bottle doesn't matter.\n    const col = new Uint32Array(cw), row = new Uint32Array(ch);\n    for (let p = 0; p < cw * ch; p++) if (!seen[p]){ col[p % cw]++; row[(p / cw) | 0]++; }\n    let l = 0, r = cw - 1, t = 0;\n    while (l < cw && col[l] < ch * .04) l++;\n    while (r > l && col[r] < ch * .04) r--;\n    while (t < ch && row[t] < 3) t++;\n    const bw = r - l + 1, bh = Math.min(ch - t, Math.round(bw * g.h / g.w));\n    if (bw < cw * .1 || bw > cw * .6 || bh < bw * 2) return off();\n    { let b = ch - 1; while (b > t && row[b] < bw * .3) b--;            // where the bottle really ends\n      if (Math.abs(t + bh - b) > ch * .04) return off(); }               // not the bottle shape we know for this size, so the label would sit in the wrong place\n    x.putImageData(img, 0, 0);\n    const o = document.createElement(\"canvas\"); o.width = bw; o.height = bh; o.getContext(\"2d\").drawImage(c, l, t, bw, bh, 0, 0, bw, bh);\n    let el = document.getElementById(\"bot-shot\");\n    if (!el){ el = document.createElementNS(\"http://www.w3.org/2000/svg\", \"image\"); el.id = \"bot-shot\"; el.setAttribute(\"preserveAspectRatio\", \"none\"); document.getElementById(\"bot-\" + size + \"w\").parentNode.appendChild(el); }\n    el.setAttribute(\"width\", g.w); el.setAttribute(\"height\", g.h); el.setAttribute(\"href\", o.toDataURL(\"image/webp\", .9));\n    BOT.shot = {...g};\n    wrapShot = {size, title:w.title || \"Your wrap\"}; state.lastWrap = \"shot\"; state.view = \"wrap\";\n    buildViews(); render(); return true;\n  } catch (e){ return off(); }\n}\n/* ---------- hand-off to the store: save a design"
+ },
+ {
+  "change": "bottle change clears the wraps",
+  "find": "pick(\"sizes\", \".chip\", b => { state.size = b.dataset.id; state.sel = 0;",
+  "replace": "pick(\"sizes\", \".chip\", b => {\n  if (b.dataset.id !== state.size && state.wraps.length){   // wraps are made for one bottle size, so they can't follow a change of bottle\n    const n = state.wraps.reduce((a, w) => a + wrapQty(w), 0), unit = wrapUnit(), from = sizeNow().name.toLowerCase(), to = SIZES.find(z => z.id === b.dataset.id).name.toLowerCase();\n    state.wrapsGone = `We took out the ${n} ${from} ${unit > 1 ? \"wrap pack\" : \"wrap\"}${n === 1 ? \"\" : \"s\"} you picked, because ${from} wraps don't fit ${to} bottles. Pick ${to} wraps under Add a matching wrap.`;\n    state.wraps = [];\n  }\n  if (b.dataset.id !== state.size){ wrapShot = null; wrapShotCall++; if (state.lastWrap === \"shot\") state.lastWrap = \"stripe\"; }\n  state.size = b.dataset.id; state.sel = 0;"
+ },
+ {
+  "change": "bottle change: end of handler",
+  "find": "buildReady(); buildTemplates(); buildModes(); buildWraps(); changed(); });\npick(\"paths\"",
+  "replace": "buildReady(); buildTemplates(); buildModes(); buildWraps(); changed();\n});\npick(\"paths\""
+ },
+ {
+  "change": "wraps-removed note: fill",
+  "find": "  const sz = sizeNow(), col = collNow(), unit = wrapUnit(), match = wrapMatch(), what = unit > 1 ? \"pack\" : \"wrap\";",
+  "replace": "  const sz = sizeNow(), col = collNow(), unit = wrapUnit(), match = wrapMatch(), what = unit > 1 ? \"pack\" : \"wrap\";\n  [\"wrapgone\", \"sizegone\"].forEach(id => { $(id).hidden = !state.wrapsGone; $(id).textContent = state.wrapsGone || \"\"; });"
+ },
+ {
+  "change": "wraps-removed note: cleared by the next pick",
+  "find": "pick(\"wrapcards\", \".add\", b => { state.wraps.push(",
+  "replace": "pick(\"wrapcards\", \".add\", b => { state.wrapsGone = \"\"; state.wraps.push("
+ },
+ {
+  "change": "html: wraps-removed note in the wrap step",
+  "find": "        <div class=\"callout\" id=\"wrapmatch\"></div>",
+  "replace": "        <p class=\"alert\" id=\"wrapgone\" hidden aria-live=\"polite\"></p>\n        <div class=\"callout\" id=\"wrapmatch\"></div>"
+ },
+ {
+  "change": "html: wraps-removed note under the bottle choice",
+  "find": "        <div class=\"callout\" id=\"sizenote\"></div>",
+  "replace": "        <div class=\"callout\" id=\"sizenote\"></div>\n        <p class=\"alert\" id=\"sizegone\" hidden aria-live=\"polite\"></p>"
+ },
+ {
+  "change": "ghost frame: flat label only",
+  "find": "    if (!el.textContent.toLowerCase().includes(GHOST.toLowerCase())) return;",
+  "replace": "    if (!el.textContent.toLowerCase().includes(GHOST.toLowerCase())) return;\n    if (el.closest('g[id^=\"lab\"]')){ el.setAttribute(\"opacity\", \".5\"); return; }   // on a bottle the label is drawn in strips, where the dashed frame can't be measured: fade the words only"
+ }
+]
