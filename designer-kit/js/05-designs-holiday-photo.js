@@ -12,10 +12,10 @@ function xmRow(ids, x0, x1, base, k){
 }
 const lightPal = c => c.dark ? resolvePalette(state.pal < 0 ? customPalette(state.custom) : PALETTES[state.pal], false) : c;
 const fixedPal = (bg, ink, dark) => Object.assign(c => ({...c, bg, ink, t:ink, t2:ink, dark:!!dark}), {lock:"colors"});   // lock tells the color step what to fade
-const softPal = (bg, min = 7) => Object.assign(c => { const l = lightPal(c), b = bg || l.bg, ink = ensure(l.ink, b, min); return {...l, bg:b, ink, t:ink, t2:ink, dark:false}; }, {lock:"tone"});
+const softPal = (bg, min = 7) => Object.assign(c => { const l = lightPal(c), b = bg || l.bg, ink = ensure(l.ink, b, min); return {...l, bg:b, ink, t:ensure(l.a, b, 3.2), t2:ink, dark:false}; }, {lock:"tone"});
 // The words sit in a box: x = center, y0..y1 = top and bottom, w = widest line.
 const xmZones = (box, f = "script") => { const y = k => () => { const q = box(); return q.y0 + k * (q.y1 - q.y0); }, w = k => () => box().w * k, x = () => box().x;
-  return {top:{y:y(.12), w:w(.9), x, font:F.sans, size:11, ls:.28, upper:true}, main:{y:y(.42), w:w(1), x, ...mainFont(f)},
+  return {top:{y:y(.12), w:w(.9), x, font:F.sans, size:11, ls:.28, upper:true}, main:{y:y(.42), w:w(1), x, ...mainFont(f), fill:"t"},
     detail:{y:y(.68), w:w(.9), x, font:f === "script" ? F.serif : F.script, size:f === "script" ? 15 : 21, weight:500}, msg:{y:y(.88), w:w(.86), x, font:F.serif, size:13, italic:true}}; };
 const XMAS = ["Christmas", "Holiday client gift"];
 const wreathBox = () => { const d = Math.min(W, H) * .95; return {x:W / 2, y0:H / 2 - d * .2, y1:H / 2 + d * .2, w:d * .56}; };

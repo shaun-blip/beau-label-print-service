@@ -500,7 +500,9 @@ function render(){
     $("rnotehint").hidden = !(state.path === "ready" && foldWords(t, cur).dropped);
     $("pernote").innerHTML = `Each sheet has <strong>${per} ${sizeNow().name.toLowerCase()} labels</strong> (${sizeNow().label}).`;
     $("ordersum").innerHTML = namesMode() ? `<strong>${Math.max(1, Math.ceil(list.length / per))} ${Math.ceil(list.length / per) > 1 ? "sheets" : "sheet"} · ${list.length} labels</strong>` : `<strong>${sh} · ${tot} labels</strong>`;
-    if (namesMode()){ const pg = Math.max(1, Math.ceil(list.length / per)); note.innerHTML = `<strong>${pg} ${pg > 1 ? "sheets" : "sheet"} · ${list.length} labels.</strong> Your list of names sets this: one label for each name.`; }
+    if (namesMode()){ const pg = Math.max(1, Math.ceil(list.length / per)), rem = list.length % per, blanks = rem ? per - rem : 0;
+      note.innerHTML = `<strong>${pg} ${pg > 1 ? "sheets" : "sheet"} · ${list.length} labels.</strong> Your list of names sets this: one label for each name.`
+        + (blanks ? `<span class="sheetwarn">Sheets are sold whole, so your last sheet has <strong>${blanks} blank ${blanks === 1 ? "label" : "labels"}</strong> you'd still pay for. <button type="button" class="linkbtn" id="fillnames">Add ${blanks} more ${blanks === 1 ? "name" : "names"}</button> or <button type="button" class="linkbtn" id="fillrepeat">fill the sheet by repeating your names</button>.</span>` : ""); }
     else
     note.innerHTML = `<strong>${sh} · ${tot} labels.</strong> ` + (
       spanReady() ? (q > 1 ? "Your mix is spread across all of them. Change how many of each under Choose your wording." : "Add a sheet to choose more sayings.")

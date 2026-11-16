@@ -234,6 +234,10 @@ pick("rmodes", ".chip", b => { state.rmode = b.dataset.id; state.sel = 0; buildQ
 document.addEventListener("click", e => { if (e.target.id === "showsay"){ state.want = "ready"; state.sel = 0; applyOccasion(); $("hr").scrollIntoView({block:"start"}); } });
 document.addEventListener("click", e => { if (e.target.id === "qtydiff"){ state.mixAll = true; state.scopePicked = true; state.qty = Math.min(state.qty, 5); state.sel = 0; syncMix(); buildModes(); changed(); } });
 pick("mixscope", ".chip", b => { state.mixAll = b.dataset.id === "all"; state.scopePicked = true; state.sel = 0; syncMix(); buildModes(); changed(); });
+// Names mode: sheets sell whole, so offer to top up a part-full last sheet (add names, or repeat the ones entered).
+function fillNamesToSheet(){ const per = perSheet(), cur = nameList(); if (!cur.length) return; const target = Math.min(MAX_NAMES, Math.ceil(cur.length / per) * per); const out = cur.slice(); for (let i = 0; out.length < target; i++) out.push(cur[i % cur.length]); state.names = out.join("\n"); if ($("names").value !== state.names) $("names").value = state.names; buildModes(); changed(); }
+document.addEventListener("click", e => { if (e.target.id === "fillnames"){ const n = $("names"); n.focus(); try { n.setSelectionRange(n.value.length, n.value.length); } catch {} n.scrollIntoView({block:"center"}); } });
+document.addEventListener("click", e => { if (e.target.id === "fillrepeat"){ fillNamesToSheet(); } });
 $("rnote").addEventListener("input", e => { state.rnote = e.target.value; changed(); });
 pick("groups", ".chip", b => { state.group = b.dataset.id; state.sub = 0; state.want = "ready"; applyOccasion(); });
 pick("subs", ".chip", b => { state.sub = +b.dataset.id; state.want = "ready"; applyOccasion(); });
