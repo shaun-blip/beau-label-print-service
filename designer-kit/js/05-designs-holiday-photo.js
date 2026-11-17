@@ -92,12 +92,16 @@ const xmInk = (id, cx, cy, h, col) => { const m = "xk" + (xmN++);
   return `<mask id="${m}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">${xm(id, cx, cy, h)}</mask><rect width="${W}" height="${H}" fill="${col}" mask="url(#${m})"/>`; };
 // Designs whose headline is artwork only take the smaller lines.
 const xmSub = box => { const z = xmZones(box), y = k => () => { const q = box(); return q.y0 + k * (q.y1 - q.y0); };
-  // The design's artwork is the headline, so a ready-made saying's main line has no zone (it drops out); its eyebrow (top),
-  // tagline (msg) and the name/note (detail) print around the artwork. flow re-stacks them to fit the space below the art.
-  return {top:{...z.top, y:y(.05)}, msg:{...z.msg, y:y(.46)}, detail:{...z.detail, y:y(.86), font:F.serif, size:12, weight:500}}; };
+  // The artwork is a decorative headline; the whole saying still prints below it: eyebrow (top), greeting (main),
+  // tagline (msg) and the name/note (detail). The greeting is the lead line, the note sits at the bottom. flow re-stacks
+  // and shrinks them to fit the space around the art, so nothing is dropped.
+  return {top:{...z.top, y:y(.02)},
+    main:{...z.main, fill:"ink", upper:false, size:22, weight:600, y:y(.30)},
+    msg:{...z.msg, y:y(.56)},
+    detail:{...z.detail, y:y(.84), font:F.serif, size:12, weight:500}}; };
 const NYE = ["New Year's"];
 // With no smaller lines typed, the lettering sits in the middle of the label on its own.
-const xmHasSub = w => !!w && !!((w.top || "").trim() || (w.detail || "").trim() || (!SMALL && (w.msg || "").trim()));
+const xmHasSub = w => !!w && !!((w.top || "").trim() || (w.main || "").trim() || (w.detail || "").trim() || (!SMALL && (w.msg || "").trim()));
 const xmLetter = (id, name, lid) => ({id, name, subs:NYE,
   art:(c, words) => { const [w0, h0] = XM[lid], a = w0 / h0, alone = !xmHasSub(words), h = alone ? Math.min(.8 * H, .8 * W / a) : wide() ? Math.min(.84 * H, .46 * W / a) : Math.min(.56 * H, .86 * W / a);
     return frame(9, c.a, 1) + (alone ? xmInk(lid, W / 2, H / 2, h, c.ink) : wide() ? xmInk(lid, .27 * W, .5 * H, h, c.ink) : xmInk(lid, W / 2, .35 * H, h, c.ink)); },
