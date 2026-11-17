@@ -46,25 +46,36 @@ export function renderDesign(design) {
 // overwrites the whole state and rebuilds every panel, so designs cannot bleed into each other.
 // The page is recycled every CHECK_RECYCLE checks to keep lazily-activated artwork from piling up.
 const CHECK_RECYCLE = 50;
-let warmPage = null, warmUses = 0;
-async function designerPage() {
-  if (warmPage && !warmPage.isClosed()) return warmPage;
-  const browser = await getBrowser();
-  const page = await browser.newPage();
-  await openDesigner(page);
-  await page.evaluate(async () => {
-    await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 12000))]);
-  });
-  warmPage = page; warmUses = 0;
-  return page;
+let warmPagePromise = null, warmUses = 0;
+function designerPage() {
+  if (!warmPagePromise) {                       // the promise is stored at once, so overlapping callers
+    warmPagePromise = (async () => {            // (Render health checks every few seconds) share ONE open
+      const browser = await getBrowser();
+      const page = await browser.newPage();
+      try {
+        await openDesigner(page);
+        await page.evaluate(async () => {
+          await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 12000))]);
+        });
+      } catch (err) { await page.close().catch(() => {}); throw err; }
+      warmUses = 0;
+      return page;
+    })().catch(err => { warmPagePromise = null; throw err; });
+  }
+  return warmPagePromise;
 }
 function dropWarmPage() {
-  const p = warmPage; warmPage = null; warmUses = 0;
-  if (p) p.close().catch(() => {});
+  const p = warmPagePromise; warmPagePromise = null; warmUses = 0;
+  if (p) p.then(pg => pg.close()).catch(() => {});
 }
 // Called from /health: opens the browser and the designer page ahead of the first customer,
-// and Render's own health checks then keep them warm. Failures stay out of the health answer.
-export function warmUp() { designerPage().catch(err => console.warn("warm-up failed:", err.message)); }
+// and Render's own health checks then keep them warm. Failures stay out of the health answer
+// and are not retried for a minute, so a broken Chromium cannot be relaunched every few seconds.
+let lastWarmFail = 0;
+export function warmUp() {
+  if (Date.now() - lastWarmFail < 60000) return;
+  designerPage().catch(err => { lastWarmFail = Date.now(); console.warn("warm-up failed:", err.message); });
+}
 
 async function renderNow(design) {
   const browser = await getBrowser();
