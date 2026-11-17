@@ -39,16 +39,21 @@ def product(handle, title, price, tags, vid, ptype="Bottle Wrap", img_i=0):
             "tags": tags, "variants": [{"id": vid, "price": f"{price/100:.2f}", "available": True}],
             "images": [{"src": f"img/w{img_i}.png"}]}
 
+# distinct two-word names per design: the builder's smart-fill caps 2 per title "family"
+# (title minus colorways), so same-family names would starve it — real catalogs are diverse
+NAMES = ("Alder Bay Birch Cove Cedar Dune Elm Fern Grove Hazel Iris Juniper Kelp Larch Maple "
+         "Nook Oak Pine Quill Reed Sage Thorn Umber Vale Willow Yarrow Aster Bloom Clover Daisy "
+         "Ember Flora Gale Heath Ivy Jade Knoll Lark Moss Nova").split()
 pros, champ = [], []
 pairs = []
 for i in range(40):
     tags = list(TAGSETS[i % len(TAGSETS)])
     if i < 8: tags.append("best seller")
     h = f"pros-wrap-{i:02d}"
-    pros.append(product(h, f"Prosecco Design {i:02d} Bottle Wrap", 795, tags, 1000+i, img_i=i % 6))
+    pros.append(product(h, f"{NAMES[i]} Trellis Prosecco Bottle Wrap", 795, tags, 1000+i, img_i=i % 6))
     if i < 8:  # first 8 have champagne siblings
         ch = f"champ-wrap-{i:02d}"
-        champ.append(product(ch, f"Champagne Design {i:02d} Bottle Wrap", 795, tags, 2000+i, img_i=i % 6))
+        champ.append(product(ch, f"{NAMES[i]} Trellis Champagne Bottle Wrap", 795, tags, 2000+i, img_i=i % 6))
         pairs.append([h, ch])
 for i in range(8, 12):  # champagne-only designs
     champ.append(product(f"champ-only-{i:02d}", f"Champagne Solo {i:02d} Bottle Wrap", 795,

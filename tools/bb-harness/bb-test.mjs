@@ -1,5 +1,5 @@
 import puppeteer from "/private/tmp/claude-501/-Users-shaunwork/adb771d5-ae2a-4865-ae50-fabe7b926e2e/scratchpad/vdeps/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js";
-const AFTER = process.argv[2] === "after";   // after-mode asserts the new UX layer
+const AFTER = process.argv[2] !== "legacy";   // the suite asserts current behavior (earned-claimable default)
 const SHOT = (n) => `${AFTER ? "after" : "before"}-${n}.png`;
 const browser = await puppeteer.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: true, args: ["--no-sandbox"] });
 const page = await browser.newPage();
@@ -48,36 +48,23 @@ const toastBefore = await page.evaluate(() => {
 });
 ok("flash() target sits inside the (closed) tray", toastBefore.noteInTray && !toastBefore.trayOpen, "messages invisible on mobile pre-fix");
 
-// -- add 4 more: crosses the $39 tier, but the GOAL is Tier 2 — the bar must stay on the goal, silently --
+// -- add 4 more: crosses $39 — with no tier chosen, EARNED = CLAIMABLE: claims open right here --
 await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; for (let i = 1; i < 5; i++) cards[i].click(); });
 await new Promise(r => setTimeout(r, 450));
 if (AFTER){
-  const mid = await page.evaluate(() => ({
+  const t1 = await page.evaluate(() => ({
     sub: document.querySelector("[data-bb-sticky-sub]").textContent,
+    cta: document.querySelector("[data-bb-sticky-cta]").textContent.trim(),
     toast: (() => { const el = document.querySelector(".bb-bb-toast"); return el && el.classList.contains("is-on") ? el.textContent : ""; })(),
+    meter: document.querySelector("[data-bb-spend-txt]").textContent,
   }));
-  ok("crossing $39 mid-build stays quiet (goal is Tier 2)", !mid.toast && !/2 FREE/.test(mid.sub), "sub: " + mid.sub + (mid.toast ? " | TOAST: " + mid.toast : ""));
-  ok("bar still counts to the GOAL tier's 5 FREE", /5 FREE/.test(mid.sub), mid.sub);
+  ok("claims open at the earned tier", /Claim 2 FREE/i.test(t1.cta), t1.cta);
+  ok("unlock toast at the earned tier", /2 FREE/.test(t1.toast), t1.toast.slice(0, 60));
+  ok("bar sub yields to the CTA while claimable", t1.sub === "", "sub: '" + t1.sub + "'");
+  ok("meter says pick, in the same voice", /2 FREE wraps to pick/i.test(t1.meter), t1.meter.slice(0, 60));
 }
 
-// -- add 5 more to reach the $79 goal (10 total) --
-await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; for (let i = 5; i < 10; i++) cards[i].click(); });
-await new Promise(r => setTimeout(r, 600));
-const tier = await page.evaluate(() => ({
-  count: document.querySelector("[data-bb-sticky-count]").textContent,
-  sub: document.querySelector("[data-bb-sticky-sub]").textContent,
-  cta: (document.querySelector("[data-bb-sticky-cta]") || {}).textContent,
-  ctaHidden: document.querySelector("[data-bb-sticky-cta]").hidden,
-}));
-ok("tier reached at $79.50", tier.count.includes("79.50"), tier.count);
-ok("CTA offers the free claims", !tier.ctaHidden && /claim/i.test(tier.cta || ""), (tier.cta || "").trim());
-if (AFTER){
-  const t = await page.evaluate(() => { const el = document.querySelector(".bb-bb-toast"); return el && !el.hidden ? el.textContent : ""; });
-  ok("unlock toast fired at tier cross", /free/i.test(t), t.slice(0, 60));
-}
-await page.screenshot({ path: SHOT("3-tier-reached") });
-
-// -- minis grey out while free picks are being claimed (label-designer pattern) --
+// -- minis grey out while the 2 free picks are claimable --
 if (AFTER){
   await page.evaluate(() => document.querySelector('.bb-bb-bottlebar .bb-bb-bottle__opt[data-bottle="Mini"]').click());
   await new Promise(r => setTimeout(r, 500));
@@ -101,16 +88,35 @@ if (AFTER){
   await new Promise(r => setTimeout(r, 500));
 }
 
-// -- claim the 5 free --
-await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; for (let i = 10; i < 15; i++) cards[i].click(); });
-await new Promise(r => setTimeout(r, 600));
-const free5 = await page.evaluate(() => ({
+// -- claim the 2, then build on: 5 more paid to $79.50, then claim the 3 more --
+await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; cards[5].click(); cards[6].click(); });
+await new Promise(r => setTimeout(r, 450));
+const c2 = await page.evaluate(() => ({
+  free: document.querySelectorAll(".bb-bb-tray .bb-tl--free").length,
+  cta: document.querySelector("[data-bb-sticky-cta]").textContent.trim(),
   sub: document.querySelector("[data-bb-sticky-sub]").textContent,
-  cta: document.querySelector("[data-bb-sticky-cta]").textContent,
-  freeN: window.free ? -1 : document.querySelectorAll(".bb-tl--free").length,
+  count: document.querySelector("[data-bb-sticky-count]").textContent,
 }));
-ok("5 free picked", /5\s*\/\s*5|5 FREE/i.test(free5.sub + free5.cta), free5.sub + " | " + free5.cta.trim());
-ok("CTA ready to add", /add to cart/i.test(free5.cta), free5.cta.trim());
+ok("two taps claim the 2 free (spend unchanged)", c2.free === 2 && c2.count.includes("39.75"), c2.count + " · " + c2.free + " free");
+ok("CTA flips to add-to-cart with 2 FREE", /add to cart/i.test(c2.cta) && /2 FREE/.test(c2.cta), c2.cta);
+ok("bar invites the next rung incrementally", /\+3 more FREE/.test(c2.sub), c2.sub);
+await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; for (let i = 7; i < 12; i++) cards[i].click(); });
+await new Promise(r => setTimeout(r, 500));
+const tier = await page.evaluate(() => ({
+  count: document.querySelector("[data-bb-sticky-count]").textContent,
+  cta: document.querySelector("[data-bb-sticky-cta]").textContent.trim(),
+}));
+ok("tier 2 reached at $79.50 (claims held while building)", tier.count.includes("79.50"), tier.count);
+ok("CTA offers the 3 newly earned claims", /Claim 3 FREE/i.test(tier.cta), tier.cta);
+await page.screenshot({ path: SHOT("3-tier-reached") });
+await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; for (let i = 12; i < 15; i++) cards[i].click(); });
+await new Promise(r => setTimeout(r, 500));
+const free5 = await page.evaluate(() => ({
+  free: document.querySelectorAll(".bb-bb-tray .bb-tl--free").length,
+  cta: document.querySelector("[data-bb-sticky-cta]").textContent.trim(),
+}));
+ok("all 5 free claimed across both rungs", free5.free === 5, free5.free + " free tiles");
+ok("CTA ready to add", /add to cart/i.test(free5.cta) && /5 FREE/.test(free5.cta), free5.cta);
 
 // -- minis usable again once the free picks are claimed --
 if (AFTER){
@@ -153,6 +159,42 @@ ok("bundle reset after add", done.count.includes("0.00"), done.count);
 if (AFTER) ok("mobile sees a confirmation (toast)", /added|cart/i.test(done.toast), done.toast.slice(0, 60));
 else ok("PAIN: no visible confirmation on mobile", !done.addedNoteVisible, "added-note hidden in closed tray");
 await page.screenshot({ path: SHOT("5-after-checkout") });
+
+// -- the checkout guard adds EXACTLY the promised free wraps (claim-only, no paid top-up) --
+if (AFTER){
+  await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; for (let i = 20; i < 25; i++) cards[i].click(); });
+  await new Promise(r => setTimeout(r, 500));
+  await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; /* leave the 2 earned unclaimed */ });
+  await page.evaluate(() => document.querySelector("[data-bb-add]").click());
+  await new Promise(r => setTimeout(r, 300));
+  const gshown = await page.evaluate(() => !document.querySelector("[data-bb-guard]").hidden);
+  ok("guard fires with 2 unclaimed", gshown);
+  await page.evaluate(() => { const b = document.querySelector('[data-bb-guard] [data-g="add"]'); if (b) b.click(); });
+  await new Promise(r => setTimeout(r, 500));
+  const g3 = await page.evaluate(() => ({
+    spend: document.querySelector("[data-bb-sticky-count]").textContent,
+    paid: document.querySelectorAll(".bb-bb-tray .bb-tl:not(.bb-tl--free)").length,
+    free: document.querySelectorAll(".bb-bb-tray .bb-tl--free").length,
+  }));
+  ok("guard adds the 2 free, nothing else", g3.paid === 5 && g3.free === 2 && g3.spend.includes("39.75"), JSON.stringify(g3));
+}
+
+// -- an EXPLICITLY chosen tier keeps goal-pacing: no new claims until that goal --
+if (AFTER){
+  await page.evaluate(() => { document.querySelector(".bb-bb-goal > summary").click(); });
+  await new Promise(r => setTimeout(r, 200));
+  await page.evaluate(() => { document.querySelector('.bb-bb-size[data-size="10"]').click(); });
+  await new Promise(r => setTimeout(r, 400));
+  await page.evaluate(() => { [...document.querySelectorAll(".bb-bb-card")].filter(c => !c.classList.contains("is-added"))[0].click(); });
+  await new Promise(r => setTimeout(r, 400));
+  const ch = await page.evaluate(() => ({
+    count: document.querySelector("[data-bb-sticky-count]").textContent,
+    cta: document.querySelector("[data-bb-sticky-cta]").textContent.trim(),
+    sub: document.querySelector("[data-bb-sticky-sub]").textContent,
+  }));
+  ok("chosen Tier 2 gates claims until $79", /add to cart/i.test(ch.cta) && !/claim/i.test(ch.cta), ch.count + " · " + ch.cta);
+  ok("chosen-goal bar counts to the goal's total", /5 FREE/.test(ch.sub), ch.sub);
+}
 
 let fails = 0;
 for (const [st, name, note] of R){ if (st === "FAIL") fails++; console.log(st + "| " + name + (note ? "  —  " + note : "")); }

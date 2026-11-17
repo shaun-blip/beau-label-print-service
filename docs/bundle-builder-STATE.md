@@ -53,6 +53,13 @@ styles in the section):
 - **Layout fit** — the 4-pill bottle row measured 453px and forced phones to lay out ~470px wide
   (everything ~17% small). Compact pills + row scroll cap it; the page now fits exactly.
 
+**Earned = claimable (Nov 2026, Shaun's call).** By default no tier is chosen (`goalChosen()` =
+`userSized||urlSized` false), and `claimableLeft()` opens free picks at EACH earned tier — the
+bar/CTA/meter/grid all agree. An explicitly chosen tier (tile, `?size=`, PDP picker) restores
+goal-gating as a deliberate aspiration. The checkout guard's "Add my free wraps" is claim-only
+(`fillSmart(true)`) — it adds exactly the promised wraps, never a paid top-up. All claim gates go
+through `claimableLeft()`; never compare `free.length` to `freeCount()` directly in new code.
+
 **Claim phase (Nov 2026).** The sticky bar shows ONE message at a time, always with the GOAL
 tier's numbers (it used to count to the next tier — "2 FREE" while the tray said 5): pre-goal
 "$X to N FREE", post-goal the CTA alone carries claim/add state, and the unlock toast fires only

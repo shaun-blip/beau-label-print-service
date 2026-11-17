@@ -782,6 +782,11 @@
   function fitTarget(n){return n<=5?5:n<=10?10:n<=15?15:Math.min(MAXPAID,Math.ceil(n/5)*5);}
   function syncSizeBtns(){root.querySelectorAll('.bb-bb-size').forEach(function(x){x.classList.toggle('is-active',parseInt(x.dataset.size,10)===paidTarget);});}
   function unlocked(){return freeCount()>0;}
+  // EARNED = CLAIMABLE by default (Shaun 2026-11-17): the silent default goal must never gate
+  // claims the CTA promises. Only an EXPLICITLY chosen tier (tile, URL, PDP picker) keeps
+  // goal-gating, as a deliberate aspiration; the tier then paces the meter and fill button.
+  function goalChosen(){return userSized||urlSized;}
+  function claimableLeft(){if(WS)return 0;var left=freeCount()-free.length;if(left<=0)return 0;return (goalChosen()&&!goalMet())?0:left;}
   function freeActive(){return unlocked()?Math.min(free.length,freeCount()):0;}
   function totalWraps(){return paid.length+freeActive();}
   function paidPrice(){return paid.reduce(function(a,s){return a+(s.price||0);},0);}
@@ -979,7 +984,7 @@
   // Free picks are SINGLE wraps (what the checkout function zeroes). While free picks are
   // being claimed, mini sets grey out with a note — the label designer's pattern for
   // options that don't apply right now — instead of silently behaving differently.
-  function claiming(){return !WS&&goalMet()&&freeCount()>free.length;}
+  function claiming(){return claimableLeft()>0;}
   function renderGrid(){
     var isMini=currentBottle==='Mini';
     var eG=curEntry(),miniCap=(eG&&eG.tags.indexOf('__all')>-1)?100000:40;
@@ -1023,13 +1028,13 @@
   // ---- slot engine (paid[] + free[]) ----
   function toSlot(p){var v=p.variants[0];return {handle:p.handle,bottleType:bottleOf(p.handle),variantId:v.id,title:p.title,img:(p.images&&p.images[0]?p.images[0].src:''),price:toCents(v.price),_busy:false};}
   function applyResolved(s,h,bottle,r){s.handle=h;s.bottleType=bottle;s.variantId=r.variantId;s.price=r.price;s.img=r.image;s.title=r.title;s._busy=false;}
-  function targetArray(){if(goalMet()&&free.length<freeCount())return free;return paid.length<MAXPAID?paid:null;}
+  function targetArray(){if(claimableLeft()>0)return free;return paid.length<MAXPAID?paid:null;}
   function picked(){var m={};paid.concat(free).forEach(function(s){if(s.handle)m[s.handle]=(m[s.handle]||0)+1;});return m;}
 
   function addWrap(p){
     if(!p)return;
     var slot=toSlot(p),arr;
-    if(goalMet()&&free.length<freeCount()&&freeOK(slot.bottleType,slot.handle)){arr=free;}   // free phase starts only once the GOAL is reached
+    if(claimableLeft()>0&&freeOK(slot.bottleType,slot.handle)){arr=free;}   // claims open as soon as they are claimable (earned, or chosen goal reached)
     else if(paid.length<MAXPAID){arr=paid;}
     else{flash('That’s our biggest bundle — gorgeous haul!');return;}
     arr.push(slot);
@@ -1042,7 +1047,7 @@
     var want=currentBottle,useH=h,useB=bottleOf(h);
     if((want==='Prosecco'||want==='Champagne')&&useB!==want){var sib=siblingForBottle(h,want);if(sib){useH=sib;useB=want;}}
     var arr;
-    if(goalMet()&&free.length<freeCount()&&freeOK(useB,useH)){arr=free;}
+    if(claimableLeft()>0&&freeOK(useB,useH)){arr=free;}
     else if(paid.length<MAXPAID){arr=paid;}
     else{flash('That’s our biggest bundle — gorgeous haul!');return;}
     var slot={handle:useH,bottleType:useB,variantId:null,title:'',img:'',price:UNIT,_busy:true};arr.push(slot);render();
@@ -1299,7 +1304,7 @@
       html+='<div class="bb-it bb-it--empty">Your bundle is empty — tap wraps in the grid to begin.</div>';
     }
     // free phase: exists only once the GOAL tier is reached
-    if(fc>0&&(goalMet()||free.length>0)){
+    if(free.length>0||claimableLeft()>0){
       html+='<div class="bb-it-sec"><span class="bb-it-sec__t">Your free wraps</span><span class="bb-it-sec__s">'+free.length+' of '+fc+' picked · '+money(fc*UNIT)+' value</span></div>';
       html+='<div class="bb-tiles">';
       for(var j=0;j<free.length;j++){html+=wrapTile('f',j,free[j],true);}
@@ -1366,15 +1371,19 @@
     var spendEl=root.querySelector('[data-bb-spend]');
     if(spendEl&&WS)spendEl.hidden=true;
     else if(spendEl){
-      var sAll=spendAll(),gC=goalCents(),gFree=freeForSpend(gC);
+      var sAll=spendAll(),leftM=claimableLeft();
+      // the meter and the mobile bar speak with ONE voice: a chosen tier counts to that goal,
+      // the default counts to the NEXT rung of the ladder, and claims always interrupt the count
+      var tgtM=goalChosen()?goalCents():nextTierCents();
+      var haveM=(goalChosen()&&!goalMet())?0:freeCount();
       spendEl.hidden=(sAll<=0);
       if(sAll>0){
         var sFill=spendEl.querySelector('[data-bb-spend-fill]'),sTxt=spendEl.querySelector('[data-bb-spend-txt]');
-        if(sFill)sFill.style.width=Math.min(100,Math.round(sAll/gC*100))+'%';
+        if(sFill)sFill.style.width=(tgtM&&sAll<tgtM?Math.min(100,Math.round(sAll/tgtM*100)):100)+'%';
         var cartNote=cartLooseCents>0?(' (incl. '+money(cartLooseCents)+' from your cart)'):'';
         if(sTxt){
-          if(!goalMet()){sTxt.innerHTML=money(sAll)+' of '+money(gC)+cartNote+' — <b>'+money(gC-sAll)+' more</b> for your '+gFree+' FREE wraps.';}
-          else if(fc>free.length){sTxt.innerHTML='<b>'+tierName(paidTarget)+' reached!</b> Pick your '+(fc-free.length)+' FREE wrap'+(fc-free.length!==1?'s':'')+' — tap the grid.';}
+          if(leftM>0){sTxt.innerHTML='<b>'+(goalChosen()&&goalMet()?tierName(paidTarget)+' reached! ':'')+leftM+' FREE wrap'+(leftM!==1?'s':'')+' to pick</b> — tap any single wrap in the grid.';}
+          else if(tgtM&&sAll<tgtM){var moreM=freeForSpend(tgtM)-haveM;sTxt.innerHTML=money(sAll)+' of '+money(tgtM)+cartNote+' — <b>'+money(tgtM-sAll)+' more</b> for '+(haveM>0?('+'+moreM+' more'):('your '+moreM))+' FREE wrap'+(moreM!==1?'s':'')+'.';}
           else{sTxt.innerHTML='<b>'+fc+' free wraps claimed</b> ('+money(fc*UNIT)+' value) — every extra '+money0(TSTEP)+' adds 2 more.';}
         }
       }
@@ -1400,30 +1409,28 @@
     if(trayTitleEl)trayTitleEl.textContent='Your bundle';
     // mobile sticky summary bar — big progress (paid + free), cart hidden until the bundle is complete
     var paidFull=haveAny;
-    var fdone=Math.min(free.length,fc);
-    var freeFull=(fc===0)||(free.length>=fc);
+    var leftB=claimableLeft();
     if(stickyCountEl)stickyCountEl.textContent=money(spendAll());
-    // pre-goal the bar shows the GOAL tier's free count (what she's building toward),
-    // post-goal the actual earned count (can exceed the goal via overspend)
-    var stickyFree=goalMet()?fc:freeForSpend(goalCents());
-    if(stickySubEl){var spB=spendAll(),gC2=goalCents();
-      // ONE message at a time, with the SAME numbers as the tray's meter: the distance to the
-      // chosen GOAL tier (the bar used to count to the next tier — "2 FREE" while the tray said 5).
-      // Once the goal is reached, the CTA alone carries the claim / add-to-cart state.
-      stickySubEl.textContent=(spB<=0||WS||goalMet())?'':(money(gC2-spB)+' to '+freeForSpend(gC2)+' FREE');}
+    if(stickySubEl){var spB=spendAll();
+      // ONE message at a time, with the SAME numbers as the tray's meter (chosen goal, or the
+      // ladder's next rung). While anything is claimable, the CTA alone carries the state.
+      var tgtB=goalChosen()?goalCents():nextTierCents();
+      var haveB=(goalChosen()&&!goalMet())?0:freeCount();
+      stickySubEl.textContent=(spB<=0||WS||leftB>0||!tgtB||spB>=tgtB)?''
+        :(money(tgtB-spB)+' to '+(haveB>0?('+'+(freeForSpend(tgtB)-haveB)+' more'):freeForSpend(tgtB))+' FREE');}
     if(stickyCtaEl){
       if(!paidFull){stickyCtaEl.hidden=true;}
       else{stickyCtaEl.hidden=false;
-        if(freeFull){stickyCtaEl.innerHTML='Add to cart'+(freeActive()>0?(' — '+freeActive()+' FREE'):'');stickyCtaEl.classList.add('is-ready');}
-        else{var rem=fc-fdone;stickyCtaEl.textContent='Claim '+rem+' FREE wrap'+(rem!==1?'s':'')+' →';stickyCtaEl.classList.remove('is-ready');}
+        if(leftB===0){stickyCtaEl.innerHTML='Add to cart'+(freeActive()>0?(' — '+freeActive()+' FREE'):'');stickyCtaEl.classList.add('is-ready');}
+        else{stickyCtaEl.textContent='Claim '+leftB+' FREE wrap'+(leftB!==1?'s':'')+' →';stickyCtaEl.classList.remove('is-ready');}
       }
     }
     if(stickybarEl)stickybarEl.classList.toggle('has-cta',paidFull);
     if(stickybarEl&&!WS){
       var prI=stickybarEl.querySelector('.bb-bb-barprog i');
-      if(prI){var spP=spendAll(),gP=goalCents();prI.style.width=(spP<=0?0:Math.max(4,Math.min(100,Math.round(spP/gP*100))))+'%';}
+      if(prI){var spP=spendAll(),gP=goalChosen()?goalCents():nextTierCents();prI.style.width=(spP<=0?0:(gP&&spP<gP)?Math.max(4,Math.min(100,Math.round(spP/gP*100))):100)+'%';}
       var fcNow=freeCount();   // celebrate only when the CHOSEN goal is reached (passive, never an interception)
-      if(inited&&fcNow>prevFreeN&&goalMet()&&isMobile()){stickybarEl.classList.remove('is-unlock');void stickybarEl.offsetWidth;stickybarEl.classList.add('is-unlock');toast(fcNow+' FREE wrap'+(fcNow!==1?'s':'')+' unlocked \u2014 tap any single wrap to claim.');}
+      if(inited&&fcNow>prevFreeN&&claimableLeft()>0&&isMobile()){stickybarEl.classList.remove('is-unlock');void stickybarEl.offsetWidth;stickybarEl.classList.add('is-unlock');toast(fcNow+' FREE wrap'+(fcNow!==1?'s':'')+' unlocked \u2014 tap any single wrap to claim.');}
       prevFreeN=fcNow;
     }
     updateMinisUI(paidFull);
@@ -1481,7 +1488,7 @@
   if(clearAllEl){clearAllEl.addEventListener('click',function(){paid=[];free=[];minisReset();wasUnlocked=false;guardPassed=false;activeSet=null;try{if(window.BBBundle)window.BBBundle.clear();}catch(e){}root.querySelectorAll('.bb-bb-set').forEach(function(c){c.classList.remove('is-active');});render();});}
   // sticky bar CTA: full -> checkout (reuse main button); not full -> jump to the wrap grid to keep picking
   if(stickyCtaEl){stickyCtaEl.addEventListener('click',function(){
-    var fcv=freeCount(),done=(paid.length>0||free.length>0||minisTotal()>0)&&(fcv===0||free.length>=fcv);
+    var done=(paid.length>0||free.length>0||minisTotal()>0)&&claimableLeft()===0;
     if(done){addBtn.click();var g=root.querySelector('[data-bb-guard]');if(g&&!g.hidden)g.scrollIntoView({behavior:'smooth',block:'center'});}
     else{if(sheetEl&&!sheetEl.hidden)closeSheet();if(grid)grid.scrollIntoView({behavior:'smooth',block:'start'});}
   });}
@@ -1561,7 +1568,7 @@
       guardEl.hidden=false;
       if(isMobile())traySheet(true);   // the guard lives in the tray — surface it
       setTimeout(function(){try{guardEl.scrollIntoView({block:'nearest'});}catch(e){}},80);
-      guardEl.querySelector('[data-g="add"]').addEventListener('click',function(){hideGuard();fillSmart();render();});
+      guardEl.querySelector('[data-g="add"]').addEventListener('click',function(){hideGuard();fillSmart(true);render();});   // claimOnly: add EXACTLY the promised free wraps, never a paid top-up
       guardEl.querySelector('[data-g="skip"]').addEventListener('click',function(){guardPassed=true;hideGuard();checkout();});
       return;
     }
@@ -1701,9 +1708,9 @@
     });
     return out;
   }
-  function fillSmart(){
+  function fillSmart(claimOnly){
     var cands=smartCandidates(),i=0;
-    while(spendAll()<goalCents()&&paid.length<MAXPAID&&i<cands.length){paid.push(toSlot(cands[i++]));}
+    if(!claimOnly){while(spendAll()<goalCents()&&paid.length<MAXPAID&&i<cands.length){paid.push(toSlot(cands[i++]));}}
     var fc=freeCount();while(free.length<fc&&i<cands.length){var fs=toSlot(cands[i++]);if(freeOK(fs.bottleType,fs.handle))free.push(fs);}
   }
   function packOf(t){t=(t||'').toLowerCase();if(/six|6[- ]?pack/.test(t))return 6;if(/three|3[- ]?pack|set of 3/.test(t))return 3;return 1;}
