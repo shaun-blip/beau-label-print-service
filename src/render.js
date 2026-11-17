@@ -104,6 +104,17 @@ async function renderNow(design) {
       const defs = document.querySelector("body > svg");            // shared artwork and filters stay available
       document.body.innerHTML = (defs ? defs.outerHTML : "") + o.pages.map(p => `<div class="pg">${p}</div>`).join("");
     }, out);
+    // Artwork ships as separate lazy files (data-href): set every href this print references and
+    // wait for the images to decode, or the PDF would print empty boxes where the art belongs.
+    await page.evaluate(async () => {
+      await Promise.all([...document.querySelectorAll("image")].map(el => {
+        if (el.dataset && el.dataset.href && !el.getAttribute("href")) el.setAttribute("href", el.dataset.href);
+        const href = el.getAttribute("href");
+        if (!href || href.startsWith("data:")) return null;
+        const i = new Image(); i.src = href;
+        return i.decode().catch(() => null);
+      }));
+    });
     await page.evaluate(async () => { await document.fonts.ready; });
 
     const pdf = await page.pdf({
