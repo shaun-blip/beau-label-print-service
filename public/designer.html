@@ -564,7 +564,7 @@ textarea.code{width:100%;height:120px;font:12px/1.4 ui-monospace,Menlo,monospace
               <input type="text" inputmode="numeric" id="age" maxlength="3" autocomplete="off" placeholder="47"></label>
             <p class="hint" id="agehint">Type any age from 21 up and the sayings below change to match.</p>
           </div>
-          <p class="lockline" id="saylock" hidden><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>This design's headline is part of the artwork, so these sayings won't print on it. Add a name or note below and it prints under the headline.</span></p>
+          <p class="lockline" id="saylock" hidden><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>This design's headline is part of the artwork, so a saying's main greeting is replaced by it. Pick any saying — its other lines, and your name or note, print around the headline.</span></p>
           <div class="saygrid" id="rgrid" role="group" aria-label="Wording"></div>
           <button class="btn ghost" id="rmore" hidden></button>
         </div>
@@ -2360,10 +2360,12 @@ const xmInk = (id, cx, cy, h, col) => { const m = "xk" + (xmN++);
   return `<mask id="${m}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">${xm(id, cx, cy, h)}</mask><rect width="${W}" height="${H}" fill="${col}" mask="url(#${m})"/>`; };
 // Designs whose headline is artwork only take the smaller lines.
 const xmSub = box => { const z = xmZones(box), y = k => () => { const q = box(); return q.y0 + k * (q.y1 - q.y0); };
-  return {detail:{...z.detail, y:y(.36), font:F.serif, size:18, weight:500}, msg:{...z.msg, y:y(.82)}}; };
+  // The design's artwork is the headline, so a ready-made saying's main line has no zone (it drops out); its eyebrow (top),
+  // tagline (msg) and the name/note (detail) print around the artwork. flow re-stacks them to fit the space below the art.
+  return {top:{...z.top, y:y(.05)}, detail:{...z.detail, y:y(.42), font:F.serif, size:18, weight:500}, msg:{...z.msg, y:y(.84)}}; };
 const NYE = ["New Year's"];
 // With no smaller lines typed, the lettering sits in the middle of the label on its own.
-const xmHasSub = w => !!w && !!((w.detail || "").trim() || (!SMALL && (w.msg || "").trim()));
+const xmHasSub = w => !!w && !!((w.top || "").trim() || (w.detail || "").trim() || (!SMALL && (w.msg || "").trim()));
 const xmLetter = (id, name, lid) => ({id, name, subs:NYE,
   art:(c, words) => { const [w0, h0] = XM[lid], a = w0 / h0, alone = !xmHasSub(words), h = alone ? Math.min(.8 * H, .8 * W / a) : wide() ? Math.min(.84 * H, .46 * W / a) : Math.min(.56 * H, .86 * W / a);
     return frame(9, c.a, 1) + (alone ? xmInk(lid, W / 2, H / 2, h, c.ink) : wide() ? xmInk(lid, .27 * W, .5 * H, h, c.ink) : xmInk(lid, W / 2, .35 * H, h, c.ink)); },
@@ -3330,7 +3332,7 @@ function render(){
       $("pallocktext").textContent = lk === "colors" ? "This design keeps its own colors so it always matches the artwork. Your words and lettering can still change."
         : "This design's artwork needs a light background, so the dark option is off. Your color choice still changes the words.";
       const fixedHead = !t.zones.main;
-      off("rgrid", fixedHead); $("saylock").hidden = !fixedHead; $("fieldlock").hidden = !fixedHead;
+      off("rgrid", false); $("saylock").hidden = !fixedHead; $("fieldlock").hidden = !fixedHead;   // sayings stay selectable on art-headline designs; the saying's main line just has no zone and drops out
     }
     $("palhint").hidden = !(t.fillBg || t.picture) || !!(t.tint && t.tint.lock);
     $("palhint").textContent = t.picture ? "This design's artwork keeps its own colors. Your color choice changes the words." : 'On this design your color fills the whole background. Tap "Use your own color" to pick any shade.';

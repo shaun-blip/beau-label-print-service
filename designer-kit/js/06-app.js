@@ -493,7 +493,7 @@ function render(){
       $("pallocktext").textContent = lk === "colors" ? "This design keeps its own colors so it always matches the artwork. Your words and lettering can still change."
         : "This design's artwork needs a light background, so the dark option is off. Your color choice still changes the words.";
       const fixedHead = !t.zones.main;
-      off("rgrid", fixedHead); $("saylock").hidden = !fixedHead; $("fieldlock").hidden = !fixedHead;
+      off("rgrid", false); $("saylock").hidden = !fixedHead; $("fieldlock").hidden = !fixedHead;   // sayings stay selectable on art-headline designs; the saying's main line just has no zone and drops out
     }
     $("palhint").hidden = !(t.fillBg || t.picture) || !!(t.tint && t.tint.lock);
     $("palhint").textContent = t.picture ? "This design's artwork keeps its own colors. Your color choice changes the words." : 'On this design your color fills the whole background. Tap "Use your own color" to pick any shade.';
