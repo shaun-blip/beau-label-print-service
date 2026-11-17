@@ -120,7 +120,8 @@ function labelMarkup(t, c, words){
     lines.push({z, v, role, ...o, size:n1(z.size < 20 ? sm(raw * 1.2) : raw), y:num(z.y, H)});
   });
   if (t.flow !== false && lines.length){
-    const zs = FIELDS.filter(f => t.zones[f.id] && !(SMALL && f.id === "msg")).map(f => t.zones[f.id]);
+    lines.sort((a, b) => a.y - b.y);   // stack top-to-bottom by zone position, so a design can place the note below the saying
+    const zs = FIELDS.filter(f => t.zones[f.id] && !(SMALL && f.id === "msg")).map(f => t.zones[f.id]).sort((a, b) => num(a.y, H) - num(b.y, H));
     const top = num(zs[0].y, H) - .7 * zs[0].size * S, bot = num(zs[zs.length - 1].y, H) + .2 * zs[zs.length - 1].size * S;
     const asc = l => (l.script ? .84 : .72) * l.size, desc = l => l.upper ? .04 * l.size : (l.script ? .3 : .22) * l.size;
     const stack = () => { const ys = [0];

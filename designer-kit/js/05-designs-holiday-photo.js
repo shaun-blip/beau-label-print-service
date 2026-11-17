@@ -94,7 +94,7 @@ const xmInk = (id, cx, cy, h, col) => { const m = "xk" + (xmN++);
 const xmSub = box => { const z = xmZones(box), y = k => () => { const q = box(); return q.y0 + k * (q.y1 - q.y0); };
   // The design's artwork is the headline, so a ready-made saying's main line has no zone (it drops out); its eyebrow (top),
   // tagline (msg) and the name/note (detail) print around the artwork. flow re-stacks them to fit the space below the art.
-  return {top:{...z.top, y:y(.05)}, detail:{...z.detail, y:y(.42), font:F.serif, size:18, weight:500}, msg:{...z.msg, y:y(.84)}}; };
+  return {top:{...z.top, y:y(.05)}, msg:{...z.msg, y:y(.46)}, detail:{...z.detail, y:y(.86), font:F.serif, size:12, weight:500}}; };
 const NYE = ["New Year's"];
 // With no smaller lines typed, the lettering sits in the middle of the label on its own.
 const xmHasSub = w => !!w && !!((w.top || "").trim() || (w.detail || "").trim() || (!SMALL && (w.msg || "").trim()));
