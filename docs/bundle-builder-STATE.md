@@ -53,6 +53,12 @@ styles in the section):
 - **Layout fit** — the 4-pill bottle row measured 453px and forced phones to lay out ~470px wide
   (everything ~17% small). Compact pills + row scroll cap it; the page now fits exactly.
 
+**Redesign skin (Nov 2026).** The final `<style>` block is the site-standard override layer
+(Playfair Display + Jost, navy `#1B2440` on cream `#FFFDF8`, hairline `#E6E1D6`, square corners,
+pastel accents; per the BeauBottles homepage-redesign canvas). It restyles only — the palette and
+fonts flow through the CSS vars on `.bb-bb` (`--ink/--muted/--line/--baseFont/--titleFont`…), so a
+future reskin is again one block. Keep new CSS inside it; never reintroduce per-element colors.
+
 Dead code, kept deliberately (documented > deleted): `nudge()`, `tickPrice()`, `moreBtn`
 (always hidden), the `SETS`/`applySet` machinery (gift-set rail removed 2026-09, `?preset=`
 still degrades gracefully).

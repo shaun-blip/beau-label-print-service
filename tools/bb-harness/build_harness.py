@@ -133,7 +133,8 @@ window.__cart = {items: []};
 </script>
 """
 
-html = ("<!doctype html><html><head><meta charset='utf-8'>"
+FONTS = "<link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@400;500;600&display=swap'>"
+html = ("<!doctype html><html><head><meta charset='utf-8'>" + FONTS +
         "<meta name='viewport' content='width=device-width, initial-scale=1'>"
         "<title>BB harness</title><style>" + page_css + "</style></head><body style='margin:0'>"
         + stub + section
