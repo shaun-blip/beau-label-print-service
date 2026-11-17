@@ -47,19 +47,28 @@ app.post("/webhooks/orders-paid", express.raw({ type: "*/*", limit: "5mb" }), as
   try { order = JSON.parse(req.body.toString("utf8")); } catch { return res.sendStatus(200); }   // not an order: nothing to do
   // Shopify never retries once we answer 200, so the notice is saved to disk FIRST. If the
   // instance dies mid-render, the next boot finds the saved notice and finishes the job.
-  try { await saveTodo(order.id, order); } catch (err) { console.error("could not save order notice", err); }
+  try { await saveTodo(order.id, { tries: 0, order }); } catch (err) { console.error("could not save order notice", err); }
   res.sendStatus(200);                                           // answer Shopify quickly, then do the work
   handlePaidOrder(order)
     .then(() => clearTodo(order.id))                             // kept on failure: the next boot retries it
     .catch(err => console.error("order " + order?.id + " failed", err));
 });
 
-// Finish any order a crash or restart interrupted. Runs once, shortly after boot.
+// Finish any order a crash or restart interrupted. Runs once, shortly after boot. A job that has
+// already killed the instance twice is not tried a third time — it is flagged on the order and
+// cleared, so one impossible render can never hold the service in a crash loop.
 setTimeout(async () => {
   const todos = await listTodos();
   if (!todos.length) return;
   console.log(`resuming ${todos.length} interrupted order notice(s)`);
-  for (const order of todos) {
+  for (const t of todos) {
+    const order = t.order || t, tries = t.tries || 0;            // t.order since the tries counter; bare order before it
+    if (tries >= 2) {
+      console.error(`order ${order.name || order.id}: gave up after ${tries} interrupted attempts`);
+      await flagOrder(order.admin_graphql_api_id, "The print file could not be made here (the attempt was interrupted twice — likely out of memory; render it with the admin link or on a larger instance).", order.note || "").catch(() => {});
+      await clearTodo(order.id); continue;
+    }
+    await saveTodo(order.id, { tries: tries + 1, order }).catch(() => {});   // counted BEFORE the attempt, so a crash still counts
     try { await handlePaidOrder(order); await clearTodo(order.id); console.log(`order ${order.name || order.id}: resumed and finished`); }
     catch (err) { console.error(`order ${order.name || order.id}: resume failed`, err); }
   }
