@@ -1312,7 +1312,7 @@
       if(free.length<fc)html+='<div class="bb-it bb-it--free bb-it--empty">Tap any wrap — your next '+(fc-free.length===1?'tap is':(fc-free.length)+' taps are')+' FREE.</div>';
     }
     slotsEl.innerHTML=html;
-    slotsEl.querySelectorAll('.bb-it__x').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();removeSlot(b.dataset.xArr,parseInt(b.dataset.x,10));});});
+    slotsEl.querySelectorAll('[data-x-arr]').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();removeSlot(b.dataset.xArr,parseInt(b.dataset.x,10));});});   // the tiles' × (.bb-tl__x) — the old .bb-it__x selector matched nothing since the tile rework
     slotsEl.querySelectorAll('[data-mini-x]').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();var mm=null;minis.forEach(function(m){if(m.handle===b.dataset.miniX)mm=m;});if(mm)miniDec(mm);});});
     slotsEl.querySelectorAll('[data-mini-p]').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();var mm=null;minis.forEach(function(m){if(m.handle===b.dataset.miniP)mm=m;});if(mm)miniAdd(mm);});});
     slotsEl.querySelectorAll('[data-mini-zoom]').forEach(function(el){el.addEventListener('click',function(e){

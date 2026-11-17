@@ -32,8 +32,14 @@ const dk = await d.evaluate(() => ({
   spendMeter: !document.querySelector("[data-bb-spend]").hidden,
   bodyScroll: document.body.style.overflow === "",
 }));
+// the tray tiles' × must remove the wrap (regression: the handler bound to a dead class)
+await d.evaluate(() => document.querySelector('.bb-bb-tray .bb-tl__x[data-x-arr]').click());
+await new Promise(r => setTimeout(r, 300));
+const afterX = await d.evaluate(() => document.querySelectorAll(".bb-bb-tray .bb-tl").length);
+console.log(afterX === 2 ? " ok | tile × removes the wrap (3 → 2)" : "FAIL| tile × did not remove: " + afterX + " tiles");
+dk.xWorks = afterX === 2;
 console.log("DESKTOP:", JSON.stringify(dk));
-const okd = dk.barHidden && dk.toastHidden && dk.progHidden && dk.traySticky && dk.tiles === 3 && dk.spendMeter && dk.bodyScroll;
+const okd = dk.barHidden && dk.toastHidden && dk.progHidden && dk.traySticky && dk.tiles === 3 && dk.spendMeter && dk.bodyScroll && dk.xWorks;
 console.log(okd ? " ok | desktop untouched (bar/toast/progress hidden, tray sticky, meter live)" : "FAIL| desktop regression");
 await d.screenshot({ path: "after-desktop.png" });
 await browser.close();
