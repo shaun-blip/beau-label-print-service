@@ -48,8 +48,20 @@ const toastBefore = await page.evaluate(() => {
 });
 ok("flash() target sits inside the (closed) tray", toastBefore.noteInTray && !toastBefore.trayOpen, "messages invisible on mobile pre-fix");
 
-// -- add up to the $79 tier (10 total) --
-await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; for (let i = 1; i < 10; i++) cards[i].click(); });
+// -- add 4 more: crosses the $39 tier, but the GOAL is Tier 2 — the bar must stay on the goal, silently --
+await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; for (let i = 1; i < 5; i++) cards[i].click(); });
+await new Promise(r => setTimeout(r, 450));
+if (AFTER){
+  const mid = await page.evaluate(() => ({
+    sub: document.querySelector("[data-bb-sticky-sub]").textContent,
+    toast: (() => { const el = document.querySelector(".bb-bb-toast"); return el && el.classList.contains("is-on") ? el.textContent : ""; })(),
+  }));
+  ok("crossing $39 mid-build stays quiet (goal is Tier 2)", !mid.toast && !/2 FREE/.test(mid.sub), "sub: " + mid.sub + (mid.toast ? " | TOAST: " + mid.toast : ""));
+  ok("bar still counts to the GOAL tier's 5 FREE", /5 FREE/.test(mid.sub), mid.sub);
+}
+
+// -- add 5 more to reach the $79 goal (10 total) --
+await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; for (let i = 5; i < 10; i++) cards[i].click(); });
 await new Promise(r => setTimeout(r, 600));
 const tier = await page.evaluate(() => ({
   count: document.querySelector("[data-bb-sticky-count]").textContent,
@@ -65,6 +77,30 @@ if (AFTER){
 }
 await page.screenshot({ path: SHOT("3-tier-reached") });
 
+// -- minis grey out while free picks are being claimed (label-designer pattern) --
+if (AFTER){
+  await page.evaluate(() => document.querySelector('.bb-bb-bottlebar .bb-bb-bottle__opt[data-bottle="Mini"]').click());
+  await new Promise(r => setTimeout(r, 500));
+  const g = await page.evaluate(() => ({
+    cards: document.querySelectorAll(".bb-bb-card--mini").length,
+    greyed: document.querySelectorAll(".bb-bb-card--mini.is-freeout").length,
+    banner: document.querySelector("[data-bb-resultcount]").textContent,
+  }));
+  ok("mini cards greyed during claim phase", g.cards > 0 && g.greyed === g.cards, g.greyed + "/" + g.cards);
+  ok("banner explains minis are not free picks", /single wraps/.test(g.banner) && /free pick/i.test(g.banner), g.banner.slice(0, 70));
+  await page.evaluate(() => { const t = document.querySelector(".bb-bb-toast"); if (t) t.classList.remove("is-on"); });
+  await page.evaluate(() => document.querySelectorAll(".bb-bb-card--mini")[0].click());
+  await new Promise(r => setTimeout(r, 400));
+  const g2 = await page.evaluate(() => ({
+    freeTiles: document.querySelectorAll(".bb-bb-tray .bb-tl--free").length,
+    toast: (() => { const el = document.querySelector(".bb-bb-toast"); return el && el.classList.contains("is-on") ? el.textContent : ""; })(),
+  }));
+  ok("greyed mini tap adds nothing and explains why", g2.freeTiles === 0 && /single wraps/.test(g2.toast), g2.toast.slice(0, 70));
+  await page.screenshot({ path: SHOT("3b-minis-greyed") });
+  await page.evaluate(() => document.querySelector('.bb-bb-bottlebar .bb-bb-bottle__opt[data-bottle="Prosecco"]').click());
+  await new Promise(r => setTimeout(r, 500));
+}
+
 // -- claim the 5 free --
 await page.evaluate(() => { const cards = [...document.querySelectorAll(".bb-bb-card")]; for (let i = 10; i < 15; i++) cards[i].click(); });
 await new Promise(r => setTimeout(r, 600));
@@ -75,6 +111,16 @@ const free5 = await page.evaluate(() => ({
 }));
 ok("5 free picked", /5\s*\/\s*5|5 FREE/i.test(free5.sub + free5.cta), free5.sub + " | " + free5.cta.trim());
 ok("CTA ready to add", /add to cart/i.test(free5.cta), free5.cta.trim());
+
+// -- minis usable again once the free picks are claimed --
+if (AFTER){
+  await page.evaluate(() => document.querySelector('.bb-bb-bottlebar .bb-bb-bottle__opt[data-bottle="Mini"]').click());
+  await new Promise(r => setTimeout(r, 500));
+  const g3 = await page.evaluate(() => ({ greyed: document.querySelectorAll(".bb-bb-card--mini.is-freeout").length, cards: document.querySelectorAll(".bb-bb-card--mini").length }));
+  ok("minis re-enabled after free picks claimed", g3.cards > 0 && g3.greyed === 0, g3.greyed + "/" + g3.cards + " greyed");
+  await page.evaluate(() => document.querySelector('.bb-bb-bottlebar .bb-bb-bottle__opt[data-bottle="Prosecco"]').click());
+  await new Promise(r => setTimeout(r, 500));
+}
 
 // -- open tray sheet, screenshot, close --
 await page.evaluate(() => document.querySelector("[data-tray-toggle]").click());

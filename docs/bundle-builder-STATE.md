@@ -53,6 +53,17 @@ styles in the section):
 - **Layout fit** — the 4-pill bottle row measured 453px and forced phones to lay out ~470px wide
   (everything ~17% small). Compact pills + row scroll cap it; the page now fits exactly.
 
+**Claim phase (Nov 2026).** The sticky bar shows ONE message at a time, always with the GOAL
+tier's numbers (it used to count to the next tier — "2 FREE" while the tray said 5): pre-goal
+"$X to N FREE", post-goal the CTA alone carries claim/add state, and the unlock toast fires only
+when the chosen goal is reached. While free picks are unclaimed (`claiming()`), mini sets grey
+out in the grid with a banner — the label designer's unavailable-option pattern — because the
+checkout function zeroes only single wraps ($4–8 band, any bottle incl. wine). If free picks
+ever extend to minis by value, both `claiming()` here AND
+`~/beau-bottles-functions/extensions/bb-free-wraps/shared/ladder.js` (freeCandidates band +
+pickFreeUnits count-validation → pick-cost validation) must change together, then the function
+redeployed — never ship one side alone.
+
 **Redesign skin (Nov 2026).** The final `<style>` block is the site-standard override layer
 (Playfair Display + Jost, navy `#1B2440` on cream `#FFFDF8`, hairline `#E6E1D6`, square corners,
 pastel accents; per the BeauBottles homepage-redesign canvas). It restyles only — the palette and
