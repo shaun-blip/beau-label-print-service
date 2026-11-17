@@ -1,0 +1,1923 @@
+{%- comment -%}
+  Beau Bottles — Build-a-Bundle (v4, SPEND-BASED)
+  Free-wrap tiers are clean DOLLAR thresholds ($39/$79/$119 — just under 5/10/15 × unit price),
+  mirroring the sitewide Free Wraps function: minis count toward the spend, testers
+  don't, and any tier also unlocks free shipping. Packs remain the UI: pre-filled
+  free slots, confetti unlock, "was $X" framing, "+ add more wraps" (no ceiling),
+  size changes that KEEP your picks, checkout guard.
+  Plus: editorial styling, Prosecco<->Champagne switching, discovery (search +
+  filter chips), saved favorites, intent-ranked prefill, URL-seeded entry.
+
+  Slot engine: two arrays — paid[] (target = chosen size, growable via "add more")
+  and free[] (count = freeFor(paidTarget)). Switching is offered ONLY between
+  single $5.95 wraps; mini/multipack SKUs are filtered out (separate Mini builder).
+  Cart-critical variant id/price/image resolve live from same-origin
+  /products/{handle}.json (never trusted from localStorage). Add-to-cart is a STUB.
+{%- endcomment -%}
+
+{%- assign bb_ws = false -%}
+{%- if customer -%}{%- for bbwt in customer.tags -%}{%- assign bbwtl = bbwt | downcase -%}{%- if bbwtl contains 'wholesale' or bbwtl contains 'b2b' -%}{%- assign bb_ws = true -%}{%- endif -%}{%- endfor -%}{%- endif -%}
+<section class="bb-bb{% if bb_ws %} bb-bb--ws{% endif %}"
+  data-ws="{% if bb_ws %}1{% endif %}"
+  data-default-size="{{ section.settings.default_size }}"
+  data-default-bottle="{{ section.settings.default_bottle }}"
+  data-source="{{ section.settings.source_collection }}"
+  data-champagne="{{ section.settings.champagne_collection }}"
+  data-wine="{% if section.settings.wine_collection %}{{ section.settings.wine_collection.handle }}{% endif %}"
+  data-pbv="{{ section.settings.painted_bottle_value }}"
+  data-free5="{{ section.settings.free_5 }}"
+  data-free10="{{ section.settings.free_10 }}"
+  data-free15="{{ section.settings.free_15 }}"
+  data-free-extra="{{ section.settings.free_extra_per5 }}"
+  data-max-paid="{{ section.settings.max_paid }}"
+  data-ship="{{ section.settings.free_ship_threshold }}"
+  data-grid-cap="{{ section.settings.grid_cap }}"
+  data-minis="{% if section.settings.minis_collection %}{{ section.settings.minis_collection.handle }}{% else %}mini-la-marca{% endif %}">
+
+  <script type="application/json" data-bb-pairs>{% render 'bb-pc-pairs' %}</script>
+
+  <div class="bb-bb-inner">
+    <style>
+      .bb-bb-back{display:inline-flex;align-items:center;gap:5px;margin:0 0 14px;font-family:'Montserrat',system-ui,sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;color:#7A8699;text-decoration:none;transition:color .15s}
+      .bb-bb-back:hover{color:#2B2F3D}
+      .bb-bb-back svg{width:16px;height:16px;flex:0 0 auto}
+    </style>
+    <a class="bb-bb-back" data-bb-back href="{{ section.settings.shop_url | default: '/collections/all' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Continue shopping</a>
+    <header class="bb-bb-head">
+      {%- if section.settings.heading != blank -%}<h1 class="bb-bb-heading">{{ section.settings.heading }}</h1>{%- endif -%}
+      {%- if section.settings.subheading != blank -%}<p class="bb-bb-sub">{{ section.settings.subheading }}</p>{%- endif -%}
+      {%- if section.settings.show_trust -%}<p class="bb-bb-trustbar"><span class="bb-bb-trustbar__rating">★ {{ section.settings.trust_rating }}</span> · {{ section.settings.trust_reviews }}+ verified reviews · {{ section.settings.trust_customers }}+ happy customers</p>{%- endif -%}
+    </header>
+
+    {%- comment -%} SSR pricing: derive the wrap unit price from the pool collection (same $4–8
+        band as the checkout function) so tiers render real numbers before JS — no "—" flash,
+        and crawlers see prices. JS re-verifies against the live pool after load. {%- endcomment -%}
+    {%- assign bb_unit = 795 -%}
+    {%- assign bb_src = section.settings.source_collection | default: collections['la-marca-wraps'] -%}
+    {%- for bb_p in bb_src.products limit: 12 -%}
+      {%- if bb_p.price >= 400 and bb_p.price <= 800 -%}{%- assign bb_unit = bb_p.price -%}{%- break -%}{%- endif -%}
+    {%- endfor -%}
+    <!-- ENTRY SIMPLIFIED 2026-09: the old "Step 1: Pick your tier" gate forced a $39–$119 spend
+         commitment before the shopper saw a single wrap — the top bounce driver (builder scroll
+         depth ~50%). It's now a plain-language intro + an OPTIONAL, collapsed reward ladder, so the
+         first action is pick-a-bottle -> add wraps. Every tier element + data attribute is intact
+         (the tile JS and the AOV/discount mechanic are unchanged); the live spend meter lower down
+         still teaches the reward dynamically as wraps are added. -->
+    <p class="bb-bb-intro">Pick a bottle, then add the wraps you love — <b>free wraps unlock as you spend</b>: $39 gets 2, $79 gets 5, $119 gets 10. Choose your free designs and they ring up <b>$0 at checkout</b>. No code.</p>
+    {%- if bb_ws -%}<p class="bb-bb-elignote">Wholesale accounts aren’t eligible for the free-wrap promotion — wholesale pricing applies instead.</p>{%- endif -%}
+    <details class="bb-bb-goal" data-step="01">
+      <summary class="bb-bb-goal__sum"><span class="bb-bb-goal__q">Want to aim for a tier?</span> See how the free wraps stack up <span class="bb-bb-goal__opt">optional</span></summary>
+      <div class="bb-bb-sizes" role="tablist" aria-label="Bundle tier">
+        {%- assign sizes = '5,10,15' | split: ',' -%}
+        {%- for s in sizes -%}
+          <button class="bb-bb-size{% if s == section.settings.default_size %} is-active{% endif %}" data-size="{{ s }}" role="tab">
+            {%- if s == '10' -%}<span class="bb-bb-size__tag">Most popular</span>{%- elsif s == '15' -%}<span class="bb-bb-size__tag bb-bb-size__tag--alt">Best value</span>{%- endif -%}
+            <span class="bb-bb-size__n">Tier {{ forloop.index }}</span>
+            {%- assign s_n = s | plus: 0 -%}
+            {%- case s -%}{%- when '5' -%}{%- assign s_free = section.settings.free_5 | default: 2 -%}{%- when '10' -%}{%- assign s_free = section.settings.free_10 | default: 5 -%}{%- else -%}{%- assign s_free = section.settings.free_15 | default: 10 -%}{%- endcase -%}
+            {%- case s -%}{%- when '5' -%}{%- assign s_tier = 3900 -%}{%- when '10' -%}{%- assign s_tier = 7900 -%}{%- else -%}{%- assign s_tier = 11900 -%}{%- endcase -%}
+            {%- assign s_was = s_n | plus: s_free | times: bb_unit -%}
+            <span class="bb-bb-size__pwrap"><span class="bb-bb-size__p" data-size-price="{{ s }}">Spend {{ s_tier | money_without_trailing_zeros }}</span></span>
+            <span class="bb-bb-size__free" data-size-free="{{ s }}">{% if s_free > 0 %}Get {{ s_free }} FREE wrap{% if s_free > 1 %}s{% endif %}{% endif %}</span>
+            <span class="bb-bb-size__worth" data-size-worth="{{ s }}">{% if s_free > 0 %}a {{ s_free | times: bb_unit | money }} value{% endif %}</span>
+            <span class="bb-bb-size__ship">Free shipping</span>
+          </button>
+        {%- endfor -%}
+      </div>
+    </details>
+    <style>.bb-bb--ws .bb-bb-size__free,.bb-bb--ws .bb-bb-size__worth,.bb-bb--ws .bb-bb-size__ship{display:none}</style>
+    <style>
+      .bb-bb-intro{margin:0 auto 14px;max-width:640px;text-align:center;font-family:'Montserrat',system-ui,sans-serif;font-size:14px;line-height:1.55;color:#4A4A4A}
+      .bb-bb-intro b{color:var(--ink);font-weight:700}
+      .bb-bb-elignote{margin:8px 2px 12px;font-family:'Montserrat',system-ui,sans-serif;font-size:12px;line-height:1.5;color:#7A8699}
+      .bb-bb-goal{margin:0 auto 6px;max-width:640px;border:1px solid rgba(43,47,61,.12);border-radius:14px;background:#fff}
+      .bb-bb-goal[open]{padding-bottom:16px}
+      .bb-bb-goal__sum{list-style:none;cursor:pointer;padding:13px 16px;font-family:'Montserrat',system-ui,sans-serif;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+      .bb-bb-goal__sum::-webkit-details-marker{display:none}
+      .bb-bb-goal__sum::after{content:'▾';margin-left:auto;color:#7A8699;transition:transform .2s}
+      .bb-bb-goal[open] .bb-bb-goal__sum::after{transform:rotate(180deg)}
+      .bb-bb-goal__q{font-weight:700;color:var(--ink)}
+      .bb-bb-goal__opt{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#9aa3b2;background:#f2f0ec;border-radius:999px;padding:2px 9px}
+      .bb-bb-goal .bb-bb-sizes{padding:0 14px}
+      .bb-bb-size .bb-bb-size__free{display:block;margin-top:9px;font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#C9898D;text-align:center}
+      .bb-bb-size.is-active .bb-bb-size__free{color:#f6bdd5}
+      .bb-bb-size__worth{display:block;margin-top:1px;font-family:'Montserrat',system-ui,sans-serif;font-size:11px;font-weight:600;color:#7A8699;text-align:center}
+      .bb-bb-size.is-active .bb-bb-size__worth{color:rgba(255,255,255,.75)}
+      .bb-bb-size .bb-bb-size__ship{display:block;margin-top:4px;font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#7A8699;text-align:center}
+      .bb-bb-size.is-active .bb-bb-size__ship{color:rgba(255,255,255,.85)}
+    </style>
+
+    {% render 'fitment-popup', modal_only: true %}
+    <div class="bb-bb-flipbar" data-bb-flip hidden></div>
+
+    {%- comment -%} Pre-built gift sets REMOVED 2026-09 (unused, took space, confused the flow).
+        ?preset= deep links from old ads/emails degrade gracefully to a plain builder.
+        The dormant SETS/applySet JS stays for now; the schema block + template blocks are gone.
+        Step 2 (bottle type) now lives INSIDE the grid column, sticky, so switching bottles
+        never requires scrolling away from the wraps (Shaun 2026-09). {%- endcomment -%}
+
+    <!-- step 2: bottle type — STICKY so switching never requires scrolling away from the grid -->
+    <div class="bb-bb-step bb-bb-step--bottle" data-step="01">
+      <div class="bb-bb-bottlebar">
+        <p class="bb-bb-steplbl bb-bb-steplbl--bottle"><span class="bb-bb-steplbl__n">1</span> What are you wrapping?</p>
+        <div class="bb-bb-bottle__opts" role="group" aria-label="Bottle type">
+          <button type="button" class="bb-bb-bottle__opt{% if section.settings.default_bottle == 'Prosecco' %} is-active{% endif %}" data-bottle="Prosecco">Prosecco</button>
+          <button type="button" class="bb-bb-bottle__opt{% if section.settings.default_bottle == 'Champagne' %} is-active{% endif %}" data-bottle="Champagne">Champagne</button>
+          <button type="button" class="bb-bb-bottle__opt" data-bottle="Mini">Mini</button>
+          {%- if section.settings.enable_wine -%}<button type="button" class="bb-bb-bottle__opt{% if section.settings.default_bottle == 'Wine' %} is-active{% endif %}" data-bottle="Wine">Wine</button>{%- endif -%}
+        </div>
+        <button type="button" class="bb-bb-fitlink" data-bb-fit aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Will these fit my bottle?
+        </button>
+      </div>
+    </div>
+    <style>
+      .bb-bb-step--bottle{position:sticky;top:0;z-index:40;background:rgba(250,247,242,.96);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:10px 0 8px;margin:0 0 4px;border-bottom:1px solid rgba(43,47,61,.07)}
+      .bb-bb-bottlebar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+      .bb-bb-steplbl--bottle{margin:0;white-space:nowrap}
+      .bb-bb-bottlebar .bb-bb-bottle__opts{background:#fff;border:1.5px solid rgba(43,47,61,.14);border-radius:999px;padding:4px;box-shadow:0 2px 10px rgba(43,47,61,.08)}
+      .bb-bb-bottlebar .bb-bb-bottle__opt{font-size:14.5px;font-weight:700;padding:11px 26px;min-height:46px}
+      .bb-bb-bottlebar .bb-bb-bottle__opt.is-active{background:#2B2F3D;color:#fff;border-radius:999px}
+      .bb-bb-bottlebar .bb-bb-fitlink{margin-left:auto}
+      @media(max-width:600px){
+        .bb-bb-bottlebar{gap:8px}
+        .bb-bb-bottlebar .bb-bb-fitlink{margin-left:0;flex-basis:100%}
+        /* the pill row must FIT the phone: four options measured 453px and forced the whole page
+           to lay out ~470px wide at 390px, shrinking every tap target (verified 2026-11) */
+        .bb-bb-bottlebar .bb-bb-bottle__opts{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;display:flex;flex-wrap:nowrap;scrollbar-width:none}
+        .bb-bb-bottlebar .bb-bb-bottle__opts::-webkit-scrollbar{display:none}
+        .bb-bb-bottlebar .bb-bb-bottle__opt{font-size:13.5px;padding:10px 16px;min-height:44px;white-space:nowrap;flex:0 0 auto}
+      }
+    </style>
+
+    <!-- step 3 label sits above the picking area -->
+    <p class="bb-bb-steplbl bb-bb-steplbl--fill"><span class="bb-bb-steplbl__n">2</span> Add the wraps you love <em class="bb-bb-steplbl__hint">— tap a wrap or mini set to add it</em></p>
+
+    <!-- saved favorites (hidden until something is saved) -->
+    <div class="bb-bb-faves" data-bb-faves hidden>
+      <div class="bb-bb-faves__top">
+        <span class="bb-bb-faves__t"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12.55 12 20.05l-7.5-7.5a4.6 4.6 0 0 1 6.5-6.5l1 1 1-1a4.6 4.6 0 0 1 6.5 6.5z"/></svg> Your saved favorites</span>
+        <span class="bb-bb-faves__how">Tap ♥ on wraps you love — they’ll appear here to add fast.</span>
+      </div>
+      <div class="bb-bb-faves__row" data-bb-faves-row></div>
+    </div>
+
+    <div class="bb-bb-grid-tray">
+      <div class="bb-bb-grid-wrap">
+        <button class="bb-bb-findbar" data-bb-sheet-toggle type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Search or jump to a theme</span>
+        </button>
+        <div class="bb-bb-discover">
+          <div class="bb-bb-searchrow">
+            <div class="bb-bb-search">
+              <svg class="bb-bb-search__i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="search" class="bb-bb-search__in" data-bb-search placeholder="Search — try “wedding”, “game day”, “floral”" aria-label="Search wraps">
+              <button type="button" class="bb-bb-search__clear" data-bb-search-clear hidden aria-label="Clear search">×</button>
+            </div>
+
+          </div>
+          <div class="bb-bb-themes" data-bb-themes>
+            <div class="bb-bb-presets" data-bb-curated></div>
+          </div>
+          <div class="bb-bb-resultcount" data-bb-resultcount></div>
+        </div>
+        <div class="bb-bb-scope" data-bb-scope hidden>
+          <span class="bb-bb-scope__t" data-bb-scope-text></span>
+          <button type="button" class="bb-bb-scope__b" data-bb-scope-all>Search all wraps →</button>
+        </div>
+        <div class="bb-bb-grid" data-bb-grid aria-live="polite">
+          <div class="bb-bb-grid__loading">Loading wraps…</div>
+        </div>
+        <p class="bb-bb-help">Each wrap in your bundle shows the bottle it’s for. If a design comes in both, tap the <strong>⇄</strong> on it to switch between Prosecco and Champagne.</p>
+
+        {%- comment -%} Mini-sets rail removed 2026-09: minis are cards in the main grid and
+            slot into the tray like wraps (their spend still raises the free tier). {%- endcomment -%}
+        <style>
+          .bb-bb-card--mini .bb-bb-card__imgw{background:#FBF6F1}
+          .bb-bb-card__minitag{display:block;margin:6px 0 0;font-family:'Montserrat',system-ui,sans-serif;font-size:9.5px;font-weight:800;letter-spacing:.08em;color:#C9898D}
+          .bb-bb-slot--mini{outline:1.5px dashed rgba(201,137,141,.55);outline-offset:-1.5px}
+          .bb-bb-slot__minitag{position:absolute;left:4px;bottom:4px;font-family:'Montserrat',system-ui,sans-serif;font-size:8.5px;font-weight:800;letter-spacing:.07em;color:#fff;background:#C9898D;border-radius:3px;padding:1px 4px}
+          .bb-bb-slot__qty{position:absolute;right:4px;bottom:4px;font-family:'Montserrat',system-ui,sans-serif;font-size:10px;font-weight:800;color:#2B2F3D;background:#fff;border-radius:999px;padding:1px 6px;box-shadow:0 1px 4px rgba(43,47,61,.25)}
+        </style>
+      </div>
+
+      <div class="bb-bb-traydim" data-tray-close aria-hidden="true"></div>
+      <aside class="bb-bb-tray" data-bb-tray>
+        <button type="button" class="bb-bb-tray__grab" data-tray-close aria-label="Close your bundle panel"><span class="bb-bb-tray__grabbar" aria-hidden="true"></span><span class="bb-bb-tray__grabtxt">Close ▾</span></button>
+        <div class="bb-bb-confetti" data-bb-confetti aria-hidden="true"></div>
+        <div class="bb-bb-tray__head">
+          <span class="bb-bb-tray__title" data-bb-tray-title>Your bundle</span>
+          <button class="bb-bb-clearall" data-bb-clearall type="button" hidden>Clear all &amp; start fresh</button>
+        </div>
+        {%- comment -%} Tray v5 (spend model, rebuilt): a clean ITEM LIST (never empty boxes),
+            ONE spend meter as the single message, a free-picks section that exists only
+            once earned, and a one-line painted-bottle note. {%- endcomment -%}
+        <div class="bb-bb-items" data-bb-slots></div>
+        <div class="bb-bb-spend" data-bb-spend hidden>
+          <div class="bb-bb-spend__bar"><i data-bb-spend-fill></i></div>
+          <div class="bb-bb-spend__txt" data-bb-spend-txt></div>
+        </div>
+        <button class="bb-bb-fillrest" data-bb-fillrest type="button" hidden>✨ Fill the rest for me</button>
+        <div class="bb-bb-ship" data-bb-ship></div>
+        <div class="bb-bb-valueline" data-bb-valueline hidden></div>
+        <style>
+          .bb-bb-items{display:flex;flex-direction:column;gap:6px;margin:0 0 14px}
+          .bb-it{display:flex;align-items:center;gap:10px;padding:7px 8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px}
+          .bb-it img{width:42px;height:42px;object-fit:contain;border-radius:6px;background:#fff;flex:0 0 auto}
+          .bb-it__m{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+          .bb-it__t{font-family:var(--baseFont,system-ui,sans-serif);font-size:12.5px;font-weight:700;color:#F5F0E6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          .bb-it__s{font-family:var(--baseFont,system-ui,sans-serif);font-size:10.5px;font-weight:600;color:rgba(245,240,230,.55)}
+          .bb-it__p{font-family:var(--baseFont,system-ui,sans-serif);font-size:12.5px;font-weight:800;color:#F5F0E6;white-space:nowrap}
+          .bb-it__p s{color:rgba(245,240,230,.45);font-weight:600;margin-right:4px}
+          .bb-it__p .is-free{color:#C9A961}
+          .bb-it__x{flex:0 0 auto;width:24px;height:24px;border:none;border-radius:50%;background:rgba(255,255,255,.1);color:rgba(245,240,230,.7);font-size:14px;line-height:1;cursor:pointer}
+          .bb-it__x:hover{background:rgba(255,255,255,.2);color:#fff}
+          .bb-it__seg{flex:0 0 auto;display:inline-flex;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:2px}
+          .bb-it__seg__b{border:none;background:transparent;color:rgba(245,240,230,.55);font-family:var(--baseFont,system-ui,sans-serif);font-size:10.5px;font-weight:800;letter-spacing:.03em;padding:4px 9px;border-radius:999px;cursor:pointer}
+          .bb-it__seg__b.is-on{background:#C9A961;color:#2B2F3D;cursor:default}
+          .bb-it__seg__b:not(.is-on):hover{color:#fff}
+          .bb-it__step{display:inline-flex;align-items:center;gap:6px}
+          .bb-it__step button{width:22px;height:22px;border:none;border-radius:50%;background:rgba(255,255,255,.12);color:#F5F0E6;font-size:13px;line-height:1;cursor:pointer}
+          .bb-it__step span{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;font-weight:800;color:#F5F0E6;min-width:14px;text-align:center}
+          .bb-it--free{border-style:dashed;border-color:rgba(201,169,97,.5)}
+          .bb-it--empty{justify-content:center;padding:18px 10px;border-style:dashed;color:rgba(245,240,230,.6);font-family:var(--baseFont,system-ui,sans-serif);font-size:12.5px;font-weight:600;text-align:center;cursor:default}
+          .bb-it--cart{opacity:.72}
+          .bb-tl--cart .bb-tl__imgw{border-style:solid;border-color:rgba(147,174,197,.5)}
+          .bb-tl--cart img{opacity:.85}
+          .bb-tl__carttag{position:absolute;left:2px;bottom:2px;font-family:var(--baseFont,system-ui,sans-serif);font-size:7px;font-weight:800;letter-spacing:.05em;color:#fff;background:#5E7C97;border-radius:3px;padding:1px 3px}
+          .bb-it-sec--cart{justify-content:center;margin:0 0 8px}
+          .bb-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:7px;margin:4px 0 8px}
+          .bb-tl{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+          .bb-tl__imgw{position:relative;display:block;width:100%;aspect-ratio:1;background:#fff;border-radius:8px;overflow:hidden;cursor:zoom-in;border:1px solid rgba(255,255,255,.1)}
+          .bb-tl__imgw img{width:100%;height:100%;object-fit:contain;display:block}
+          .bb-tl--free .bb-tl__imgw{border:1.5px dashed rgba(246,189,213,.75)}
+          .bb-tl__freetag{position:absolute;left:2px;bottom:2px;font-family:var(--baseFont,system-ui,sans-serif);font-size:7.5px;font-weight:800;letter-spacing:.06em;color:#2B2F3D;background:#f6bdd5;border-radius:3px;padding:1px 3px}
+          .bb-tl__minitag{position:absolute;left:2px;bottom:2px;font-family:var(--baseFont,system-ui,sans-serif);font-size:7.5px;font-weight:800;letter-spacing:.06em;color:#fff;background:#C9898D;border-radius:3px;padding:1px 3px}
+          .bb-tl__qty{position:absolute;right:2px;bottom:2px;font-family:var(--baseFont,system-ui,sans-serif);font-size:9px;font-weight:800;color:#2B2F3D;background:#fff;border-radius:999px;padding:0 4px;box-shadow:0 1px 3px rgba(43,47,61,.3)}
+          .bb-tl__x{position:absolute;top:2px;right:2px;width:17px;height:17px;border:none;border-radius:50%;background:rgba(43,47,61,.55);color:#fff;font-size:11px;line-height:1;cursor:pointer;padding:0}
+          .bb-tl__x:hover{background:rgba(43,47,61,.85)}
+          .bb-tl__sw{border:none;background:none;color:rgba(245,240,230,.6);font-family:var(--baseFont,system-ui,sans-serif);font-size:8.5px;font-weight:700;letter-spacing:.03em;cursor:pointer;padding:0;white-space:nowrap}
+          .bb-tl__sw--btn{border:1px solid rgba(147,174,197,.55);border-radius:999px;padding:2px 7px;font-size:9px;font-weight:800;color:#93AEC5;background:rgba(147,174,197,.08)}
+          .bb-tl__sw--btn:hover{background:rgba(147,174,197,.22);color:#fff}
+          .bb-tl__ft{color:rgba(245,240,230,.45);font-family:var(--baseFont,system-ui,sans-serif);font-size:8.5px;font-weight:700;letter-spacing:.03em;white-space:nowrap}
+          .bb-tl__spin{position:absolute;inset:0;background:rgba(255,255,255,.4)}
+          .bb-it-sec{margin:10px 0 2px;display:flex;align-items:baseline;justify-content:space-between}
+          .bb-it-sec__t{font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#C9A961}
+          .bb-it-sec__s{font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:600;color:rgba(245,240,230,.6)}
+          .bb-bb-spend{margin:0 0 12px}
+          .bb-bb-spend[hidden]{display:none}
+          .bb-bb-spend__bar{position:relative;height:8px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+          .bb-bb-spend__bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#C9A961,#f6bdd5);transition:width .35s cubic-bezier(.2,.8,.2,1)}
+          .bb-bb-spend__txt{margin-top:7px;font-family:var(--baseFont,system-ui,sans-serif);font-size:12.5px;font-weight:600;line-height:1.5;color:rgba(245,240,230,.9);text-align:center}
+          .bb-bb-spend__txt b{color:#C9A961}
+          .bb-bb-valueline{margin:10px 0 0;font-family:var(--baseFont,system-ui,sans-serif);font-size:11.5px;font-weight:600;color:rgba(245,240,230,.6);text-align:center}
+          .bb-bb-valueline[hidden]{display:none}
+          .bb-bb-valueline b{color:#C9A961}
+        </style>
+
+        <div class="bb-bb-guard" data-bb-guard hidden></div>
+        <p class="bb-bb-note" data-bb-note></p>
+        {%- if section.settings.show_trust -%}<p class="bb-bb-atctrust">{{ section.settings.guarantee_text }} · Secure checkout</p>{%- endif -%}
+        <div class="bb-bb-atcdock">
+          <button type="button" class="bb-bb-add" data-bb-add disabled>Add bundle to cart</button>
+          <div class="bb-bb-savenote" data-bb-savenote hidden></div>
+          <div class="bb-bb-added" data-bb-added hidden>Added to your cart &middot; <a href="/cart">View cart &rarr;</a></div>
+        </div>
+        <style>.bb-bb-added{margin:10px 0 0;padding:11px 14px;background:rgba(169,195,164,.15);border:1px solid rgba(169,195,164,.4);border-radius:10px;font-family:var(--baseFont,system-ui,sans-serif);font-size:13px;font-weight:700;color:#A9C3A4;text-align:center}.bb-bb-added[hidden]{display:none}.bb-bb-added a{color:#F5F0E6;text-decoration:underline;text-underline-offset:2px}</style>
+        <style>.bb-bb-savenote{margin:8px 0 0;font-family:var(--baseFont,system-ui,sans-serif);font-size:12.5px;font-weight:700;color:#A9C3A4;text-align:center}.bb-bb-savenote[hidden]{display:none}.bb-bb-savenote b{color:#C9A961}</style>
+        <style>
+          .bb-bb-atcdock{position:sticky;bottom:-1px;z-index:6;background:inherit;margin:0 -24px;padding:10px 24px 14px;box-shadow:0 -12px 18px -8px rgba(23,26,34,.3)}
+          @media (max-width:800px){.bb-bb-atcdock{padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}}
+        </style>
+      </aside>
+    </div>
+
+  </div>
+
+  <!-- mobile-only sticky summary / cart bar -->
+  <div class="bb-bb-stickybar" data-bb-stickybar>
+    <button type="button" class="bb-bb-stickybar__info" data-tray-toggle aria-expanded="false" aria-label="View your bundle">
+      <span class="bb-bb-stickybar__count" data-bb-sticky-count>0 / 10</span>
+      <span class="bb-bb-stickybar__sub" data-bb-sticky-sub></span>
+      <span class="bb-bb-stickybar__chev">Your bundle ▴</span>
+    </button>
+    <button class="bb-bb-stickybar__find" data-bb-sheet-toggle type="button" aria-label="Find more wraps">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span>Find wraps</span>
+    </button>
+    <button class="bb-bb-stickybar__btn" data-bb-sticky-cta type="button" hidden>Add to cart</button>
+  </div>
+
+  <div class="bb-bb-zoom" data-bb-zoom hidden>
+    <button class="bb-bb-zoom__x" data-bb-zoom-close type="button" aria-label="Close">×</button>
+    <figure class="bb-bb-zoom__fig"><span class="bb-bb-zoom__stage"><img data-bb-zoom-img src="" alt="">
+      <div class="bb-bb-zoom__spin" data-bb-zoom-spin hidden><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3"/><path d="M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>360&deg;</div>
+      <div class="bb-bb-zoom__hint" data-bb-zoom-hint hidden>Drag to spin</div>
+    </span><figcaption class="bb-bb-zoom__cap" data-bb-zoom-cap></figcaption>
+    <button type="button" class="bb-bb-zoom__switch" data-bb-zoom-switch hidden></button>
+    <button type="button" class="bb-bb-zoom__remove" data-bb-zoom-remove hidden></button>
+    <style>.bb-bb-zoom__switch,.bb-bb-zoom__remove{margin:12px auto 0;display:block;padding:12px 26px;border:1.5px solid rgba(255,255,255,.5);border-radius:999px;background:rgba(255,255,255,.08);color:#fff;font-family:var(--baseFont,system-ui,sans-serif);font-size:13.5px;font-weight:700;letter-spacing:.03em;cursor:pointer}.bb-bb-zoom__switch:hover{background:rgba(255,255,255,.2)}.bb-bb-zoom__switch[hidden]{display:none}.bb-bb-zoom__remove{border-color:rgba(233,150,156,.7);color:#F3B6BB}.bb-bb-zoom__remove:hover{background:rgba(233,150,156,.15)}.bb-bb-zoom__remove[hidden]{display:none}</style></figure>
+  </div>
+
+
+  <!-- mobile discovery bottom-sheet: search + theme pills, reachable without scrolling up -->
+  <div class="bb-bb-sheet" data-bb-sheet hidden>
+    <div class="bb-bb-sheet__backdrop" data-bb-sheet-close></div>
+    <div class="bb-bb-sheet__panel" role="dialog" aria-label="Find wraps">
+      <span class="bb-bb-sheet__grip" aria-hidden="true"></span>
+      <div class="bb-bb-sheet__head">
+        <span class="bb-bb-sheet__title">Search or pick a theme</span>
+        <button class="bb-bb-sheet__done" data-bb-sheet-close type="button">Done</button>
+      </div>
+      <div class="bb-bb-sheet__row">
+        <span class="bb-bb-sheet__lbl">I'm wrapping</span>
+        <div class="bb-bb-bottle__opts" role="group" aria-label="Bottle type">
+          <button type="button" class="bb-bb-bottle__opt{% if section.settings.default_bottle == 'Prosecco' %} is-active{% endif %}" data-bottle="Prosecco">Prosecco</button>
+          <button type="button" class="bb-bb-bottle__opt{% if section.settings.default_bottle == 'Champagne' %} is-active{% endif %}" data-bottle="Champagne">Champagne</button>
+          <button type="button" class="bb-bb-bottle__opt" data-bottle="Mini">Mini</button>
+          {%- if section.settings.enable_wine -%}<button type="button" class="bb-bb-bottle__opt{% if section.settings.default_bottle == 'Wine' %} is-active{% endif %}" data-bottle="Wine">Wine</button>{%- endif -%}
+        </div>
+      </div>
+      <input type="search" class="bb-bb-sheet__in" data-bb-sheet-search placeholder="Search — “floral”, “game day”, “bows”…" aria-label="Search wraps">
+      <div class="bb-bb-sheet__pills" data-bb-curated></div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .bb-bb{--rose:#D49A9D;--rose-deep:#C9898D;--rose-soft:#F6E7E8;--rose-tint:#FFF3F1;--ink:#2B2F3D;--muted:#7A8699;--cream:#FAF6F0;--cream-deep:#F2EBE0;--blue:#93AEC5;--blue-deep:#7E9DB8;--line:rgba(43,47,61,.10);background:var(--cream);padding:clamp(40px,5vw,80px) clamp(16px,4vw,40px)}
+  .bb-bb *{box-sizing:border-box}
+  .bb-bb-inner{max-width:1200px;margin:0 auto}
+  .bb-bb-head{text-align:center;margin:0 auto 20px;max-width:680px}
+  .bb-bb-eyebrow{font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:500;letter-spacing:.3em;text-transform:uppercase;color:var(--rose);margin:0 0 10px}
+  .bb-bb-heading{font-family:var(--titleFont,Georgia,serif);font-size:clamp(28px,3.6vw,44px);font-weight:400;line-height:1.08;letter-spacing:-.01em;color:var(--ink);margin:0 0 10px;text-wrap:balance}
+  .bb-bb-sub{font-family:var(--baseFont,system-ui,sans-serif);font-size:16px;line-height:1.55;color:var(--muted);margin:0}
+  .bb-bb-trustbar{font-family:var(--baseFont,system-ui,sans-serif);font-size:13px;color:var(--muted);margin:10px 0 0;letter-spacing:.01em}
+  .bb-bb-trustbar__rating{font-weight:800;color:var(--ink)}
+  .bb-bb-size__ship{display:block;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5E7C97;margin-top:3px}
+  .bb-bb-size.is-active .bb-bb-size__ship{color:#fff}
+  .bb-bb-atctrust{font-family:var(--baseFont,system-ui,sans-serif);font-size:11.5px;font-weight:600;color:var(--muted);text-align:center;margin:9px 0 0;letter-spacing:.02em}
+  /* numbered step spine */
+  .bb-bb-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:clamp(22px,3vw,40px) clamp(20px,2.8vw,38px) clamp(18px,2.4vw,32px);margin:0 0 20px;box-shadow:0 2px 12px rgba(43,47,61,.04)}
+  .bb-bb-grid-wrap{background:#fff;border:1px solid var(--line);border-radius:18px;padding:clamp(18px,2.4vw,32px);box-shadow:0 2px 12px rgba(43,47,61,.04)}
+  .bb-bb-steplbl{display:flex;align-items:center;justify-content:center;gap:9px;font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);margin:0 0 14px}
+  .bb-bb-steplbl__n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--rose);color:var(--ink);font-size:12px;font-weight:800;letter-spacing:0;flex-shrink:0}
+  .bb-bb-steplbl__hint{font-style:normal;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--muted)}
+  .bb-bb-steplbl--fill{margin:28px 0 16px}
+  /* bottle context */
+  .bb-bb-bottle{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;margin:0 0 16px}
+  .bb-bb-bottle__lbl{font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .bb-bb-bottle__opts{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px}
+  .bb-bb-bottle__opt{font-family:var(--baseFont,system-ui,sans-serif);font-size:13px;font-weight:600;color:var(--ink);background:transparent;border:none;border-radius:999px;padding:9px 22px;cursor:pointer;transition:all .18s;min-height:40px}
+  .bb-bb-bottle__opt.is-active{background:var(--rose);color:var(--ink)}
+  .bb-bb-bottle__mini{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;color:var(--rose-deep);text-decoration:underline;text-underline-offset:3px}
+  .bb-bb-fitlink{flex-basis:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;margin:2px 0 0;background:none;border:none;padding:0;cursor:pointer;font-family:var(--baseFont,system-ui,sans-serif);font-size:12.5px;font-weight:600;color:var(--blue-deep);text-decoration:underline;text-underline-offset:3px}
+  .bb-bb-fitlink svg{width:15px;height:15px;flex-shrink:0}
+  .bb-bb-fitlink:hover{color:var(--ink)}
+  .bb-bb-flipbar{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;background:#fff;border:1px solid var(--rose);border-radius:12px;padding:12px 16px;margin:0 auto 18px;max-width:580px;font-family:var(--baseFont,system-ui,sans-serif);font-size:13px;line-height:1.4;color:var(--ink);box-shadow:0 4px 18px rgba(212,154,157,.18)}
+  .bb-bb-flipbar button{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.04em;border-radius:8px;padding:9px 16px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink)}
+  .bb-bb-flipbar button.is-go{background:var(--rose);border-color:var(--rose)}
+  .bb-bb-flipbar[hidden]{display:none}
+  /* size selector */
+  .bb-bb-sizes{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0 0 12px}
+  .bb-bb-size{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:96px;font-family:var(--baseFont,system-ui,sans-serif);color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px 10px;cursor:pointer;transition:all .2s;box-shadow:0 1px 6px rgba(43,47,61,.04)}
+  .bb-bb-size:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(43,47,61,.1)}
+  .bb-bb-size.is-active{background:var(--blue);border-color:var(--blue);color:#fff}
+  .bb-bb-size__n{font-size:15px;font-weight:700;letter-spacing:.01em}
+  .bb-bb-size__pwrap{display:flex;align-items:baseline;justify-content:center;gap:6px}
+  .bb-bb-size__was{font-size:12px;color:var(--muted);text-decoration:line-through}
+  .bb-bb-size.is-active .bb-bb-size__was{color:rgba(255,255,255,.75)}
+  .bb-bb-size__p{font-size:14px;font-weight:700;color:var(--ink)}
+  .bb-bb-size.is-active .bb-bb-size__p{color:#fff}
+  .bb-bb-size__free{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#2e7d57}
+  .bb-bb-size.is-active .bb-bb-size__free{color:#fff}
+  .bb-bb-size__tag{position:absolute;top:-10px;left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--rose);color:var(--ink);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:999px}
+  .bb-bb-size__tag--alt{background:var(--ink);color:#fff}
+  .bb-bb-nudge{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;font-weight:600;color:var(--rose-deep);text-align:center;margin:0 0 12px;line-height:1.45}
+  .bb-bb-nudge:empty{display:none}
+  /* discovery: search row + collapsible themes */
+  .bb-bb-searchrow{display:flex;gap:10px;align-items:stretch;margin:0 0 12px}
+  .bb-bb-searchrow .bb-bb-search{flex:1;margin:0}
+  .bb-bb-themesbtn{font-family:var(--baseFont,system-ui,sans-serif);font-size:12.5px;font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:10px;padding:0 16px;cursor:pointer;white-space:nowrap;transition:all .15s}
+  .bb-bb-themesbtn:hover,.bb-bb-themesbtn.is-open{border-color:var(--rose)}
+  .bb-bb-themesbtn.is-open{background:var(--rose-tint)}
+  .bb-bb-themes{margin:0 0 12px}
+  .bb-bb-themes[hidden]{display:none}
+  .bb-bb-themes .bb-bb-presets{margin:0;justify-content:flex-start}
+  /* party minis rail (step 4) */
+  .bb-bb-minis{margin:34px auto 0;max-width:1200px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px 20px 18px;box-shadow:0 8px 30px rgba(43,47,61,.06)}
+  .bb-bb-minis[hidden]{display:none}
+  .bb-bb-minis .bb-bb-steplbl{margin-bottom:16px}
+  .bb-bb-minis__row{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+  .bb-bb-mini{flex:0 0 150px;display:flex;flex-direction:column;gap:6px;font-family:var(--baseFont,system-ui,sans-serif);text-align:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;transition:border-color .15s}
+  .bb-bb-mini img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:var(--cream-deep);display:block}
+  .bb-bb-mini__t{font-size:11px;line-height:1.3;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:29px}
+  .bb-bb-mini__p{font-size:11.5px;font-weight:700;color:var(--rose-deep)}
+  .bb-bb-mini__p small{font-weight:600;color:var(--muted);font-size:10px}
+  .bb-bb-mini__step{display:flex;align-items:center;justify-content:center;gap:10px}
+  .bb-bb-mini__step button{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:15px;font-weight:800;line-height:1;cursor:pointer;transition:border-color .15s}
+  .bb-bb-mini__step button:hover{border-color:var(--rose)}
+  .bb-bb-mini__q{font-size:13px;font-weight:800;color:var(--ink);min-width:16px;font-variant-numeric:tabular-nums}
+  .bb-bb-mini.has-qty{border-color:var(--rose);box-shadow:0 0 0 1px var(--rose)}
+  .bb-bb-minis__sum{font-family:var(--baseFont,system-ui,sans-serif);font-size:12.5px;font-weight:700;color:var(--ink);text-align:center;margin:12px 0 0}
+  .bb-bb-minis__sum[hidden]{display:none}
+  .bb-bb-faves[hidden]{display:none}
+  /* scroll rails: arrow affordance for horizontal rows */
+  .bb-bb-rail{position:relative}
+  .bb-bb-rail__arr{position:absolute;top:50%;transform:translateY(-50%);z-index:6;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:20px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 2px 12px rgba(43,47,61,.18);display:flex;align-items:center;justify-content:center;padding:0 0 2px;transition:border-color .15s}
+  .bb-bb-rail__arr:hover{border-color:var(--rose)}
+  .bb-bb-rail__arr--l{left:-4px}
+  .bb-bb-rail__arr--r{right:-4px}
+  @media (max-width:800px){.bb-bb-rail__arr{width:30px;height:30px;font-size:18px}}
+  /* pre-built gift sets */
+  .bb-bb-sets{margin:0}
+  .bb-bb-sets__lbl{display:flex;align-items:center;gap:14px;max-width:560px;margin:16px auto 12px;font-family:var(--baseFont,system-ui,sans-serif);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .bb-bb-sets__lbl i{flex:1;border-top:1px solid var(--line)}
+  .bb-bb-sets__lbl span{white-space:nowrap}
+  .bb-bb-sets__row{display:flex;gap:11px;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding:15px 2px 10px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+  @media (min-width:1101px){.bb-bb-sets__row{justify-content:center}}
+  .bb-bb-set{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;flex:0 0 150px;width:150px;scroll-snap-align:start;font-family:var(--baseFont,system-ui,sans-serif);text-align:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 12px 12px;cursor:pointer;transition:all .2s;box-shadow:0 1px 6px rgba(43,47,61,.04)}
+  .bb-bb-set:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(43,47,61,.12);border-color:var(--rose)}
+  .bb-bb-set.is-active{border-color:var(--rose);box-shadow:0 0 0 2px var(--rose)}
+  .bb-bb-set__badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--rose);color:var(--ink);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:999px}
+  .bb-bb-set__thumbs{display:flex;gap:4px}
+  .bb-bb-set__thumbs span,.bb-bb-set__thumbs img{width:38px;height:38px;border-radius:8px;border:1px solid var(--line);background-color:var(--cream-deep);background-size:cover;background-position:center;object-fit:cover;display:block}
+  .bb-bb-set__name{font-size:12.5px;font-weight:700;color:var(--ink);line-height:1.25}
+  .bb-bb-set__tag{font-size:10.5px;color:var(--muted);line-height:1.3}
+  .bb-bb-set__meta{font-size:10.5px;font-weight:700;color:var(--rose-deep);letter-spacing:.02em;min-height:13px}
+  .bb-bb-set__cta{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--rose-deep);background:transparent;padding:5px 0 0;margin-top:2px;transition:color .2s}
+  .bb-bb-set:hover .bb-bb-set__cta{color:var(--ink)}
+  /* curated bundles */
+  .bb-bb-curated-lbl{font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:center;margin:0 0 10px}
+  .bb-bb-presets{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:0 0 24px}
+  .bb-bb-preset{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;font-weight:600;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:999px;padding:9px 18px;cursor:pointer;transition:all .2s}
+  .bb-bb-preset.is-active{background:var(--rose);border-color:var(--rose)}
+  .bb-bb-scope{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;background:#fbf3f4;border:1px solid var(--line);border-radius:10px;padding:9px 14px;margin:0 0 12px;font-family:var(--baseFont,system-ui,sans-serif);font-size:12.5px;line-height:1.35;color:var(--ink)}
+  .bb-bb-scope[hidden]{display:none}
+  .bb-bb-scope__t{flex:1 1 auto;min-width:140px}
+  .bb-bb-scope__t b{font-weight:700}
+  .bb-bb-scope__b{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--rose);border-radius:999px;padding:6px 14px;cursor:pointer;white-space:nowrap;transition:all .15s}
+  .bb-bb-scope__b:hover{background:var(--rose)}
+  /* layout */
+  .bb-bb-grid-tray{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start}
+  .bb-bb-card__zoom{position:absolute;bottom:6px;right:6px;z-index:4;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:999px;color:var(--ink);background:rgba(255,255,255,.96);border:1px solid var(--line);box-shadow:0 1px 5px rgba(43,47,61,.25);opacity:0;transition:opacity .15s;cursor:zoom-in;padding:0}
+  .bb-bb-card__zoom svg{width:14px;height:14px}
+  .bb-bb-card:hover .bb-bb-card__zoom{opacity:1}
+  @media (hover:none){.bb-bb-card__zoom{opacity:.92}}
+  .bb-bb-zoom{position:fixed;inset:0;z-index:100050;background:rgba(28,30,40,.86);display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
+  .bb-bb-zoom[hidden]{display:none}
+  .bb-bb-zoom__fig{margin:0;max-width:560px;width:100%;display:flex;flex-direction:column;align-items:center;gap:12px}
+  .bb-bb-zoom__fig img{width:100%;max-width:520px;max-height:74vh;object-fit:contain;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.45);background:#fff}
+  .bb-bb-zoom__cap{font-family:var(--baseFont,system-ui,sans-serif);font-size:15px;font-weight:600;color:#fff;text-align:center;letter-spacing:.01em}
+  .bb-bb-zoom__spin[hidden],.bb-bb-zoom__hint[hidden]{display:none!important}
+  .bb-bb-zoom__stage{position:relative;display:block}
+  .bb-bb-zoom__spin{position:absolute;top:12px;left:12px;z-index:3;display:flex;align-items:center;gap:6px;background:rgba(35,38,46,.82);color:#F5F0E6;font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:800;letter-spacing:.08em;padding:9px 13px;pointer-events:none}
+  .bb-bb-zoom__hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:3;background:rgba(35,38,46,.78);color:#F5F0E6;font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:600;letter-spacing:.06em;padding:9px 16px;pointer-events:none;white-space:nowrap}
+  .bb-bb-zoom__x{position:absolute;top:18px;right:20px;width:42px;height:42px;border-radius:999px;border:none;background:rgba(255,255,255,.16);color:#fff;font-size:24px;line-height:1;cursor:pointer}
+  .bb-bb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:16px;min-height:200px}
+  .bb-bb-grid__loading{grid-column:1/-1;text-align:center;color:var(--muted);padding:48px 0;font-family:var(--baseFont,system-ui,sans-serif)}
+  .bb-bb-help{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;color:var(--muted);margin:14px 2px 0;line-height:1.45}
+  .bb-bb-card{position:relative;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s;text-align:left;padding:0;box-shadow:0 1px 6px rgba(43,47,61,.04)}
+  .bb-bb-card__chk{position:absolute;top:6px;right:6px;z-index:2;display:flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;font-family:var(--baseFont,system-ui,sans-serif);font-size:14px;font-weight:800;line-height:1;color:var(--ink);background:rgba(255,255,255,.96);border:1px solid var(--line);box-shadow:0 1px 5px rgba(43,47,61,.25)}
+  .bb-bb-card__minus{position:absolute;top:6px;left:6px;z-index:3;display:none;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;font-family:var(--baseFont,system-ui,sans-serif);font-size:17px;font-weight:800;line-height:1;color:#fff;background:rgba(43,47,61,.82);border:none;cursor:pointer;box-shadow:0 1px 5px rgba(43,47,61,.3)}
+  .bb-bb-card__minus:hover{background:#b3454a}
+  .bb-bb-card.is-added .bb-bb-card__minus{display:flex}
+  .bb-bb-card.is-added{border-color:#2e7d57;box-shadow:0 0 0 2px #2e7d57}
+  .bb-bb-card.is-added .bb-bb-card__chk{color:#fff;background:#2e7d57;border-color:#2e7d57}
+  .bb-bb-size.is-active::after{content:'✓';position:absolute;top:7px;right:9px;font-size:12px;font-weight:900;color:#fff;opacity:.95}
+  .bb-bb-card:hover{transform:translateY(-2px);border-color:var(--rose);box-shadow:0 6px 18px rgba(43,47,61,.10)}
+  .bb-bb-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+  .bb-bb-card__t{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;line-height:1.35;color:var(--ink);padding:9px 10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:43px}
+  .bb-bb-card__pc{position:absolute;top:7px;left:7px;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);color:var(--ink);font-size:9px;font-weight:700;letter-spacing:.04em;padding:3px 7px;border-radius:999px;box-shadow:0 1px 6px rgba(43,47,61,.12)}
+  /* discovery */
+  .bb-bb-discover{margin:0 0 16px}
+  .bb-bb-search{position:relative;display:flex;align-items:center;margin:0 0 12px}
+  .bb-bb-search__i{position:absolute;left:14px;width:18px;height:18px;color:var(--muted);pointer-events:none}
+  .bb-bb-search__in{width:100%;font-family:var(--baseFont,system-ui,sans-serif);font-size:15px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px 40px 13px 42px;min-height:48px;transition:border-color .2s;-webkit-appearance:none;appearance:none}
+  .bb-bb-search__in:focus{outline:none;border-color:var(--rose)}
+  .bb-bb-search__in::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+  .bb-bb-search__clear{position:absolute;right:10px;width:24px;height:24px;border:none;background:rgba(43,47,61,.08);color:var(--ink);border-radius:50%;font-size:15px;line-height:1;cursor:pointer}
+  .bb-bb-chips{display:flex;flex-direction:column;gap:8px}
+  .bb-bb-chipgroup{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+  .bb-bb-chipgroup__l{font-family:var(--baseFont,system-ui,sans-serif);font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);min-width:62px}
+  .bb-bb-chip{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;font-weight:600;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 13px;cursor:pointer;transition:all .15s}
+  .bb-bb-chip:hover{border-color:var(--rose)}
+  .bb-bb-chip.is-active{background:var(--rose);border-color:var(--rose);color:var(--ink)}
+  .bb-bb-resultcount{font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;color:var(--muted);margin-top:10px;letter-spacing:.02em;min-height:14px}
+  /* saved favorites band */
+  .bb-bb-faves{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 22px;box-shadow:0 1px 6px rgba(43,47,61,.04)}
+  .bb-bb-faves__top{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;margin-bottom:10px}
+  .bb-bb-faves__t{display:inline-flex;align-items:center;gap:7px;font-family:var(--baseFont,system-ui,sans-serif);font-size:13px;font-weight:700;color:var(--ink)}
+  .bb-bb-faves__t svg{width:15px;height:15px;fill:var(--rose);stroke:var(--rose)}
+  .bb-bb-faves__how{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;color:var(--muted);line-height:1.4}
+  .bb-bb-faves__row{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .bb-bb-faves__empty{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;color:var(--muted);margin:2px 0;text-align:center;width:100%}
+  .bb-bb-fave{position:relative;flex:0 0 98px;width:98px}
+  .bb-bb-fave img{width:98px;height:98px;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:block;background:#faf8f6}
+  .bb-bb-fave__t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-family:var(--baseFont,system-ui,sans-serif);font-size:10px;line-height:1.3;color:var(--ink);margin:5px 0;height:26px}
+  .bb-bb-fave__add{width:100%;font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);background:var(--rose);border:none;border-radius:6px;padding:6px 0;cursor:pointer;transition:background .2s}
+  .bb-bb-fave__add:hover{background:var(--rose-deep)}
+  .bb-bb-fave__x{position:absolute;top:4px;right:4px;width:18px;height:18px;border:none;border-radius:50%;background:rgba(43,47,61,.7);color:#fff;font-size:11px;line-height:1;cursor:pointer}
+  /* tray */
+  .bb-bb-tray{position:sticky;top:90px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px 24px;box-shadow:0 8px 30px rgba(43,47,61,.07);overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 106px);overscroll-behavior:contain}
+  .bb-bb-tray__slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;align-items:start}
+  .bb-bb-slot-cell{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .bb-bb-slot{aspect-ratio:1;border:2px dashed var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:22px;position:relative;overflow:hidden;background:#faf8f6}
+  .bb-bb-slot.is-filled{border-style:solid}
+  .bb-bb-slot.is-filled img{width:100%;height:100%;object-fit:cover}
+  .bb-bb-slot.is-free{border-color:#BFE0CB;background:#F2F8F4}
+  .bb-bb-slot.is-locked{opacity:.5}
+  .bb-bb-slot__lockv{font-size:8px;font-weight:700;letter-spacing:.04em;color:var(--rose-deep);text-align:center;line-height:1.2}
+  .bb-bb-slot__x{position:absolute;top:3px;right:3px;background:rgba(43,47,61,.72);color:#fff;border:none;width:18px;height:18px;border-radius:50%;font-size:11px;cursor:pointer;display:none;z-index:3}
+  .bb-bb-slot.is-filled .bb-bb-slot__x{display:block}
+  .bb-bb-slot__free{position:absolute;top:3px;left:3px;background:#2e7d57;color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:4px;letter-spacing:.04em;z-index:3}
+  .bb-bb-slot__type{display:block;text-align:center;font-family:var(--baseFont,system-ui,sans-serif);font-size:9px;font-weight:700;letter-spacing:.02em;color:var(--muted);line-height:1.2}
+  .bb-bb-slot__switch{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;font-family:var(--baseFont,system-ui,sans-serif);font-size:9px;font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px 2px;cursor:pointer;line-height:1.2;white-space:nowrap}
+  .bb-bb-slot__switch:hover{border-color:var(--rose);color:var(--rose-deep)}
+  .bb-bb-slot__sw{font-size:11px;opacity:.85}
+  .bb-bb-slot__spin{position:absolute;inset:0;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;z-index:4}
+  .bb-bb-slot__spin::after{content:"";width:18px;height:18px;border:2px solid var(--rose);border-top-color:transparent;border-radius:50%;animation:bbspin .7s linear infinite}
+  @keyframes bbspin{to{transform:rotate(360deg)}}
+  .bb-bb-fillrest{width:100%;font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;font-weight:700;color:var(--ink);background:var(--rose-tint);border:1px solid var(--rose);border-radius:8px;padding:10px;cursor:pointer;margin-bottom:8px;transition:all .2s}
+  .bb-bb-fillrest:hover{background:var(--rose-soft)}
+  .bb-bb-fillrest[hidden]{display:none}
+  .bb-bb-more{width:100%;font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;font-weight:600;color:var(--ink);background:#fff;border:1px dashed var(--line);border-radius:8px;padding:9px;cursor:pointer;margin-bottom:12px;transition:all .2s}
+  .bb-bb-more:hover{border-color:var(--rose);color:var(--rose-deep)}
+  .bb-bb-more:disabled{opacity:.5;cursor:default}
+  .bb-bb-tray__count{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--muted);text-align:center;margin-bottom:12px}
+  .bb-bb-tray__head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;min-height:30px}
+  .bb-bb-tray__title{font-family:var(--baseFont,system-ui,sans-serif);font-size:15px;font-weight:700;letter-spacing:.01em;color:var(--ink)}
+  .bb-bb-clearall{font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:700;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 13px;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;transition:all .15s}
+  .bb-bb-clearall:hover{border-color:var(--rose);color:var(--ink);background:#fbf3f4}
+  .bb-bb-clearall[hidden]{display:none}
+  /* free-shipping bar */
+  .bb-bb-ship{margin-bottom:14px;min-height:1px}
+  .bb-bb-ship__bar{height:6px;background:var(--cream-deep);border-radius:6px;overflow:hidden;margin-bottom:6px}
+  .bb-bb-ship__bar i{display:block;height:100%;background:var(--rose);border-radius:6px;transition:width .35s ease}
+  .bb-bb-ship__txt,.bb-bb-ship__done{font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:600;color:var(--muted);text-align:center;display:block}
+  .bb-bb-ship__done{color:#3c8c5a}
+  /* value comparison (prominent) */
+  .bb-bb-value{background:var(--rose-soft);border-radius:14px;padding:16px 16px 14px;margin-bottom:16px}
+  .bb-bb-value__compare{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+  .bb-bb-value__col{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px}
+  .bb-bb-value__k{font-family:var(--baseFont,system-ui,sans-serif);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);line-height:1.2}
+  .bb-bb-value__v{font-family:var(--titleFont,Georgia,serif);font-size:clamp(20px,2vw,26px);font-weight:400;color:var(--ink)}
+  .bb-bb-value__col--alt .bb-bb-value__v s{color:var(--muted);text-decoration-thickness:2px}
+  .bb-bb-value__v--now{color:var(--rose-deep)}
+  .bb-bb-value__vs{font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase}
+  .bb-bb-value__save{font-family:var(--baseFont,system-ui,sans-serif);font-size:13px;font-weight:700;color:var(--ink);text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid rgba(43,47,61,.1)}
+  .bb-bb-add{width:100%;font-family:var(--baseFont,system-ui,sans-serif);font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);background:var(--rose);border:none;border-radius:10px;padding:16px;cursor:pointer;transition:background .2s;min-height:52px}
+  .bb-bb-add:disabled{opacity:.5;cursor:default}
+  .bb-bb-add:not(:disabled):hover{background:var(--rose-deep)}
+  .bb-bb-guard{margin-top:10px;background:var(--rose-tint);border:1px solid var(--rose);border-radius:10px;padding:12px;font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;color:var(--ink);text-align:center}
+  .bb-bb-guard__btns{display:flex;gap:8px;margin-top:9px}
+  .bb-bb-guard__btns button{flex:1;font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.04em;border-radius:8px;padding:9px;cursor:pointer}
+  .bb-bb-guard__go{background:var(--rose);border:1px solid var(--rose);color:var(--ink)}
+  .bb-bb-guard__skip{background:#fff;border:1px solid var(--line);color:var(--muted)}
+  .bb-bb-note{font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;color:var(--muted);text-align:center;margin:9px 0 0;min-height:14px}
+  .bb-bb-unlock{animation:bbpop .4s ease}
+  @keyframes bbpop{0%{transform:scale(.85);opacity:0}100%{transform:scale(1);opacity:1}}
+  /* confetti */
+  .bb-bb-confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:6}
+  .bb-bb-confetti span{position:absolute;top:-12px;width:8px;height:11px;border-radius:1px;opacity:0}
+  .bb-bb-confetti.is-on span{animation:bbfall 1.25s ease-in forwards}
+  @keyframes bbfall{0%{opacity:1;transform:translateY(-12px) rotate(0)}100%{opacity:0;transform:translateY(360px) rotate(460deg)}}
+  @media (prefers-reduced-motion: reduce){.bb-bb-confetti{display:none}}
+  /* mobile orientation cue + sticky bar + sheet + findbar are hidden on desktop */
+  .bb-bb-howto{display:none}
+  .bb-bb-stickybar{display:none}
+  .bb-bb-tray__grab{display:none;width:100%;flex-direction:column;align-items:center;gap:4px;background:none;border:none;padding:4px 0 10px;cursor:pointer}
+  .bb-bb-tray__grabbar{width:44px;height:4px;border-radius:999px;background:rgba(245,240,230,.35)}
+  .bb-bb-tray__grabtxt{font-family:var(--baseFont,system-ui,sans-serif);font-size:11px;font-weight:700;letter-spacing:.06em;color:rgba(245,240,230,.6);text-transform:uppercase}
+  .bb-bb-traydim{position:fixed;inset:0;z-index:99985;background:rgba(23,26,34,.42);opacity:0;pointer-events:none;transition:opacity .25s}
+  .bb-bb-stickybar__info{background:none;border:none;text-align:left;padding:0;display:flex;flex-direction:column;cursor:pointer;min-width:0}
+  .bb-bb-stickybar__chev{font-family:var(--baseFont,system-ui,sans-serif);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#96525A;margin-top:1px}
+  @keyframes bbBarPulse{0%{transform:scale(1)}35%{transform:scale(1.06)}100%{transform:scale(1)}}
+  .bb-bb-stickybar.is-pulse{animation:bbBarPulse .5s ease}
+  .bb-bb-sheet{display:none}
+  .bb-bb-findbar{display:none}
+  @media (max-width:800px){
+    .bb-bb-grid-tray{grid-template-columns:1fr}
+    /* the tray is a bottom SHEET on mobile — collapsed to the sticky bar, expands over the page */
+    .bb-bb-tray{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:99986;margin:0;max-height:76vh;overflow-y:auto;-webkit-overflow-scrolling:touch;border-radius:18px 18px 0 0;box-shadow:0 -12px 44px rgba(23,26,34,.45);transform:translateY(112%);transition:transform .32s cubic-bezier(.2,.8,.2,1);padding-bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+    .bb-bb.is-tray-open .bb-bb-tray{transform:none}
+    .bb-bb-tray__grab{display:flex}
+    .bb-bb.is-tray-open .bb-bb-traydim{opacity:1;pointer-events:auto}
+    .bb-bb-tray .bb-tl__x{display:none}                              /* tap the tile -> zoom -> Remove */
+    .bb-bb-tray .bb-tl--cart .bb-tl__x{display:block;width:26px;height:26px;font-size:15px}  /* cart removal keeps its ×, bigger */
+    .bb-bb-grid{grid-template-columns:repeat(2,1fr);gap:12px}
+    .bb-bb-grid-wrap{padding:10px;border-radius:14px}
+    .bb-bb-card{padding:14px 10px 10px;border-radius:14px}
+    .bb-bb-size{min-width:96px;padding:16px 14px 12px}
+    .bb-bb{padding-bottom:92px}                                  /* clear the fixed bar */
+    .bb-bb-curated-lbl,.bb-bb-presets{display:none}              /* themes live in the pop-out sheet */
+    .bb-bb-sets__row{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding:15px 2px 8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+    .bb-bb-set{flex:0 0 156px;scroll-snap-align:start;padding:16px 12px 12px}
+    .bb-bb-searchrow,.bb-bb-themes{display:none}                 /* search + themes live in the pop-out sheet */
+    .bb-bb-steplbl{font-size:11px;gap:7px}
+    .bb-bb-steplbl__n{width:19px;height:19px;font-size:11px}
+    .bb-bb-minis{margin-top:24px;padding:16px 12px 14px;border-radius:14px}
+    .bb-bb-mini{flex:0 0 138px}
+    .bb-bb-add{display:block}                                    /* the sheet's pinned dock IS mobile checkout now */
+    .bb-bb-findbar{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;font-family:var(--baseFont,system-ui,sans-serif);font-size:14px;font-weight:700;color:var(--ink);background:#fff;border:1.5px solid var(--rose);border-radius:12px;padding:13px 16px;margin:0 0 14px;cursor:pointer;letter-spacing:.01em}
+    .bb-bb-findbar svg{width:18px;height:18px;color:var(--rose-deep)}
+    .bb-bb-findbar:active{background:var(--rose-tint)}
+    .bb-bb-howto{display:block;font-family:var(--baseFont,system-ui,sans-serif);font-size:13px;font-weight:700;color:var(--rose-deep);text-align:center;margin:4px 0 14px;letter-spacing:.01em}
+    .bb-bb-stickybar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;align-items:center;gap:12px;padding:9px 16px;padding-bottom:calc(9px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 22px rgba(43,47,61,.13)}
+    .bb-bb-stickybar__info{display:flex;flex-direction:column;line-height:1.2;white-space:nowrap;flex:0 0 auto}
+    .bb-bb-stickybar__count{font-family:var(--baseFont,system-ui,sans-serif);font-size:19px;font-weight:800;color:var(--ink);letter-spacing:.01em}
+    .bb-bb-stickybar__sub{font-family:var(--baseFont,system-ui,sans-serif);font-size:12px;font-weight:800;color:#2e7d57;letter-spacing:.02em}
+    .bb-bb-stickybar__find{display:flex;align-items:center;justify-content:center;gap:7px;flex:1 1 auto;font-family:var(--baseFont,system-ui,sans-serif);font-size:14px;font-weight:800;color:#fff;background:var(--rose-deep);border:1px solid var(--rose-deep);border-radius:999px;padding:13px 16px;cursor:pointer;min-height:50px;letter-spacing:.01em}
+    .bb-bb-stickybar__find svg{width:18px;height:18px}
+    .bb-bb-stickybar__find:active{filter:brightness(.94)}
+    .bb-bb-stickybar__btn{flex:1 1 auto;font-family:var(--baseFont,system-ui,sans-serif);font-size:15px;font-weight:800;color:#fff;background:#2e7d57;border:none;border-radius:999px;padding:13px 16px;cursor:pointer;letter-spacing:.01em;min-height:50px;transition:background .15s}
+    .bb-bb-stickybar__btn.is-ready{background:var(--ink)}
+    .bb-bb-stickybar__btn:disabled{opacity:.6;cursor:default}
+    .bb-bb-stickybar__btn s{font-weight:600;opacity:.6;margin-right:5px}
+    .bb-bb-stickybar.has-cta .bb-bb-stickybar__find{flex:0 0 auto;background:#fff;color:var(--ink);border:1px solid var(--line);padding:11px 12px;gap:0}
+    .bb-bb-stickybar.has-cta .bb-bb-stickybar__find span{display:none}
+    .bb-bb-sheet__row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+    .bb-bb-sheet__lbl{font-family:var(--baseFont,system-ui,sans-serif);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+    .bb-bb-sheet .bb-bb-bottle__opts{display:flex;flex-wrap:wrap;padding:3px}
+    .bb-bb-sheet .bb-bb-bottle__opt{padding:8px 14px;font-size:12px;min-height:36px}
+    /* discovery bottom-sheet */
+    .bb-bb-sheet{display:block;position:fixed;inset:0;z-index:70}
+    .bb-bb-sheet[hidden]{display:none}
+    .bb-bb-sheet__backdrop{position:absolute;inset:0;background:rgba(43,47,61,.45)}
+    .bb-bb-sheet__panel{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:18px 18px 0 0;padding:8px 16px calc(20px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px rgba(43,47,61,.22);max-height:74vh;overflow:auto}
+    .bb-bb-sheet__grip{display:block;width:40px;height:4px;border-radius:2px;background:var(--line);margin:6px auto 12px}
+    .bb-bb-sheet__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .bb-bb-sheet__title{font-family:var(--baseFont,system-ui,sans-serif);font-size:15px;font-weight:700;color:var(--ink)}
+    .bb-bb-sheet__done{font-family:var(--baseFont,system-ui,sans-serif);font-size:13px;font-weight:800;color:var(--rose-deep);background:none;border:none;cursor:pointer;padding:6px 4px}
+    .bb-bb-sheet__in{width:100%;font-family:var(--baseFont,system-ui,sans-serif);font-size:16px;color:var(--ink);padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:14px;background:#fff}
+    .bb-bb-sheet__pills{display:flex;flex-wrap:wrap;gap:8px}
+  }
+</style>
+
+<script>
+(function(){
+  var root=document.querySelector('.bb-bb');
+  if(!root||root.dataset.bbBound==='1')return; root.dataset.bbBound='1';
+
+  var PBV=parseFloat(root.dataset.pbv)||250;                 // painted-bottle $ per wrap
+  var CAP=parseInt(root.dataset.gridCap,10)||16;
+  var UNIT=795;                                              // single-wrap price (cents) — auto-detected for DISPLAY
+  var T1=3900,T2=7900,T3=11900,TSTEP=3900;                   // tier thresholds — FIXED, must match the deployed Free Wraps function
+  var SHIPC=3900;                                            // free-shipping trigger — a clean $39, matches the function
+  var MAXPAID=parseInt(root.dataset.maxPaid,10)||30;
+  var FREE_EXTRA=parseInt(root.dataset.freeExtra,10)||0;     // extra free per +5 beyond 15
+  var SHIP=Math.round((parseFloat(root.dataset.ship)||0)*100); // free-ship threshold (cents)
+  var freeMap={5:2,10:5,15:10};   // HARDCODED to the deployed Free Wraps function (2/5/10) — editing theme settings CANNOT change entitlements, so we don't pretend
+  var WS=root.dataset.ws==='1';   // wholesale account: function refuses the offer, so the UI must not promise it
+  if(WS){freeMap={5:0,10:0,15:0};FREE_EXTRA=0;}
+  var grid=root.querySelector('[data-bb-grid]');
+  var slotsEl=root.querySelector('[data-bb-slots]');
+  var clearAllEl=root.querySelector('[data-bb-clearall]');
+  var trayTitleEl=root.querySelector('[data-bb-tray-title]');
+  var stickyCountEl=root.querySelector('[data-bb-sticky-count]');
+  var stickySubEl=root.querySelector('[data-bb-sticky-sub]');
+  var stickyCtaEl=root.querySelector('[data-bb-sticky-cta]');
+  var stickybarEl=root.querySelector('[data-bb-stickybar]');
+  var moreBtn=root.querySelector('[data-bb-more]');
+  var fillRestBtn=root.querySelector('[data-bb-fillrest]');
+  var addBtn=root.querySelector('[data-bb-add]');
+  var guardEl=root.querySelector('[data-bb-guard]');
+  var noteEl=root.querySelector('[data-bb-note]');
+  var nudgeEl=root.querySelector('[data-bb-nudge]');
+  var shipEl=root.querySelector('[data-bb-ship]');
+  var confettiEl=root.querySelector('[data-bb-confetti]');
+  var flipbar=root.querySelector('[data-bb-flip]');
+  var searchEl=root.querySelector('[data-bb-search]');
+  var clearEl=root.querySelector('[data-bb-search-clear]');
+  var chipsEl=root.querySelector('[data-bb-chips]');
+  var countEl=root.querySelector('[data-bb-resultcount]');
+  // Mobile feedback layer: flash() writes into the tray, which is COLLAPSED on phones, so every
+  // message (errors, claim banners, unlocks) was invisible there. A toast above the sticky bar
+  // mirrors them, and a progress strip on the bar shows the distance to the next free-wrap tier.
+  var toastEl=null,toastT=0,prevFreeN=0;
+  if(stickybarEl){
+    toastEl=document.createElement('div');toastEl.className='bb-bb-toast';toastEl.setAttribute('role','status');toastEl.setAttribute('aria-live','polite');document.body.appendChild(toastEl);
+    var barProg=document.createElement('div');barProg.className='bb-bb-barprog';barProg.innerHTML='<i></i>';stickybarEl.insertBefore(barProg,stickybarEl.firstChild);
+  }
+  function toast(m){if(!toastEl||!m||!isMobile()||root.classList.contains('is-tray-open'))return;toastEl.textContent=m;toastEl.classList.add('is-on');clearTimeout(toastT);toastT=setTimeout(function(){toastEl.classList.remove('is-on');},4000);}
+
+  var paidTarget=parseInt(root.dataset.defaultSize,10)||10;
+  var currentBottle=root.dataset.defaultBottle||'Prosecco';
+  var paid=[], free=[];          // each: {handle,bottleType,variantId,title,img,price(cents),_busy}
+  var pool=[], lastView=[];
+  var query='',qtokens=[],activeTags={},chipData=[],seedHandles=[],urlSized=false,userSized=false,stageSeeding=true;
+  // CLAIM MODE (?claim=1 — cart banners link here): the shopper's existing cart spend
+  // already earned free wraps; show ONLY free slots, no pack required. Picking a size
+  // exits claim mode into the normal pack flow.
+  var claimMode=false, cartLooseCents=0, cartItemsView=[];   // loose = eligible wrap lines already in the cart (no _bb); shown read-only in the tray
+  var resolveCache=new Map();
+  var wasUnlocked=false, inited=false, guardPassed=false, taughtAdd=false, adding=false;
+
+  // pool sources (both bottles) + curated bundles + suggestion cap
+  var PROSECCO_COL=root.dataset.source||'la-marca-wraps';
+  var CHAMP_COL=root.dataset.champagne||'champagne-collection';
+  var WINE_COL=root.dataset.wine||'wine-collection';
+  var MAXSUGG=40;
+  // Curated starting-bundle pills, keyed to the AI-classified taxonomy (motif-/color-/season-/occasion-/style-/for-).
+  // tags = OR within a pill (a wrap matches if it carries ANY listed tag). '__best' = best-seller special.
+  var CURATED=[
+    {key:'most-popular',  label:'Most popular',     tags:['__best']},
+    {key:'all',           label:'All wraps',        tags:['__all']},
+    {key:'florals',       label:'Florals',          tags:['motif-floral','motif-roses','motif-tulips','motif-hydrangea','motif-peony-blossom','motif-botanical-trellis','motif-toile','motif-berries']},
+    {key:'birthday',      label:'Birthday',         tags:['occasion-birthday','motif-balloons','motif-cakes-sweets','motif-party-hats']},
+    {key:'wedding',       label:'Wedding & shower', tags:['occasion-wedding','occasion-bridal-shower','occasion-engagement','occasion-bachelorette','for-bridal','motif-wedding']},
+    {key:'holiday',       label:'Holiday',          tags:['occasion-christmas','occasion-holiday-general','occasion-hanukkah','occasion-new-years','occasion-thanksgiving','motif-santa','motif-ornaments','motif-christmas-trees','motif-poinsettia-greenery','motif-candy-cane','motif-snowflakes','motif-gingerbread','motif-menorah']},
+    {key:'valentines',    label:"Valentine's",      tags:['occasion-valentines','occasion-galentines','motif-hearts','motif-kiss-lips']},
+    {key:'game-day',      label:'Game day',         tags:['occasion-gameday','occasion-game-day','motif-game-day','motif-sports-equipment','for-football','for-college-sports']},
+    {key:'graduation',    label:'Graduation',       tags:['occasion-graduation','motif-graduation-cap']},
+    {key:'baby',          label:'Baby shower',      tags:['occasion-baby','occasion-baby-shower']},
+    {key:'halloween',     label:'Halloween',        tags:['occasion-halloween','motif-witch','motif-ghost','motif-spiderweb','motif-pumpkins']},
+    {key:'bows',          label:'Bows',             tags:['motif-bows']},
+    {key:'gingham-cane',  label:'Gingham & cane',   tags:['motif-gingham','motif-rattan-cane','motif-tartan-plaid','motif-argyle']},
+    {key:'roses',         label:'Roses',            tags:['motif-roses']},
+    {key:'coastal',       label:'Coastal',          tags:['style-coastal','motif-palm-tropical','motif-seashells','motif-nautical','motif-abstract-wave']},
+    {key:'grand',         label:'Grandmillennial',  tags:['style-grandmillennial']},
+    {key:'for-him',       label:'Gift for him',     tags:['for-menswear-dad','motif-menswear','for-golf','for-fishing','for-cars','for-football','for-college-sports','motif-western','for-equestrian','occasion-fathers-day']},
+    {key:'for-golf',      label:'For the golfer',   tags:['for-golf']},
+    {key:'for-racquet',   label:'Tennis & pickleball', tags:['for-tennis','for-pickleball']},
+    {key:'for-mahjong',   label:'Mahjong night',    tags:['for-mahjong','motif-mahjong']},
+    {key:'for-hostess',   label:'For the hostess',  tags:['for-hostess','for-entertaining-hostess','for-wine-bubbly','occasion-hostess','occasion-cocktail-party']}
+  ];
+  var activeCurated=CURATED[0].key;
+
+  var PCSWAP={};
+  try{var raw=JSON.parse((root.querySelector('[data-bb-pairs]').textContent||'[]'));raw.forEach(function(p){PCSWAP[p[0]]={b:'Prosecco',s:p[1],sb:'Champagne'};PCSWAP[p[1]]={b:'Champagne',s:p[0],sb:'Prosecco'};});}catch(e){}
+
+  function money(c){return '$'+(c/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function money0(c){return '$'+Math.round(c/100).toLocaleString();}
+  function toCents(p){return Math.round(parseFloat(p)*100)||0;}
+  function withW(src,w){if(!src)return '';return src+(src.indexOf('?')>-1?'&':'?')+'width='+w;}
+  function abbr(b){return b==='Prosecco'?'Pros':(b==='Champagne'?'Champ':(b||''));}
+  function cleanTitle(t){return (t||'').replace(/\s*(prosecco|champagne|veuve|la marca)\s*bottle wrap\s*$/i,'').replace(/\s*bottle wrap\s*$/i,'').trim();}
+  function esc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+  // free-wrap allotment per pack size (used for the size tiles / upgrade nudges)
+  function freeFor(n){var f=0;if(n>=5)f=freeMap[5];if(n>=10)f=freeMap[10];if(n>=15)f=freeMap[15];if(n>15&&FREE_EXTRA>0)f=freeMap[15]+Math.floor((n-15)/5)*FREE_EXTRA;return f;}
+  // SPEND-BASED ladder (mirrors the Free Wraps function): clean $39/$79/$119 dollar
+  // thresholds — spend is all that matters (singles, minis, cart wraps all count),
+  // exactly like it will in the cart at checkout. Wrap counts are irrelevant.
+  function freeForSpend(c){var f=0;if(c>=T1)f=freeMap[5];if(c>=T2)f=freeMap[10];if(c>=T3)f=freeMap[15];if(c>T3&&FREE_EXTRA>0)f=freeMap[15]+Math.floor((c-T3)/TSTEP)*FREE_EXTRA;return f;}
+  function spendAll(){return paidPrice()+minisTotal()+cartLooseCents;}   // ACTUAL eligible spend: builder wraps + minis + wraps already in the cart
+  function goalCents(){return paidTarget>=15?T3:paidTarget>=10?T2:T1;}
+  // GOAL-DRIVEN build: paid picks until the chosen tier's spend is reached, THEN free picks.
+  // No mid-build interception at lower tiers (Shaun 2026-09-02).
+  function goalMet(){return spendAll()>=goalCents();}
+  function nextTierCents(){var sp=spendAll();return sp<T1?T1:sp<T2?T2:sp<T3?T3:0;}
+  function freeCount(){return freeForSpend(spendAll());}
+  // ANY single wrap can be a free pick — wine included (2026-09-02).
+  function freeOK(bt,h){return true;}   // ANY single wrap can be a free pick (wine included 2026-09-02)
+  // customer-facing tier names (5/10/15 are internal slot counts; shoppers see spend tiers)
+  function tierName(n){return n===5?'Tier 1':n===10?'Tier 2':n===15?'Tier 3':(n+'-wrap bundle');}
+  function tierCents(n){return n>=15?T3:n>=10?T2:T1;}
+  // smallest pack that fits n wraps: 5/10/15, then 5-steps up to MAXPAID
+  function fitTarget(n){return n<=5?5:n<=10?10:n<=15?15:Math.min(MAXPAID,Math.ceil(n/5)*5);}
+  function syncSizeBtns(){root.querySelectorAll('.bb-bb-size').forEach(function(x){x.classList.toggle('is-active',parseInt(x.dataset.size,10)===paidTarget);});}
+  function unlocked(){return freeCount()>0;}
+  function freeActive(){return unlocked()?Math.min(free.length,freeCount()):0;}
+  function totalWraps(){return paid.length+freeActive();}
+  function paidPrice(){return paid.reduce(function(a,s){return a+(s.price||0);},0);}
+
+  // pair helpers
+  function swap(h){return PCSWAP[h]||null;}
+  function bottleOf(h){var i=PCSWAP[h];return i?i.b:inferBottle(h);}
+  function altSibling(h){var i=PCSWAP[h];return i?i.s:null;}
+  function siblingForBottle(h,target){var i=PCSWAP[h];return (i&&i.sb===target)?i.s:null;}
+  function inferBottle(h){h=(h||'').toLowerCase();if(h.indexOf('daou')>-1||h.indexOf('-wine')>-1)return 'Wine';if(h.indexOf('veuve')>-1||h.indexOf('champagne')>-1)return 'Champagne';if(h.indexOf('la-marca')>-1||h.indexOf('lamarca')>-1||h.indexOf('prosecco')>-1)return 'Prosecco';return currentBottle;}
+
+  function isSingle(p){
+    var h=(p.handle||'').toLowerCase(),v=p.variants&&p.variants[0];
+    if(!v||!v.available)return false;
+    if(/mini|bundle|six-pack|6-pack|set-of|tester|practice/.test(h))return false;
+    // MUST mirror the Free Wraps discount function's band ($4–$8/unit) — anything outside
+    // it would show as ladder-eligible here but be ignored by the checkout function.
+    var c=toCents(v.price);return c>=400&&c<=800;
+  }
+
+  function seedCache(list){(list||[]).forEach(function(p){var v=p.variants&&p.variants[0];if(v&&!resolveCache.has(p.handle)){resolveCache.set(p.handle,{variantId:v.id,price:toCents(v.price),image:(p.images&&p.images[0]?p.images[0].src:''),title:p.title});}});}
+  function resolve(h){
+    if(resolveCache.has(h))return Promise.resolve(resolveCache.get(h));
+    return fetch('/products/'+h+'.json').then(function(r){return r.json();}).then(function(d){
+      var p=d.product,v=p.variants[0];var obj={variantId:v.id,price:toCents(v.price),available:(v.available!==false),image:(p.images&&p.images[0]?p.images[0].src:''),title:p.title};resolveCache.set(h,obj);return obj;
+    });
+  }
+
+  // ---- discovery ----
+  var GROUPS=[{k:'occasion',l:'Occasion'},{k:'style',l:'Style'}];
+  var PRETTY={'self':'Me','gameday':'Game Day','baby':'Baby shower'};
+  function prettyTag(t){var v=t.split('-').slice(1).join(' ');if(PRETTY[v])return PRETTY[v];return v.replace(/\b\w/g,function(m){return m.toUpperCase();});}
+  function anyTags(){for(var k in activeTags){if(activeTags[k])return true;}return false;}
+  function buildChips(){
+    var counts={};
+    pool.forEach(function(p){p._tags.forEach(function(t){var g=t.split('-')[0];if(g==='occasion'||g==='style'||g==='for'){counts[t]=(counts[t]||0)+1;}});});
+    var caps={occasion:7,style:6,'for':4};chipData=[];
+    GROUPS.forEach(function(grp){var arr=Object.keys(counts).filter(function(t){return t.split('-')[0]===grp.k;}).map(function(t){return {tag:t,group:grp.k,n:counts[t],label:prettyTag(t)};});arr.sort(function(a,b){return b.n-a.n;});chipData=chipData.concat(arr.slice(0,caps[grp.k]||6));});
+  }
+  function renderChips(){
+    if(!chipsEl)return;
+    chipsEl.innerHTML=GROUPS.map(function(grp){var items=chipData.filter(function(c){return c.group===grp.k;});if(!items.length)return '';return '<div class="bb-bb-chipgroup"><span class="bb-bb-chipgroup__l">'+grp.l+'</span>'+items.map(function(c){return '<button type="button" class="bb-bb-chip'+(activeTags[c.tag]?' is-active':'')+'" data-tag="'+c.tag+'">'+c.label+'</button>';}).join('')+'</div>';}).join('');
+    chipsEl.querySelectorAll('.bb-bb-chip').forEach(function(b){b.addEventListener('click',function(){var t=b.dataset.tag;activeTags[t]=!activeTags[t];renderChips();renderGrid();});});
+  }
+  function matchActive(p){if(!anyTags())return true;var byG={};for(var t in activeTags){if(activeTags[t]){var g=t.split('-')[0];(byG[g]=byG[g]||[]).push(t);}}return Object.keys(byG).every(function(g){return byG[g].some(function(tt){return p._tags.indexOf(tt)>-1;});});}
+  // word-PREFIX match (not raw substring) so "red" matches the word "red" / "color-red", NOT "featured"/"textured"/"gathered"
+  var QSTOP={and:1,or:1,the:1,a:1,an:1,with:1,'for':1,of:1,'in':1,on:1,my:1,to:1};
+  function tokenize(q){return (q||'').toLowerCase().split(/[^a-z0-9]+/).filter(function(t){return t&&!QSTOP[t];});}
+  // a token matches by word-prefix OR inside the space-stripped text — so "cowgirl"
+  // finds "Cow Girl" and "gameday" finds "Game Day" without relying on lucky tags
+  function matchQuery(p){if(!qtokens.length)return true;return qtokens.every(function(tok){return p._words.some(function(w){return w.indexOf(tok)===0;})||p._joined.indexOf(tok)>-1;});}
+  function scoreOf(p){var s=0;for(var t in activeTags){if(activeTags[t]&&p._tags.indexOf(t)>-1)s++;}if(qtokens.length){var ti=(p.title||'').toLowerCase();qtokens.forEach(function(tok){if(ti.indexOf(tok)>-1)s+=2;});}return s;}
+  // curated starting-bundle pills (tag-driven); selecting one re-prefills that theme
+  function renderCurated(){
+    var els=root.querySelectorAll('[data-bb-curated]');if(!els.length)return;  // top row + mobile sheet
+    var html=CURATED.map(function(c){return '<button type="button" class="bb-bb-preset'+(c.key===activeCurated?' is-active':'')+'" data-curated="'+c.key+'">'+c.label+'</button>';}).join('');
+    els.forEach(function(el){el.innerHTML=html;});
+    // pills now FILTER the grid only — they never overwrite the customer's picks (no prefill). From the mobile sheet, also close + jump to the grid.
+    root.querySelectorAll('.bb-bb-preset').forEach(function(b){b.addEventListener('click',function(){var inSheet=!!b.closest('[data-bb-sheet]');var k=b.dataset.curated;activeCurated=(k===activeCurated)?'':k;renderCurated();resetDiscovery();renderGrid();if(inSheet){closeSheet();if(grid)grid.scrollIntoView({behavior:'smooth',block:'start'});}});});
+  }
+  function bestMatch(p){return p._tags.indexOf('best seller')>-1||p._tags.indexOf('bestseller')>-1||p._tags.indexOf('best-seller')>-1;}
+  function curEntry(){for(var i=0;i<CURATED.length;i++){if(CURATED[i].key===activeCurated)return CURATED[i];}return null;}
+  // filtered to: current bottle + curated pill (OR of its tags) + (search) ; ranked; capped to MAXSUGG (40)
+  function view(){
+    var base=pool.filter(function(p){return p._bottle===currentBottle&&matchActive(p)&&matchQuery(p);});
+    var e=curEntry(),cur;
+    if(!e||e.tags.indexOf('__all')>-1){cur=base;}   // "All wraps": the whole bottle's catalog, no cap
+    else if(e.tags.indexOf('__best')>-1){var b=base.filter(bestMatch);cur=(b.length>=12)?b:base;}  // fall back broad until best-sellers are tagged
+    else{cur=base.filter(function(p){return e.tags.some(function(tg){return p._tags.indexOf(tg)>-1;});});}
+    cur=cur.sort(function(a,b){return scoreOf(b)-scoreOf(a);});
+    return (e&&e.tags.indexOf('__all')>-1)?cur:cur.slice(0,MAXSUGG);
+  }
+
+  function poolItem(p,bottle){p._tags=(p.tags||[]).map(function(t){return (''+t).toLowerCase();});p._text=((p.title||'')+' '+p._tags.join(' ')).toLowerCase();p._words=p._text.split(/[^a-z0-9]+/).filter(Boolean);p._joined=p._words.join('');p._bottle=bottle;return p;}
+  function loadPool(){
+    grid.innerHTML='<div class="bb-bb-grid__loading">Loading wraps…</div>';
+    function g(h){function page(pg,acc){return fetch('/collections/'+h+'/products.json?limit=250&page='+pg).then(function(r){return r.json();}).then(function(j){var ps=(j&&j.products)||[];acc=acc.concat(ps);if(ps.length===250&&pg<6)return page(pg+1,acc);return {products:acc};}).catch(function(){return {products:acc};});}return page(1,[]);}
+    Promise.all([g(PROSECCO_COL),g(CHAMP_COL),g(WINE_COL)]).then(function(res){
+      var seen={};pool=[];
+      (res[0].products||[]).filter(isSingle).forEach(function(p){if(!seen[p.handle]){seen[p.handle]=1;pool.push(poolItem(p,'Prosecco'));}});
+      (res[1].products||[]).filter(isSingle).forEach(function(p){if(!seen[p.handle]){seen[p.handle]=1;pool.push(poolItem(p,'Champagne'));}});
+      (res[2].products||[]).filter(isSingle).forEach(function(p){if(!seen[p.handle]){seen[p.handle]=1;pool.push(poolItem(p,'Wine'));}});
+      var prices=pool.map(function(p){return toCents(p.variants[0].price);}).filter(Boolean).sort(function(a,b){return a-b;});
+      if(prices.length)UNIT=prices[Math.floor(prices.length/2)];
+      pool.forEach(function(p){poolTagMap[p.handle]=p._tags;});
+      seedCache(pool);renderCurated();updateSizeUI();renderGrid();fillSetCards();
+      attachRailNav(root.querySelector('.bb-bb-sets__row'));
+      var pk=presetPending?findSet(presetPending):null;presetPending=null;
+      if(pk){stageSeeding=false;applySet(pk,{force:true,viaUrl:true});}  // ?preset= deep link (landing pages, emails, ads)
+      else{var sh=seedHandles;seedHandles=[];cartResume(sh);}  // resume a cart bundle and/or ingest ?seed + staged "Add to bundle" wraps; empty start otherwise
+    }).catch(function(){grid.innerHTML='<div class="bb-bb-grid__loading">Couldn\'t load wraps. Please refresh.</div>';});
+  }
+  // when a search is run inside a specific curated pill, offer a one-click escape to search the whole catalog
+  function renderScope(){
+    var box=root.querySelector('[data-bb-scope]');if(!box)return;
+    var e=curEntry();
+    if(qtokens.length&&e&&e.tags.indexOf('__best')<0){
+      var txt=root.querySelector('[data-bb-scope-text]');
+      if(txt)txt.innerHTML='Showing “<b>'+query.replace(/[<>&]/g,'')+'</b>” within <b>'+e.label+'</b> only.';
+      box.hidden=false;
+    }else{box.hidden=true;}
+  }
+  var zoomEl=root.querySelector('[data-bb-zoom]'),zoomImg=zoomEl?zoomEl.querySelector('[data-bb-zoom-img]'):null,zoomCap=zoomEl?zoomEl.querySelector('[data-bb-zoom-cap]'):null;
+  function openZoom(p){if(!zoomEl||!p)return;var zswR=root.querySelector('[data-bb-zoom-switch]');if(zswR)zswR.hidden=true;var zrmR=root.querySelector('[data-bb-zoom-remove]');if(zrmR)zrmR.hidden=true;var src=(p.images&&p.images[0]&&p.images[0].src)||p.img||'';zoomImg.src=withW(src,900);zoomImg.alt=cleanTitle(p.title||'');zoomCap.textContent=cleanTitle(p.title||'');spinArm(p);zoomEl.hidden=false;document.body.style.overflow='hidden';}
+  function closeZoom(){if(!zoomEl)return;zoomSpin.token=(zoomSpin.token||0)+1;zoomEl.hidden=true;zoomImg.src='';document.body.style.overflow=(isMobile()&&root.classList.contains('is-tray-open'))?'hidden':'';}   // keep the tray's lock if zoom was opened from it
+  if(zoomEl){zoomEl.addEventListener('click',closeZoom);document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!zoomEl.hidden)closeZoom();});}
+  // 360 spin inside zoom (frames = last N product images per the spinimages=N tag; interaction-only download)
+  var zoomBadge=zoomEl?zoomEl.querySelector('[data-bb-zoom-spin]'):null;
+  var zoomHint=zoomEl?zoomEl.querySelector('[data-bb-zoom-hint]'):null;
+  var zoomSpin={frames:null,idx:0,ready:false,loading:false};
+  function spinFramesFor(p){
+    var tags=p._tags||[];if(tags.indexOf('no360')>-1)return null;
+    var n=36;for(var i=0;i<tags.length;i++){var m=/^spinimages=(\d+)$/.exec(tags[i]);if(m)n=parseInt(m[1],10);}
+    var imgs=p.images||[];if(!n||imgs.length<n)return null;
+    return imgs.slice(imgs.length-n).map(function(im){return withW(im.src,700);});
+  }
+  function spinArm(p){
+    zoomSpin.frames=spinFramesFor(p);zoomSpin.idx=0;zoomSpin.ready=false;zoomSpin.loading=false;
+    zoomSpin.token=(zoomSpin.token||0)+1;
+    if(zoomBadge)zoomBadge.hidden=!zoomSpin.frames;
+    if(zoomHint){zoomHint.hidden=true;zoomHint.textContent='Drag to spin';}
+    if(zoomImg)zoomImg.style.touchAction=zoomSpin.frames?'none':'';
+    if(zoomSpin.frames)spinTeaser();
+  }
+  // one self-demonstrating rotation on open: 8 coarse frames (~240KB), then the
+  // full set tops up silently so grabbing it is instant
+  function spinTeaser(){
+    var tok=zoomSpin.token,frames=zoomSpin.frames,n=frames.length;
+    if(reduceMotion){if(zoomHint)zoomHint.hidden=false;spinPreload(true);return;}
+    var step=Math.max(1,Math.round(n/8)),teaser=[];
+    for(var i=0;i<n;i+=step)teaser.push(frames[i]);
+    var left=teaser.length;
+    teaser.forEach(function(u){var im=new Image();im.onload=im.onerror=function(){if(--left===0)sweep();};im.src=u;});
+    function sweep(){
+      if(tok!==zoomSpin.token)return;
+      var t0=performance.now(),dur=1500;
+      (function f(now){
+        if(tok!==zoomSpin.token)return;
+        var k=Math.min(1,(now-t0)/dur);
+        var e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+        var idx=Math.min(teaser.length-1,Math.floor(e*teaser.length));
+        zoomImg.src=teaser[idx%teaser.length];
+        if(k<1)requestAnimationFrame(f);
+        else{zoomImg.src=frames[0];zoomSpin.idx=0;if(zoomHint)zoomHint.hidden=false;spinPreload(true);}
+      })(t0);
+    }
+  }
+  function spinPreload(quiet){
+    if(zoomSpin.ready||zoomSpin.loading||!zoomSpin.frames)return;
+    window.__bbSpinLoaded=window.__bbSpinLoaded||{};
+    var frames=zoomSpin.frames,sig=frames[0];
+    if(window.__bbSpinLoaded[sig]){zoomSpin.ready=true;return;}
+    zoomSpin.loading=true;
+    if(!quiet&&zoomHint){zoomHint.hidden=false;zoomHint.textContent='Loading 360\u00B0\u2026';}
+    var left=frames.length;
+    frames.forEach(function(u){var im=new Image();im.onload=im.onerror=function(){if(--left===0){zoomSpin.ready=true;zoomSpin.loading=false;window.__bbSpinLoaded[sig]=1;if(zoomHint)zoomHint.textContent='Drag to spin';}};im.src=u;});
+  }
+  var spinDrag=null;
+  if(zoomImg){
+    zoomImg.setAttribute('draggable','false');
+    zoomImg.addEventListener('dragstart',function(e){e.preventDefault();});
+    zoomImg.addEventListener('pointerdown',function(e){
+      if(!zoomSpin.frames)return;
+      e.preventDefault();e.stopPropagation();
+      spinDrag={x:e.clientX,idx:zoomSpin.idx};
+      try{zoomImg.setPointerCapture(e.pointerId);}catch(err){}
+      spinPreload();
+    });
+    zoomImg.addEventListener('pointermove',function(e){
+      if(!spinDrag||!zoomSpin.frames||!zoomSpin.ready)return;
+      var n=zoomSpin.frames.length;
+      var step=Math.round((e.clientX-spinDrag.x)/12);
+      var idx=((spinDrag.idx-step)%n+n)%n;
+      if(idx!==zoomSpin.idx){zoomSpin.idx=idx;zoomImg.src=zoomSpin.frames[idx];if(zoomHint)zoomHint.hidden=true;}
+    });
+    ['pointerup','pointercancel'].forEach(function(ev){zoomImg.addEventListener(ev,function(){spinDrag=null;});});
+    zoomImg.addEventListener('click',function(e){if(zoomSpin.frames)e.stopPropagation();});
+  }
+  // mini sets shown IN the main grid (Shaun 2026-09: no bottom rail) — ranked, query-filtered, capped
+  function minisForGrid(cap){
+    if(!minis.length)return [];
+    var e=curEntry();
+    var list=(minisView.length?minisView:minis).filter(function(m){
+      var tags=m.tags||[];
+      // theme pills filter minis too (minis carry the same occasion/motif/style taxonomy);
+      // the special pills — "Most popular" (__best) and "All wraps" (__all) — show the full ranked list
+      if(e&&e.tags.indexOf('__best')<0&&e.tags.indexOf('__all')<0&&!e.tags.some(function(tg){return tags.indexOf(tg)>-1;}))return false;
+      if(qtokens.length){var txt=((m.title||'')+' '+tags.join(' ')).toLowerCase();var joined=txt.replace(/[^a-z0-9]+/g,'');if(!qtokens.every(function(t){return txt.indexOf(t)>-1||joined.indexOf(t)>-1;}))return false;}
+      return true;
+    });
+    return list.slice(0,cap||8).map(function(m){return {_mini:m};});
+  }
+  function miniAdd(m){minisQty[m.handle]=Math.min(8,(minisQty[m.handle]||0)+1);if(!minisTracked){minisTracked=true;try{(window.dataLayer=window.dataLayer||[]).push({event:'bb_minis_attach'});}catch(e){}}render();}
+  function miniDec(m){minisQty[m.handle]=Math.max(0,(minisQty[m.handle]||0)-1);render();}
+  function renderGrid(){
+    var isMini=currentBottle==='Mini';
+    var eG=curEntry(),miniCap=(eG&&eG.tags.indexOf('__all')>-1)?100000:40;
+    var wraps=isMini?[]:view(),list=isMini?minisForGrid(miniCap):wraps;lastView=list;renderScope();
+    grid.innerHTML=list.map(function(p,i){
+      if(p._mini){var m=p._mini;return '<button class="bb-bb-card bb-bb-card--mini" data-i="'+i+'" title="'+(m.title||'').replace(/"/g,'')+'"><span class="bb-bb-card__minus" role="button" aria-label="Remove one pack">−</span><span class="bb-bb-card__chk" aria-hidden="true">+</span><span class="bb-bb-card__imgw"><img src="'+withW(m.img,500)+'" loading="lazy" alt=""><span class="bb-bb-card__zoom" role="button" aria-label="View larger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8.5" x2="11" y2="13.5"/><line x1="8.5" y1="11" x2="13.5" y2="11"/></svg></span></span><span class="bb-bb-card__minitag">MINI SET OF '+m.pack+' · '+money(m.price)+'</span><span class="bb-bb-card__t">'+esc(cleanMiniTitle(m.title))+'</span></button>';}
+      var img=p.images&&p.images[0]?p.images[0].src:'';return '<button class="bb-bb-card" data-i="'+i+'" title="'+(p.title||'').replace(/"/g,'')+'"><span class="bb-bb-card__minus" role="button" aria-label="Remove one">−</span><span class="bb-bb-card__chk" aria-hidden="true">+</span><span class="bb-bb-card__imgw"><img src="'+withW(img,500)+'" loading="lazy" alt=""><span class="bb-bb-card__zoom" role="button" aria-label="View larger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8.5" x2="11" y2="13.5"/><line x1="8.5" y1="11" x2="13.5" y2="11"/></svg></span></span><span class="bb-bb-card__t">'+esc(cleanTitle(p.title))+'</span></button>';
+    }).join('')||'<div class="bb-bb-grid__loading">'+(isMini?'No mini sets match — try another search.':('No '+currentBottle+' wraps match — try another bundle or search.'))+'</div>';
+    grid.querySelectorAll('.bb-bb-card').forEach(function(c){c.addEventListener('click',function(){
+      var p=lastView[parseInt(c.dataset.i,10)];if(!p)return;
+      var img=c.querySelector('img'),from=img?img.getBoundingClientRect():null;
+      if(p._mini){miniAdd(p._mini);}else{addWrap(p);}
+      if(from&&img)flyToTray(img.src,from);
+    });});
+    grid.querySelectorAll('.bb-bb-card__minus').forEach(function(m){m.addEventListener('click',function(e){e.stopPropagation();var c=m.parentNode,p=lastView[parseInt(c.dataset.i,10)];if(!p)return;if(p._mini){miniDec(p._mini);}else{removeOneByHandle(p.handle);}});});
+    grid.querySelectorAll('.bb-bb-card__zoom').forEach(function(z){z.addEventListener('click',function(e){e.stopPropagation();var c=z.closest('.bb-bb-card'),p=lastView[parseInt(c.dataset.i,10)];if(!p)return;if(p._mini){try{openZoom({img:p._mini.img,title:p._mini.title});}catch(err){}}else{openZoom(p);}});});
+    if(countEl){
+      var n=list.length;
+      if(isMini){countEl.textContent=n?((n<minis.length?('Showing '+n+' of '+minis.length+' mini sets — tap “All wraps” to see everything'):(n+' mini set'+(n!==1?'s':'')+' to choose from'))+' — each counts toward your free wraps'):'No mini sets match — try another search.';}
+      else if(!n){countEl.textContent='No '+currentBottle+' wraps match — try another theme or search.';}
+      else{
+        var totalB=pool.filter(function(p){return p._bottle===currentBottle;}).length;
+        countEl.textContent=(n<totalB)?('Showing '+n+' of '+totalB+' '+currentBottle+' wraps — tap “All wraps” to see everything'):(n+' '+currentBottle+' wrap'+(n!==1?'s':'')+' to choose from');
+      }
+    }
+    markGrid();
+  }
+  // reflect which wraps are already in the bundle: green ✓ (+count) when added, "+" cue when not
+  function markGrid(){
+    if(!grid)return;var counts=picked();
+    grid.querySelectorAll('.bb-bb-card').forEach(function(c){
+      var p=lastView[parseInt(c.dataset.i,10)];if(!p)return;
+      var n=p._mini?(minisQty[p._mini.handle]||0):(counts[p.handle]||0);
+      c.classList.toggle('is-added',n>0);
+      var chk=c.querySelector('.bb-bb-card__chk');if(chk)chk.textContent=n>1?('✓ '+n):(n===1?'✓':'+');
+    });
+  }
+
+  // ---- slot engine (paid[] + free[]) ----
+  function toSlot(p){var v=p.variants[0];return {handle:p.handle,bottleType:bottleOf(p.handle),variantId:v.id,title:p.title,img:(p.images&&p.images[0]?p.images[0].src:''),price:toCents(v.price),_busy:false};}
+  function applyResolved(s,h,bottle,r){s.handle=h;s.bottleType=bottle;s.variantId=r.variantId;s.price=r.price;s.img=r.image;s.title=r.title;s._busy=false;}
+  function targetArray(){if(goalMet()&&free.length<freeCount())return free;return paid.length<MAXPAID?paid:null;}
+  function picked(){var m={};paid.concat(free).forEach(function(s){if(s.handle)m[s.handle]=(m[s.handle]||0)+1;});return m;}
+
+  function addWrap(p){
+    if(!p)return;
+    var slot=toSlot(p),arr;
+    if(goalMet()&&free.length<freeCount()&&freeOK(slot.bottleType,slot.handle)){arr=free;}   // free phase starts only once the GOAL is reached
+    else if(paid.length<MAXPAID){arr=paid;}
+    else{flash('That’s our biggest bundle — gorgeous haul!');return;}
+    arr.push(slot);
+    if(!taughtAdd){taughtAdd=true;if(isMobile()&&stickybarEl){stickybarEl.classList.add('is-pulse');setTimeout(function(){stickybarEl.classList.remove('is-pulse');},600);}}  // first add: pulse the bundle bar so they see where it landed
+    var want=currentBottle;
+    if((want==='Prosecco'||want==='Champagne')&&slot.bottleType!==want){var sib=siblingForBottle(p.handle,want);if(sib){slot._busy=true;render();resolve(sib).then(function(r){applyResolved(slot,sib,want,r);render();}).catch(function(){slot._busy=false;render();});return;}}
+    render();
+  }
+  function addByHandle(h){
+    var want=currentBottle,useH=h,useB=bottleOf(h);
+    if((want==='Prosecco'||want==='Champagne')&&useB!==want){var sib=siblingForBottle(h,want);if(sib){useH=sib;useB=want;}}
+    var arr;
+    if(goalMet()&&free.length<freeCount()&&freeOK(useB,useH)){arr=free;}
+    else if(paid.length<MAXPAID){arr=paid;}
+    else{flash('That’s our biggest bundle — gorgeous haul!');return;}
+    var slot={handle:useH,bottleType:useB,variantId:null,title:'',img:'',price:UNIT,_busy:true};arr.push(slot);render();
+    resolve(useH).then(function(r){slot.variantId=r.variantId;slot.price=r.price;slot.img=r.image;slot.title=r.title;slot._busy=false;render();}).catch(function(){var i=arr.indexOf(slot);if(i>-1)arr.splice(i,1);render();flash('Couldn’t add that one — try again.');});
+  }
+  function removeSlot(which,idx){(which==='f'?free:paid).splice(idx,1);render();}
+  // remove ONE instance of a wrap from the bundle (free extras first, then paid) — for the card minus button
+  function removeOneByHandle(h){
+    for(var i=free.length-1;i>=0;i--){if(free[i]&&free[i].handle===h){free.splice(i,1);render();return;}}
+    for(var j=paid.length-1;j>=0;j--){if(paid[j]&&paid[j].handle===h){paid.splice(j,1);render();return;}}
+  }
+  function flipSlot(which,idx,target){
+    var s=(which==='f'?free:paid)[idx];if(!s||s.bottleType===target)return;
+    var sib=siblingForBottle(s.handle,target);if(!sib)return;
+    s._busy=true;render();
+    resolve(sib).then(function(r){applyResolved(s,sib,target,r);render();flash('Switched to '+target+'.');}).catch(function(){s._busy=false;render();flash('Couldn\'t switch — try again.');});
+  }
+  function fillPaid(){var pos=view().filter(function(p){return !picked()[p.handle];}),i=0;while(spendAll()<goalCents()&&paid.length<MAXPAID&&i<pos.length){paid.push(toSlot(pos[i++]));}}
+  function fillFree(){if(!unlocked())return;var fc=freeCount();var pos=view().filter(function(p){return !picked()[p.handle]&&freeOK(bottleOf(p.handle),p.handle);}),i=0;while(free.length<fc&&i<pos.length){free.push(toSlot(pos[i++]));}}
+
+  // paidTarget is now a GOAL (spend tier aspiration), never a slot quota — picks are never trimmed
+  function setPaidTarget(n){
+    paidTarget=n;wasUnlocked=false;
+    try{localStorage.setItem('bbStageSize',String(n));}catch(e){}   // keep the PDP tier picker + floating pill in step
+    flashSilentBottle();render();fillSetCards();
+    if(spendAll()>0&&spendAll()<tierCents(n))flash('Tap “✨ Fill to '+tierName(n)+'” — or keep picking below.');
+  }
+  // fill empty paid+free slots from the active set's unused handles (async resolves), then re-render
+  function topUpFromSet(){
+    if(!activeSet)return;
+    var have=picked();
+    var unused=activeSet.handles.filter(function(h){return !have[h];});
+    var needPaid=Math.max(0,Math.ceil(Math.max(0,goalCents()-spendAll())/UNIT));
+    var needFree=Math.max(0,freeForSpend(goalCents())-free.length);
+    var take=unused.slice(0,needPaid+needFree);
+    if(!take.length)return;
+    flash('Topping up from '+activeSet.label+'…');
+    Promise.all(take.map(function(h){return resolve(h).then(function(r){return {handle:h,bottleType:bottleOf(h),variantId:r.variantId,title:r.title,img:r.image,price:r.price,_busy:false};}).catch(function(){return null;});}))
+    .then(function(arr){
+      arr=arr.filter(function(x){return x&&x.price>=400&&x.price<=800;});   // keep display == checkout: function band only
+      arr.slice(0,needPaid).forEach(function(s){if(spendAll()<goalCents()&&paid.length<MAXPAID)paid.push(s);});
+      arr.slice(needPaid).forEach(function(s){if(unlocked()&&free.length<freeCount()&&freeOK(s.bottleType))free.push(s);});
+      if(spendAll()<goalCents()||(unlocked()&&free.length<freeCount()))fillSmart();  // set ran short? finish with affinity-matched wraps
+      flashSilentBottle();render();
+      flash(spendAll()>=goalCents()?('Topped up from '+activeSet.label+' — swap any wrap you like.'):('Added what '+activeSet.label+' had left — pick the rest below.'));
+    });
+  }
+  // "fill the rest for me": set leftovers first, then theme-matched wraps from the current view
+  function fillRest(){
+    if(activeSet){
+      var have=picked();
+      var unused=activeSet.handles.filter(function(h){return !have[h];});
+      if(unused.length){topUpFromSet();return;}
+    }
+    fillSmart();flashSilentBottle();render();
+    flash('Filled with wraps that match your picks — swap any you like.');
+  }
+  function addMore(){var pos=view().filter(function(p){return !picked()[p.handle];});if(pos.length)addWrap(pos[0]);else render();}
+
+  // global flip
+  function setBottleUI(b){root.querySelectorAll('.bb-bb-bottle__opt').forEach(function(x){x.classList.toggle('is-active',x.dataset.bottle===b);});}
+  function hideFlipbar(){flipbar.hidden=true;flipbar.innerHTML='';}
+  function showFlipbar(msg,onGo){flipbar.innerHTML='<span>'+msg+'</span>';var go=document.createElement('button');go.className='is-go';go.textContent='Switch';var no=document.createElement('button');no.textContent='Keep as-is';go.addEventListener('click',function(){hideFlipbar();onGo();});no.addEventListener('click',hideFlipbar);flipbar.appendChild(go);flipbar.appendChild(no);flipbar.hidden=false;}
+  function flashSilentBottle(){if(currentBottle==='Prosecco'||currentBottle==='Champagne')flipAll(currentBottle,{silent:true});}
+  function flipAll(target,opts){
+    opts=opts||{};
+    var items=paid.concat(free),elig=[],inelig=0;
+    items.forEach(function(s){if(!s||s.bottleType===target)return;if(siblingForBottle(s.handle,target))elig.push(s);else inelig++;});
+    function doFlip(){
+      currentBottle=target;setBottleUI(target);renderGrid();
+      if(!elig.length){render();return;}
+      elig.forEach(function(s){s._busy=true;});render();
+      Promise.all(elig.map(function(s){var sib=siblingForBottle(s.handle,target);return resolve(sib).then(function(r){applyResolved(s,sib,target,r);});})).then(function(){hideFlipbar();render();}).catch(function(){render();});
+    }
+    if(!opts.silent&&inelig&&elig.length){showFlipbar(elig.length+' of '+(elig.length+inelig)+' wraps switch to '+target+'. '+inelig+' only come in their current bottle and stay as-is.',doFlip);}
+    else if(!opts.silent&&inelig&&!elig.length){currentBottle=target;setBottleUI(target);flash('These designs come in one bottle only. New picks will be '+target+'.');render();}
+    else{doFlip();}
+  }
+
+  // prefill
+  function prefill(){paid=[];free=[];fillPaid();fillFree();flashSilentBottle();render();}
+  function seedPrefill(handles){
+    paid=[];free=[];render();
+    Promise.all(handles.slice(0,MAXPAID).map(function(h){return resolve(h).then(function(r){return {handle:h,bottleType:bottleOf(h),variantId:r.variantId,title:r.title,img:r.image,price:r.price,available:r.available,_busy:false};}).catch(function(){return null;});})).then(function(arr){
+      if(paid.length||free.length)return;   // shopper already picking — don't clobber
+      // slots take SINGLE wraps only (function band $4–8, in stock). Seeded minis/sets are
+      // NOT slotted — they already count toward free wraps from the cart, so tell her that
+      // instead of silently stranding them (the old minis dead-end).
+      var ok=arr.filter(function(x){return x&&x.available!==false&&x.price>=400&&x.price<=800;});
+      var dropped=arr.filter(Boolean).length-ok.length;
+      paid=ok;stageSeeding=false;flashSilentBottle();render();   // place ONLY the seeded wraps (e.g. from cart); no auto top-up
+      if(dropped>0)flash('Your minis stay in your cart and count toward free wraps automatically — no need to re-add them here.');
+      else if(handles.length>MAXPAID)flash('Our biggest bundle is '+MAXPAID+' wraps — we added the first '+MAXPAID+'.');
+    });
+  }
+
+  // Returning with a bundle already in the cart: resume it in place (size, bottle,
+  // paid + free picks) so a 5-to-10 upgrade starts from the 5 already chosen.
+  // checkout() then replaces the old _bb lines - sizing up never doubles the cart.
+  // eligible loose wrap lines in the cart: counted toward the tiers + shown read-only in the tray.
+  // ONLY product type "Bottle Wrap" counts — bows, EverVase, napkins etc. are never touched or counted.
+  var cartHandles={};
+  function readCartView(c){
+    cartLooseCents=0;cartItemsView=[];cartHandles={};
+    (c.items||[]).forEach(function(i){
+      if((i.product_type||'')!=='Bottle Wrap')return;
+      if(/tester|practice|perfect-your-technique/i.test(i.handle||''))return;
+      if(i.properties&&i.properties._bb)return;
+      var lp=(typeof i.final_line_price==='number'?i.final_line_price:i.line_price)||0;
+      if(i.quantity>0&&Math.round(lp/i.quantity)<400)return;   // sub-$4/unit (testers) never count toward the ladder
+      cartLooseCents+=lp;cartHandles[i.handle]=1;
+      cartItemsView.push({key:i.key,title:cleanTitle(i.product_title||i.title||'').replace(/[<>&"]/g,''),img:i.image||'',price:lp,qty:i.quantity||1});
+    });
+  }
+  function refreshCartView(){fetch('/cart.js',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(c){readCartView(c);render();}).catch(function(){});}
+  // the cart can change outside the builder (drawer qty edits, other tabs) — stay in sync:
+  // piggyback on any cart API call made from this page, and re-check on tab return.
+  (function(){
+    if(window.__bbCartHook)return;window.__bbCartHook=1;
+    var of=window.fetch;
+    window.fetch=function(){var a=arguments,p=of.apply(this,a);
+      try{var u=String((a[0]&&a[0].url)||a[0]||'');if(/\/cart\/(add|change|update|clear)/.test(u))p.then(function(){setTimeout(refreshCartView,200);},function(){});}catch(e){}
+      return p;};
+    window.addEventListener('pageshow',function(){refreshCartView();});
+    document.addEventListener('visibilitychange',function(){if(!document.hidden)refreshCartView();});
+  })();
+  function cartResume(extra){
+    extra=extra||[];   // ?seed handles + wraps staged via "Add to bundle" (bundle bridge)
+    fetch('/cart.js').then(function(r){return r.json();}).then(function(c){
+      // ladder-eligible wrap spend already in the cart (loose lines, not builder-managed _bb):
+      // feeds freeCount() so cart wraps + minis raise the free tier, and powers claim mode.
+      readCartView(c);
+      // DOUBLE-COUNT GUARD: a wrap that's both in the cart AND staged/seeded (bbStage,
+      // ?seed=) must not become a paid pick too — its spend is already counted from the
+      // cart line. (Verified live: the overlap inflated spend and falsely met tiers.)
+      extra=(extra||[]).filter(function(h){return !cartHandles[h];});
+      var lines=(c.items||[]).filter(function(i){return i.properties&&i.properties._bb;});
+      if(claimMode&&cartLooseCents<T1)claimMode=false;   // nothing claimable — behave as a normal visit (keeps staged seeds)
+      if(claimMode&&!urlSized&&!userSized&&cartLooseCents>=T1){var ct=cartLooseCents>=T3?15:cartLooseCents>=T2?10:5;paidTarget=ct;syncSizeBtns();updateSizeUI();}   // claim arrival: goal = the tier the cart actually reached (never below-tier)
+      if(!lines.length){if(extra.length&&!claimMode){seedPrefill(extra);}else{stageSeeding=false;render();}if(claimMode&&freeCount()>0)flash('Your cart already earned '+freeCount()+' FREE wrap'+(freeCount()!==1?'s':'')+' — tap wraps below to claim, then add to cart.');return;}
+      claimMode=false;   // a builder bundle is already in the cart — resume it (its flow includes free slots)
+      var sz=0,bt='';
+      lines.forEach(function(i){var p=i.properties;if(p._bbsz)sz=parseInt(p._bbsz,10)||sz;if(p._bbb)bt=p._bbb;});
+      if((bt==='Prosecco'||bt==='Champagne'||bt==='Wine')&&bt!==currentBottle){currentBottle=bt;setBottleUI(bt);renderGrid();}
+      if(!urlSized&&sz>=5){paidTarget=sz;userSized=true;syncSizeBtns();updateSizeUI();}
+      var ph=[],fh=[];
+      lines.forEach(function(i){var t=i.properties._bbfree?fh:ph;for(var q=0;q<i.quantity;q++)t.push(i.handle);});
+      extra.forEach(function(h){ph.push(h);});   // staged wraps join the resumed bundle as paid picks
+      var pn=Math.min(ph.length,MAXPAID);
+      Promise.all(ph.slice(0,pn).concat(fh.slice(0,20)).map(function(h){
+        return resolve(h).then(function(r){return {handle:h,bottleType:bottleOf(h),variantId:r.variantId,title:r.title,img:r.image,price:r.price,available:r.available,_busy:false};}).catch(function(){return null;});
+      })).then(function(arr){
+        if(paid.length||free.length)return;   // shopper started picking while we resumed — their picks win
+        var band=function(x){return x&&x.available!==false&&x.price>=400&&x.price<=800;};   // singles only, in stock — keep slots == what the function counts
+        paid=arr.slice(0,pn).filter(band);
+        free=arr.slice(pn).filter(function(x){return band(x)&&freeOK(x.bottleType,x.handle);});
+        var droppedN=arr.filter(Boolean).length-paid.length-free.length;
+        if(droppedN>0)flash(droppedN+' wrap'+(droppedN!==1?'s':'')+' from your saved bundle '+(droppedN!==1?'are':'is')+' no longer available and was left out.');
+        stageSeeding=false;
+        render();
+      });
+    }).catch(function(){stageSeeding=false;render();});
+  }
+
+  // confetti
+  function confetti(){
+    if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    var tray=root.querySelector('[data-bb-tray]');if(!tray)return;
+    tray.classList.remove('bb-shine');void tray.offsetWidth;
+    tray.classList.add('bb-shine');
+    setTimeout(function(){tray.classList.remove('bb-shine');},1000);
+  }
+
+  // size UI
+  function updateSizeUI(){[5,10,15].forEach(function(s){var pe=root.querySelector('[data-size-price="'+s+'"]');if(pe)pe.textContent='Spend '+money0(s>=15?T3:s>=10?T2:T1);var we=root.querySelector('[data-size-worth="'+s+'"]');if(we)we.textContent=freeFor(s)>0?('a '+money(freeFor(s)*UNIT)+' value'):'';var fe=root.querySelector('[data-size-free="'+s+'"]');if(fe)fe.textContent=freeFor(s)>0?('Get '+freeFor(s)+' FREE wrap'+(freeFor(s)>1?'s':'')):'';});}
+  function nudge(){
+    var sp=spendAll(),fc=freeCount(),nxtC=nextTierCents();
+    if(sp<=0){nudgeEl.textContent='Every '+money0(T1)+' you spend on wraps unlocks free ones — minis count too.';return;}
+    if(fc>free.length){var remN=fc-free.length;nudgeEl.textContent=remN+' FREE wrap'+(remN!==1?'s':'')+' unlocked — tap the grid to claim '+(remN===1?'it':'them')+'.';return;}
+    if(nxtC){nudgeEl.textContent=money(nxtC-sp)+' more in wraps unlocks '+freeForSpend(nxtC)+' free — a '+money(freeForSpend(nxtC)*UNIT)+' value. Minis count too.';return;}
+    nudgeEl.textContent='You unlocked '+fc+' free wraps — a '+money(fc*UNIT)+' value. Every extra '+money0(TSTEP)+' adds 2 more.';
+  }
+
+  // ---- render ----
+  function cell(which,idx,s,isFree,locked){
+    var cls='bb-bb-slot';if(isFree){cls+=' is-free';if(locked)cls+=' is-locked';}if(s)cls+=' is-filled';
+    var inner='',foot='';
+    if(s){
+      inner+='<img src="'+withW(s.img,180)+'" alt="">';
+      inner+='<button class="bb-bb-slot__x" data-x-arr="'+which+'" data-x="'+idx+'" aria-label="Remove">×</button>';
+      if(isFree)inner+='<span class="bb-bb-slot__free">FREE</span>';
+      if(s._busy)inner+='<span class="bb-bb-slot__spin"></span>';
+      if(altSibling(s.handle)){var other=s.bottleType==='Prosecco'?'Champagne':'Prosecco';foot='<button type="button" class="bb-bb-slot__switch" data-bt-arr="'+which+'" data-bt-idx="'+idx+'" data-bt="'+other+'" title="For a '+s.bottleType+' bottle — tap to switch to '+other+'" aria-label="This wrap is for a '+s.bottleType+' bottle. Tap to switch to '+other+'.">'+s.bottleType+' <span class="bb-bb-slot__sw" aria-hidden="true">⇄</span></button>';}
+      else if(s.bottleType){foot='<span class="bb-bb-slot__type">'+s.bottleType+'</span>';}
+    } else if(isFree&&locked){inner+='<span class="bb-bb-slot__lockv"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:-1px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><br>FREE</span>';}
+    else if(isFree){inner+='<span class="bb-bb-slot__free">FREE<br><s>'+money(UNIT)+'</s></span>';}
+    else{inner+='+';}
+    return '<div class="bb-bb-slot-cell"><div class="'+cls+'">'+inner+'</div>'+foot+'</div>';
+  }
+  var reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function flyToTray(src,from){
+    if(reduceMotion||!src)return;
+    var filled=slotsEl.querySelectorAll('.bb-it img,.bb-tl__imgw img');
+    var target=filled.length?filled[filled.length-1]:null;
+    if(isMobile()&&!root.classList.contains('is-tray-open'))target=stickyCountEl||target;   // sheet collapsed: land on the bar
+    if(!target)return;
+    var to=target.getBoundingClientRect();
+    var ghost=document.createElement('img');ghost.src=src;
+    ghost.style.cssText='position:fixed;z-index:9999;pointer-events:none;object-fit:contain;border-radius:2px;'+
+      'left:'+from.left+'px;top:'+from.top+'px;width:'+from.width+'px;height:'+from.height+'px;'+
+      'transition:all .32s cubic-bezier(.2,.7,.3,1);will-change:transform,left,top,width,height;';
+    document.body.appendChild(ghost);
+    requestAnimationFrame(function(){requestAnimationFrame(function(){
+      ghost.style.left=to.left+'px';ghost.style.top=to.top+'px';ghost.style.width=to.width+'px';ghost.style.height=to.height+'px';ghost.style.opacity='.25';
+    });});
+    setTimeout(function(){ghost.remove();},380);
+  }
+  var lastPrice=0;
+  function tickPrice(el,cents){
+    if(reduceMotion||Math.abs(cents-lastPrice)<1){el.textContent=money(cents);lastPrice=cents;return;}
+    var fromC=lastPrice,t0=performance.now();lastPrice=cents;
+    (function step(now){
+      var k=Math.min(1,(now-t0)/240);var v=fromC+(cents-fromC)*(1-Math.pow(1-k,3));
+      el.textContent=money(Math.round(v));
+      if(k<1)requestAnimationFrame(step);
+    })(t0);
+  }
+  // compact tray tile: thumbnail + × + optional ⇄ foot; tap the image to see it big
+  function wrapTile(arrKey,idx,st,isFree){
+    var altB=st.bottleType==='Prosecco'?'Champagne':'Prosecco';
+    var foot=altSibling(st.handle)?('<button type="button" class="bb-tl__sw bb-tl__sw--btn" data-bt-arr="'+arrKey+'" data-bt-idx="'+idx+'" data-bt="'+altB+'" title="This design also comes in '+altB+' — tap to switch this wrap">⇄ '+abbr(altB)+'</button>'):('<span class="bb-tl__ft">'+abbr(st.bottleType)+'</span>');
+    return '<div class="bb-tl'+(isFree?' bb-tl--free':'')+'"><span class="bb-tl__imgw" data-zoom-arr="'+arrKey+'" data-zoom-idx="'+idx+'"><img src="'+withW(st.img,160)+'" alt="'+esc(cleanTitle(st.title))+'">'+(isFree?'<span class="bb-tl__freetag">FREE</span>':'')+(st._busy?'<span class="bb-tl__spin"></span>':'')+'<button class="bb-tl__x" data-x-arr="'+arrKey+'" data-x="'+idx+'" aria-label="Remove">×</button></span>'+foot+'</div>';
+  }
+  function render(){
+    hideGuard();   // any state change invalidates a pending "free wraps left" prompt
+    if(free.length>freeCount())free=free.slice(0,freeCount());   // spend dropped below a tier — release the extra free picks
+    var fc=freeCount(),html='';
+    var setsN=0;minis.forEach(function(m){setsN+=(minisQty[m.handle]||0);});
+    var haveAny=paid.length>0||free.length>0||setsN>0;
+    if(adding){save();return;}   // checkout in flight — keep the "Adding…" button state untouched
+    // wraps already in the cart: ONE compact line — they count toward the tiers, never touched
+    if(haveAny||cartItemsView.length){
+      html+='<div class="bb-tiles">';
+      // wraps from the cart come over as visible tiles — counted toward the tiers, cart untouched
+      cartItemsView.forEach(function(ci){
+        html+='<div class="bb-tl bb-tl--cart"><span class="bb-tl__imgw"><img src="'+withW(ci.img,160)+'" alt=""><span class="bb-tl__carttag">IN CART</span>'+(ci.qty>1?'<span class="bb-tl__qty">×'+ci.qty+'</span>':'')+'<button class="bb-tl__x" data-cart-x="'+ci.key+'" aria-label="Remove from cart">×</button></span><span class="bb-tl__ft">'+money(ci.price)+'</span></div>';
+      });
+      for(var i=0;i<paid.length;i++){html+=wrapTile('p',i,paid[i],false);}
+      minis.forEach(function(m){var q=minisQty[m.handle]||0;if(!q)return;
+        html+='<div class="bb-tl bb-tl--mini"><span class="bb-tl__imgw" data-mini-zoom="'+m.handle+'"><img src="'+withW(m.img,160)+'" alt="'+esc(cleanMiniTitle(m.title))+'"><span class="bb-tl__minitag">MINI</span>'+(q>1?'<span class="bb-tl__qty">×'+q+'</span>':'')+'<button class="bb-tl__x" data-mini-x="'+m.handle+'" aria-label="One less pack">×</button></span><button type="button" class="bb-tl__sw" data-mini-p="'+m.handle+'">+ add pack</button></div>';
+      });
+      html+='</div>';
+    }else{
+      html+='<div class="bb-it bb-it--empty">Your bundle is empty — tap wraps in the grid to begin.</div>';
+    }
+    // free phase: exists only once the GOAL tier is reached
+    if(fc>0&&(goalMet()||free.length>0)){
+      html+='<div class="bb-it-sec"><span class="bb-it-sec__t">Your free wraps</span><span class="bb-it-sec__s">'+free.length+' of '+fc+' picked · '+money(fc*UNIT)+' value</span></div>';
+      html+='<div class="bb-tiles">';
+      for(var j=0;j<free.length;j++){html+=wrapTile('f',j,free[j],true);}
+      html+='</div>';
+      if(free.length<fc)html+='<div class="bb-it bb-it--free bb-it--empty">Tap any wrap — your next '+(fc-free.length===1?'tap is':(fc-free.length)+' taps are')+' FREE.</div>';
+    }
+    slotsEl.innerHTML=html;
+    slotsEl.querySelectorAll('.bb-it__x').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();removeSlot(b.dataset.xArr,parseInt(b.dataset.x,10));});});
+    slotsEl.querySelectorAll('[data-mini-x]').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();var mm=null;minis.forEach(function(m){if(m.handle===b.dataset.miniX)mm=m;});if(mm)miniDec(mm);});});
+    slotsEl.querySelectorAll('[data-mini-p]').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();var mm=null;minis.forEach(function(m){if(m.handle===b.dataset.miniP)mm=m;});if(mm)miniAdd(mm);});});
+    slotsEl.querySelectorAll('[data-mini-zoom]').forEach(function(el){el.addEventListener('click',function(e){
+      if(e.target&&e.target.closest&&e.target.closest('.bb-tl__x'))return;
+      var mm=null;minis.forEach(function(m){if(m.handle===el.dataset.miniZoom)mm=m;});
+      if(!mm)return;
+      try{openZoom({img:mm.img,title:mm.title});}catch(err){}
+      var zrm2=root.querySelector('[data-bb-zoom-remove]');
+      if(zrm2){zrm2.hidden=false;zrm2.textContent='× Remove one pack';zrm2.onclick=function(ev){ev.stopPropagation();closeZoom();miniDec(mm);};}
+    });});
+    slotsEl.querySelectorAll('[data-cart-x]').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();b.disabled=true;
+      fetch('/cart/change.js',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:b.dataset.cartX,quantity:0})})
+        .then(function(){refreshCartView();}).catch(function(){b.disabled=false;flash('Couldn’t remove that — try again.');});
+    });});
+    slotsEl.querySelectorAll('[data-bt-arr]').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();flipSlot(btn.dataset.btArr,parseInt(btn.dataset.btIdx,10),btn.dataset.bt);});});
+    slotsEl.querySelectorAll('[data-zoom-arr]').forEach(function(el){el.addEventListener('click',function(e){
+      if(e.target&&e.target.closest&&e.target.closest('.bb-tl__x'))return;
+      var arrK=el.dataset.zoomArr,idxN=parseInt(el.dataset.zoomIdx,10);
+      var st=(arrK==='f'?free:paid)[idxN];
+      if(!st)return;
+      try{
+        var full=null;for(var pi=0;pi<pool.length;pi++){if(pool[pi].handle===st.handle){full=pool[pi];break;}}
+        openZoom(full||{handle:st.handle,img:st.img,title:st.title});   // full product => 360° spin works from the tray too
+        var zsw=root.querySelector('[data-bb-zoom-switch]');
+        if(zsw){
+          var altB2=st.bottleType==='Prosecco'?'Champagne':'Prosecco';
+          var can=!!altSibling(st.handle);
+          zsw.hidden=!can;
+          if(can){zsw.textContent='⇄ Switch this wrap to '+altB2;zsw.onclick=function(ev){ev.stopPropagation();closeZoom();flipSlot(arrK,idxN,altB2);};}
+        }
+        var zrm=root.querySelector('[data-bb-zoom-remove]');
+        if(zrm){zrm.hidden=false;zrm.textContent='× Remove this wrap';zrm.onclick=function(ev){ev.stopPropagation();closeZoom();removeSlot(arrK,idxN);};}
+      }catch(err){}
+    });});
+
+    var pp=paidPrice(),tw=totalWraps();
+    // one-line painted-bottle note (full-size wraps only — minis excluded from the comparison)
+    var valLine=root.querySelector('[data-bb-valueline]');
+    if(valLine){
+      var paintedC=Math.round(tw*PBV)*100;
+      valLine.hidden=!(tw>0&&paintedC>pp);
+      if(!valLine.hidden){
+        if(pp===0&&freeActive()>0){valLine.innerHTML=tw+' hand-painted bottle'+(tw!==1?'s':'')+' would run ~'+money0(paintedC)+' — yours '+(tw!==1?'are':'is')+' <b>FREE</b> with this order.';}
+        else{var pctV=Math.round((paintedC-pp)/paintedC*100);valLine.innerHTML=tw+' hand-painted bottle'+(tw!==1?'s':'')+' would run ~'+money0(paintedC)+' — you’re at <b>'+money(pp)+'</b>'+(freeActive()>0?(' + '+freeActive()+' free'):'')+' ('+pctV+'% less).';}
+      }
+    }
+
+    // free-shipping bar — mirrors the Free Wraps function: wrap spend (paid + free picks
+    // + party minis, all "Bottle Wrap" lines) of $39 ships free
+    var shipTh=SHIPC;
+    var cartAll=spendAll()+freeActive()*UNIT;   // incl. cart wraps — matches the function's pre-discount spend
+    if(shipEl&&WS)shipEl.innerHTML='';
+    else if(shipEl){if(cartAll<=0){shipEl.innerHTML='';}else if(cartAll<shipTh){var w=Math.min(100,Math.round(cartAll/shipTh*100));shipEl.innerHTML='<div class="bb-bb-ship__bar"><i style="width:'+w+'%"></i></div><span class="bb-bb-ship__txt">You’re '+money(shipTh-cartAll)+' away from FREE shipping</span>';}else{shipEl.innerHTML='<span class="bb-bb-ship__done">✓ You’ve unlocked FREE shipping</span>';}}
+
+    // spend meter — the ladder is DOLLARS: show what she's added and the distance to free wraps
+    var spendEl=root.querySelector('[data-bb-spend]');
+    if(spendEl&&WS)spendEl.hidden=true;
+    else if(spendEl){
+      var sAll=spendAll(),gC=goalCents(),gFree=freeForSpend(gC);
+      spendEl.hidden=(sAll<=0);
+      if(sAll>0){
+        var sFill=spendEl.querySelector('[data-bb-spend-fill]'),sTxt=spendEl.querySelector('[data-bb-spend-txt]');
+        if(sFill)sFill.style.width=Math.min(100,Math.round(sAll/gC*100))+'%';
+        var cartNote=cartLooseCents>0?(' (incl. '+money(cartLooseCents)+' from your cart)'):'';
+        if(sTxt){
+          if(!goalMet()){sTxt.innerHTML=money(sAll)+' of '+money(gC)+cartNote+' — <b>'+money(gC-sAll)+' more</b> for your '+gFree+' FREE wraps.';}
+          else if(fc>free.length){sTxt.innerHTML='<b>'+tierName(paidTarget)+' reached!</b> Pick your '+(fc-free.length)+' FREE wrap'+(fc-free.length!==1?'s':'')+' — tap the grid.';}
+          else{sTxt.innerHTML='<b>'+fc+' free wraps claimed</b> ('+money(fc*UNIT)+' value) — every extra '+money0(TSTEP)+' adds 2 more.';}
+        }
+      }
+    }
+    if(moreBtn)moreBtn.hidden=true;   // no cap to grow — the open "+" cell and grid handle adding
+    // one-tap fill up to the chosen tier goal
+    if(fillRestBtn){var needC=goalCents()-spendAll();fillRestBtn.hidden=!(pool.length&&needC>0);if(needC>0)fillRestBtn.textContent='✨ Fill to '+tierName(paidTarget)+' ('+money(needC)+' to go)';}
+
+    flash('');   // transient notes clear on state change; the spend meter carries the message
+    if(goalMet()&&!wasUnlocked&&inited)confetti();   // celebrate reaching the CHOSEN tier, not intermediate ones
+    wasUnlocked=goalMet();inited=true;
+
+    addBtn.disabled=!haveAny;
+    addBtn.textContent=!haveAny?'Add wraps to start':(paid.length===0&&minisTotal()===0?('Claim '+free.length+' FREE wrap'+(free.length!==1?'s':'')+' · $0'):(freeActive()>0?('Add to cart — '+freeActive()+' FREE included'):'Add bundle to cart'));
+    var saveNote=root.querySelector('[data-bb-savenote]');
+    if(saveNote&&WS)saveNote.hidden=true;
+    else if(saveNote){
+      var savedC=freeActive()*UNIT,shipOK=spendAll()>=SHIPC;
+      saveNote.hidden=!(haveAny&&(savedC>0||shipOK));
+      if(!saveNote.hidden)saveNote.innerHTML=savedC>0?('You’re saving <b>'+money(savedC)+'</b> in free wraps'+(shipOK?' + FREE shipping':'')):('<b>FREE shipping</b> included');
+    }
+    if(clearAllEl)clearAllEl.hidden=!haveAny;
+    if(trayTitleEl)trayTitleEl.textContent='Your bundle';
+    // mobile sticky summary bar — big progress (paid + free), cart hidden until the bundle is complete
+    var paidFull=haveAny;
+    var fdone=Math.min(free.length,fc);
+    var freeFull=(fc===0)||(free.length>=fc);
+    if(stickyCountEl)stickyCountEl.textContent=money(spendAll());
+    // pre-goal the bar shows the GOAL tier's free count (what she's building toward),
+    // post-goal the actual earned count (can exceed the goal via overspend)
+    var stickyFree=goalMet()?fc:freeForSpend(goalCents());
+    if(stickySubEl){var spB=spendAll(),nxB=nextTierCents();
+      stickySubEl.textContent=(spB<=0||WS)?''
+        :(!goalMet()&&nxB?(money(nxB-spB)+' to '+freeForSpend(nxB)+' FREE')
+        :(fc>fdone?(fdone+' / '+fc+' free picked'):(fc>0?(fc+' FREE included \u2713'):'')));}
+    if(stickyCtaEl){
+      if(!paidFull){stickyCtaEl.hidden=true;}
+      else{stickyCtaEl.hidden=false;
+        if(freeFull){stickyCtaEl.innerHTML='Add to cart'+(freeActive()>0?(' — '+freeActive()+' FREE'):'');stickyCtaEl.classList.add('is-ready');}
+        else{var rem=fc-fdone;stickyCtaEl.textContent='Claim '+rem+' FREE wrap'+(rem!==1?'s':'')+' →';stickyCtaEl.classList.remove('is-ready');}
+      }
+    }
+    if(stickybarEl)stickybarEl.classList.toggle('has-cta',paidFull);
+    if(stickybarEl&&!WS){
+      var prI=stickybarEl.querySelector('.bb-bb-barprog i');
+      if(prI){var spP=spendAll(),nxP=nextTierCents();prI.style.width=(spP<=0?0:nxP?Math.max(4,Math.min(100,Math.round(spP/nxP*100))):100)+'%';}
+      var fcNow=freeCount();   // a NEW unlock gets a passive celebration on the bar (never an interception)
+      if(inited&&fcNow>prevFreeN&&isMobile()){stickybarEl.classList.remove('is-unlock');void stickybarEl.offsetWidth;stickybarEl.classList.add('is-unlock');toast(fcNow+' FREE wrap'+(fcNow!==1?'s':'')+' unlocked ('+money(fcNow*UNIT)+' value) \u2014 your next taps are free.');}
+      prevFreeN=fcNow;
+    }
+    updateMinisUI(paidFull);
+    markGrid();
+    save();
+  }
+  function flash(m){noteEl.textContent=m;toast(m);}   // tray note + (mobile, tray closed) toast
+  function save(){try{localStorage.setItem('bbBundle',JSON.stringify({paidTarget:paidTarget,bottle:currentBottle,paid:paid.map(function(s){return {handle:s.handle,bottleType:s.bottleType};}),free:free.map(function(s){return {handle:s.handle,bottleType:s.bottleType};})}));}catch(e){}
+    // keep the site-wide bundle stage (bbStage — floating pill + PDP/card button states) in
+    // step with the live bundle; guarded so the initial empty render never clobbers the stage
+    if(!stageSeeding&&window.BBBundle){try{
+      var m={},order=[];
+      paid.forEach(function(s){if(!s||!s.handle)return;if(!m[s.handle]){m[s.handle]={handle:s.handle,title:s.title||'',image:s.img||'',qty:0};order.push(s.handle);}m[s.handle].qty++;});
+      window.BBBundle.set(order.map(function(h){return m[h];}));
+    }catch(e){}}
+  }
+  function resetDiscovery(){query='';qtokens=[];activeTags={};root.querySelectorAll('[data-bb-search],[data-bb-sheet-search]').forEach(function(i){i.value='';});if(clearEl)clearEl.hidden=true;}
+
+  // controls
+  root.querySelectorAll('.bb-bb-size').forEach(function(b){b.addEventListener('click',function(){root.querySelectorAll('.bb-bb-size').forEach(function(x){x.classList.remove('is-active');});b.classList.add('is-active');hideFlipbar();userSized=true;claimMode=false;setPaidTarget(parseInt(b.dataset.size,10));});});
+  root.querySelectorAll('.bb-bb-bottle__opt').forEach(function(b){b.addEventListener('click',function(){var inSheet=!!b.closest('[data-bb-sheet]');var t=b.dataset.bottle;if(t!==currentBottle)flipAll(t,{silent:true});if(inSheet){closeSheet();if(grid)grid.scrollIntoView({behavior:'smooth',block:'start'});}});});
+  // bottle compatibility guide — opens the shared fitment modal on the shopper's current bottle tab
+  var fitEl=root.querySelector('[data-bb-fit]');
+  if(fitEl)fitEl.addEventListener('click',function(){var m=document.getElementById('bfp-modal');if(!m)return;m.classList.add('bfp-open');var tab=m.querySelector('.bfp-tab[data-bfp="'+(currentBottle||'').toLowerCase()+'"]');if(tab)tab.click();});
+  if(moreBtn)moreBtn.addEventListener('click',addMore);
+  if(fillRestBtn)fillRestBtn.addEventListener('click',fillRest);
+  // shared query setter — keeps the top search box and the mobile-sheet search box in sync
+  function applyQuery(val){query=(val||'').trim();qtokens=tokenize(query);root.querySelectorAll('[data-bb-search],[data-bb-sheet-search]').forEach(function(i){if(i.value!==query)i.value=query;});if(clearEl)clearEl.hidden=!query;renderGrid();}
+  if(searchEl){var stt;searchEl.addEventListener('input',function(){clearTimeout(stt);stt=setTimeout(function(){applyQuery(searchEl.value);},180);});}
+  var sheetSearchEl=root.querySelector('[data-bb-sheet-search]');
+  if(sheetSearchEl){var stt2;sheetSearchEl.addEventListener('input',function(){clearTimeout(stt2);stt2=setTimeout(function(){applyQuery(sheetSearchEl.value);},180);});sheetSearchEl.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();closeSheet();if(grid)grid.scrollIntoView({behavior:'smooth',block:'start'});}});}
+  if(clearEl){clearEl.addEventListener('click',function(){applyQuery('');if(searchEl)searchEl.focus();});}
+  // desktop: theme pills live behind the "Browse themes" toggle
+  var themesBtn=root.querySelector('[data-bb-themes-toggle]'),themesPanel=root.querySelector('[data-bb-themes]');
+  if(themesBtn&&themesPanel){themesBtn.addEventListener('click',function(){var open=themesPanel.hidden;themesPanel.hidden=!open;themesBtn.classList.toggle('is-open',open);themesBtn.setAttribute('aria-expanded',open?'true':'false');});}
+  // mobile discovery sheet open/close
+  // mobile bundle sheet (the tray) — collapsed to the sticky bar, expands over the page
+  function isMobile(){return window.matchMedia&&window.matchMedia('(max-width:800px)').matches;}
+  function traySheet(open){
+    root.classList.toggle('is-tray-open',open);
+    if(isMobile())document.body.style.overflow=open?'hidden':'';   // the page under the sheet must not scroll
+    var tg=root.querySelector('[data-tray-toggle]');if(tg)tg.setAttribute('aria-expanded',open?'true':'false');
+  }
+  root.querySelectorAll('[data-tray-toggle]').forEach(function(b){b.addEventListener('click',function(){traySheet(!root.classList.contains('is-tray-open'));});});
+  root.querySelectorAll('[data-tray-close]').forEach(function(b){b.addEventListener('click',function(){traySheet(false);});});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&root.classList.contains('is-tray-open'))traySheet(false);});
+  var sheetEl=root.querySelector('[data-bb-sheet]');
+  function openSheet(){if(sheetEl){sheetEl.hidden=false;if(sheetSearchEl)setTimeout(function(){try{sheetSearchEl.focus();}catch(e){}},60);}}
+  function closeSheet(){if(sheetEl)sheetEl.hidden=true;}
+  root.querySelectorAll('[data-bb-sheet-toggle]').forEach(function(b){b.addEventListener('click',openSheet);});
+  root.querySelectorAll('[data-bb-sheet-close]').forEach(function(b){b.addEventListener('click',closeSheet);});
+  var scopeAllEl=root.querySelector('[data-bb-scope-all]');
+  if(scopeAllEl){scopeAllEl.addEventListener('click',function(){activeCurated='';renderCurated();renderGrid();if(searchEl)searchEl.focus();});}
+  if(clearAllEl){clearAllEl.addEventListener('click',function(){paid=[];free=[];minisReset();wasUnlocked=false;guardPassed=false;activeSet=null;try{if(window.BBBundle)window.BBBundle.clear();}catch(e){}root.querySelectorAll('.bb-bb-set').forEach(function(c){c.classList.remove('is-active');});render();});}
+  // sticky bar CTA: full -> checkout (reuse main button); not full -> jump to the wrap grid to keep picking
+  if(stickyCtaEl){stickyCtaEl.addEventListener('click',function(){
+    var fcv=freeCount(),done=(paid.length>0||free.length>0||minisTotal()>0)&&(fcv===0||free.length>=fcv);
+    if(done){addBtn.click();var g=root.querySelector('[data-bb-guard]');if(g&&!g.hidden)g.scrollIntoView({behavior:'smooth',block:'center'});}
+    else{if(sheetEl&&!sheetEl.hidden)closeSheet();if(grid)grid.scrollIntoView({behavior:'smooth',block:'start'});}
+  });}
+
+  // checkout guard + add-to-cart STUB
+  function line(s){return {variantId:s.variantId,handle:s.handle,bottle:s.bottleType,qty:1};}
+  function tally(arr){var c={};arr.forEach(function(s){if(s)c[s.bottleType]=(c[s.bottleType]||0)+1;});return Object.keys(c).map(function(k){return c[k]+' '+k;}).join(', ');}
+  function hideGuard(){guardEl.hidden=true;guardEl.innerHTML='';}
+  // Open the theme's pop-out cart drawer by toggling its checkbox directly (the visible one).
+  // Does NOT depend on any JS global, and never navigates to /cart (that page conflicts with the drawer).
+  function openCartDrawer(){
+    var mi=document.querySelectorAll('[data-minicart-input]');
+    function fire(el){el.checked=true;try{el.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){}}
+    for(var i=0;i<mi.length;i++){var w=mi[i].closest('.minicart__button')||mi[i].parentNode;var l=w?w.querySelector('.minicart__label'):null;if(l&&l.clientWidth>0&&l.clientHeight>0){fire(mi[i]);return true;}}
+    if(mi.length){fire(mi[mi.length-1]);return true;}
+    return false;
+  }
+  function checkout(){
+    // Add every chosen wrap as a normal line item. The Beau Bottles "free wraps"
+    // Shopify Function reads the cart, counts wrap units, and zeroes the right
+    // number per the ladder at checkout. No bundle product / no tagging required;
+    // _bb is a hidden marker for analytics / future builder-only scoping.
+    if(adding)return;                                  // guard against double-taps
+    if(paid.concat(free).some(function(s){return s&&(s._busy||!s.variantId);})){flash('One sec — still loading a wrap. Try again in a moment.');return;}   // never drop or mis-add an in-flight pick
+    var paidV=paid.filter(function(s){return s&&s.variantId;});
+    var freeV=free.filter(function(s){return s&&s.variantId;});
+    if(!paidV.length&&!freeV.length&&!minisSelList().length){flash('Add some wraps or minis first.');return;}   // minis-only bundles are valid
+    adding=true;
+    addBtn.disabled=true;addBtn.textContent='Adding…';
+    if(stickyCtaEl){stickyCtaEl.disabled=true;stickyCtaEl.textContent='Adding to cart…';}   // immediate feedback on the sticky button
+    var bsz=String(paidTarget),bbt=currentBottle;
+    // The SPEND-BASED Free Wraps function reads the whole cart (no _bb gate): it zeroes
+    // the cheapest single wraps such that the remaining paid wrap spend still earns them.
+    // _bb/_bbsz/_bbb/_bbfree are kept as cart-grouping + analytics markers only.
+    // (Matches the live builder's payload — do not collapse these back into one array.)
+    var items=paidV.map(function(s){return {id:s.variantId,quantity:1,properties:{_bb:'1',_bbsz:bsz,_bbb:bbt}};})
+      .concat(freeV.map(function(s){return {id:s.variantId,quantity:1,properties:{_bb:'1',_bbfree:'1',_bbsz:bsz,_bbb:bbt}};}));
+    // party minis ride along as plain lines — no _bb, so the free-wrap ladder never sees them
+    minisSelList().forEach(function(m){items.push({id:m.variantId,quantity:m.qty,properties:{_bbm:'1'}});});
+    // ONE bundle per cart: snapshot the previous _bb line keys, ADD the new bundle first,
+    // and only zero the old lines once the add succeeded — a failed add (sold-out wrap
+    // etc.) leaves the shopper's existing bundle untouched.
+    var oldKeys=[];
+    fetch('/cart.js').then(function(r){return r.json();}).then(function(c){
+      (c.items||[]).forEach(function(i){if(i.properties&&i.properties._bb)oldKeys.push(i.key);});
+    }).catch(function(){})
+    .then(function(){return fetch('/cart/add.js',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items})});})
+      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
+      .then(function(res){
+        if(!res.ok)throw new Error((res.j&&res.j.description)||'Add failed');
+        var newKeys={};((res.j&&res.j.items)||[]).forEach(function(i){if(i.key)newKeys[i.key]=1;});
+        var up={};oldKeys.forEach(function(k){if(!newKeys[k])up[k]=0;});
+        if(Object.keys(up).length)fetch('/cart/update.js',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({updates:up})}).catch(function(){});
+        // Booster's fetch wrapper already refreshed the cart drawer on this /cart/add.js.
+        // Open the pop-out drawer instead of navigating to /cart (which conflicts with the drawer).
+        adding=false;guardPassed=false;paid=[];free=[];wasUnlocked=false;activeSet=null;minisReset();
+        if(stickyCtaEl)stickyCtaEl.disabled=false;
+        try{if(window.BBBundle)window.BBBundle.clear();localStorage.removeItem('bbStageSize');}catch(e){}   // bundle checked out — empty the site-wide stage + size
+        flash('');render();refreshCartView();
+        if(isMobile()){traySheet(false);if(!openCartDrawer())toast('Added to your cart \u2713');}   // the confirmation was invisible on phones: the note lives in the collapsed tray
+        var ok=root.querySelector('[data-bb-added]');
+        if(ok){ok.hidden=false;clearTimeout(ok._t);ok._t=setTimeout(function(){ok.hidden=true;},8000);
+          // the tray collapses after add (page gets shorter) — anchor the viewport on the
+          // confirmation so the shopper isn't dumped at the top of the page
+          if(!isMobile())setTimeout(function(){try{ok.scrollIntoView({block:'center'});}catch(e){}},80);   // on phones the drawer/toast is the confirmation
+        }
+      })
+      .catch(function(e){adding=false;if(stickyCtaEl)stickyCtaEl.disabled=false;render();flash('Couldn’t add to cart — '+(e.message||'try again')+'.');});
+  }
+  addBtn.addEventListener('click',function(){
+    if(paid.length===0&&free.length===0&&minisTotal()===0)return;
+    var fc=freeCount();
+    if(fc>free.length&&!guardPassed){
+      var miss=fc-free.length;
+      guardEl.innerHTML='<strong>Wait — you have '+miss+' FREE wrap'+(miss>1?'s':'')+' left</strong> ('+money(miss*UNIT)+' value). Add them before you check out?'+
+        '<div class="bb-bb-guard__btns"><button type="button" class="bb-bb-guard__go" data-g="add">Add my free wraps</button><button type="button" class="bb-bb-guard__skip" data-g="skip">No thanks, check out</button></div>';
+      guardEl.hidden=false;
+      if(isMobile())traySheet(true);   // the guard lives in the tray — surface it
+      setTimeout(function(){try{guardEl.scrollIntoView({block:'nearest'});}catch(e){}},80);
+      guardEl.querySelector('[data-g="add"]').addEventListener('click',function(){hideGuard();fillSmart();render();});
+      guardEl.querySelector('[data-g="skip"]').addEventListener('click',function(){guardPassed=true;hideGuard();checkout();});
+      return;
+    }
+    checkout();
+  });
+
+  // ---- saved favorites ----
+  var favesRow=root.querySelector('[data-bb-faves-row]');
+  function readFaves(){try{return JSON.parse(localStorage.getItem('bbFaves')||'[]');}catch(e){return [];}}
+  function renderFaves(){
+    if(!favesRow)return;
+    var f=readFaves();
+    var favesBox=root.querySelector('[data-bb-faves]');
+    if(favesBox)favesBox.hidden=!f.length;   // band earns its space only when something is saved
+    if(!f.length){favesRow.innerHTML='';return;}
+    favesRow.innerHTML=f.map(function(x){return '<div class="bb-bb-fave"><img src="'+withW(x.image,200)+'" alt="" loading="lazy"><span class="bb-bb-fave__t">'+cleanTitle(x.title||x.handle)+'</span><button type="button" class="bb-bb-fave__add" data-fadd="'+x.handle+'">Add</button><button type="button" class="bb-bb-fave__x" data-fdel="'+x.handle+'" aria-label="Remove favorite">×</button></div>';}).join('');
+    favesRow.querySelectorAll('[data-fadd]').forEach(function(b){b.addEventListener('click',function(){addByHandle(b.dataset.fadd);});});
+    favesRow.querySelectorAll('[data-fdel]').forEach(function(b){b.addEventListener('click',function(){var h=b.dataset.fdel;if(window.BBFaves){window.BBFaves.remove(h);}else{try{localStorage.setItem('bbFaves',JSON.stringify(readFaves().filter(function(x){return x.handle!==h;})));}catch(e){}renderFaves();}});});
+  }
+  document.addEventListener('bb:faves',renderFaves);
+  window.addEventListener('storage',function(e){if(e.key==='bbFaves')renderFaves();});
+  renderFaves();
+
+  // ---- pre-built gift sets (one tap fills paid + free slots; still editable) ----
+  var SETS=[].slice.call(root.querySelectorAll('[data-bb-set]')).map(function(el){
+    return {key:el.dataset.bbSet,label:el.dataset.setLabel,size:parseInt(el.dataset.setSize,10)||10,
+            handles:(el.dataset.setHandles||'').split(/[\s,]+/).filter(Boolean),el:el};
+  });
+  var presetPending=null;
+  function findSet(k){for(var i=0;i<SETS.length;i++){if(SETS[i].key===k)return SETS[i];}return null;}
+  function applySet(s,opts){
+    opts=opts||{};
+    if(!opts.force&&(paid.length||free.length)){showFlipbar('Start fresh with '+s.label+'? Your current picks will be replaced.',function(){applySet(s,{force:true});});return;}
+    hideFlipbar();
+    var n=(userSized||urlSized)?paidTarget:(([5,10,15].indexOf(s.size)>-1)?s.size:10);   // presets flex to the shopper's chosen size
+    paidTarget=n;guardPassed=false;
+    root.querySelectorAll('.bb-bb-size').forEach(function(x){x.classList.toggle('is-active',parseInt(x.dataset.size,10)===n);});
+    paid=[];free=[];render();
+    flash('Setting up '+s.label+'…');
+    var need=n+freeFor(n),hs=s.handles;   // resolve the FULL list — handles beyond `need` are spares
+    Promise.all(hs.map(function(h){return resolve(h).then(function(r){return {handle:h,bottleType:bottleOf(h),variantId:r.variantId,title:r.title,img:r.image,price:r.price,_busy:false};}).catch(function(){return null;});}))
+    .then(function(arr){
+      // band + stock filter, THEN take the first `need` — an out-of-band or sold-out
+      // handle consumes a spare instead of leaving an empty slot in the set
+      arr=arr.filter(function(x){return x&&x.available!==false&&x.price>=400&&x.price<=800;}).slice(0,need);
+      paid=arr.slice(0,n);free=arr.slice(n,need);
+      activeSet=s;
+      render();  // fires the unlock confetti (unlocked && !wasUnlocked)
+      flash(s.label+' is ready — swap any wrap you like, then add to cart.');
+      root.querySelectorAll('.bb-bb-set').forEach(function(c){c.classList.toggle('is-active',c.dataset.bbSet===s.key);});
+      try{(window.dataLayer=window.dataLayer||[]).push({event:'bb_preset_apply',bb_preset:s.key,bb_entry:opts.viaUrl?'url':'click'});}catch(e){}
+      var tray=root.querySelector('[data-bb-tray]');
+      if(tray&&window.matchMedia&&window.matchMedia('(max-width:800px)').matches)tray.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  }
+  // thumbnails + "10 wraps + 5 free · $79.50" preset-contents line, once the pool (and true UNIT) are known
+  function fillSetCards(){
+    SETS.forEach(function(s){
+      var n=(userSized||urlSized)?paidTarget:(([5,10,15].indexOf(s.size)>-1)?s.size:10),fc=freeFor(n);
+      var meta=s.el.querySelector('[data-set-meta]');
+      if(meta)meta.textContent=n+' wraps'+(fc?' + '+fc+' free':'')+' · '+money(n*UNIT);
+      var th=s.el.querySelector('[data-set-thumbs]');
+      if(th){var imgs=[];
+        for(var i=0;i<s.handles.length&&imgs.length<3;i++){var c=resolveCache.get(s.handles[i]);if(c&&c.image){imgs.push('<img src="'+withW(c.image,180)+'" width="38" height="38" loading="lazy" alt="">');}}
+        if(imgs.length)th.innerHTML=imgs.join('');}
+    });
+  }
+  SETS.forEach(function(s){s.el.addEventListener('click',function(){applySet(s,{});});});
+
+  // ---- step 4: party minis (add-on rail; separate lines, NEVER touches the free-wrap ladder) ----
+  var minisEl=root.querySelector('[data-bb-minis]');
+  var minisRow=root.querySelector('[data-bb-minis-row]');
+  var minisSumEl=root.querySelector('[data-bb-minis-sum]');
+  var MINIS_COL=root.dataset.minis||'mini-la-marca';
+  var minis=[],minisView=[],minisQty={},minisTracked=false,minisSig='',poolTagMap={},minisEverShown=false;
+  var activeSet=null;   // the gift set the current bundle came from (null once cleared/checked out)
+  // generic scroll-rail arrows: appear only when the row actually overflows / can scroll that way
+  function attachRailNav(row){
+    if(!row||row.dataset.railNav==='1')return;row.dataset.railNav='1';
+    var wrap=row.closest('.bb-bb-rail')||row.parentNode;
+    function mk(dir){var b=document.createElement('button');b.type='button';b.className='bb-bb-rail__arr bb-bb-rail__arr--'+(dir<0?'l':'r');b.setAttribute('aria-label',dir<0?'Scroll left':'Scroll right');b.textContent=dir<0?'‹':'›';b.addEventListener('click',function(){row.scrollBy({left:dir*Math.round(row.clientWidth*0.8),behavior:'smooth'});});wrap.appendChild(b);return b;}
+    var L=mk(-1),R=mk(1);
+    function upd(){var max=row.scrollWidth-row.clientWidth-2;var can=max>4;L.style.display=(can&&row.scrollLeft>4)?'':'none';R.style.display=(can&&row.scrollLeft<max)?'':'none';}
+    row.addEventListener('scroll',upd,{passive:true});window.addEventListener('resize',upd);setTimeout(upd,80);row._railUpd=upd;
+  }
+  // ---- shared affinity engine: score anything against the bundle's tag profile ----
+  var SEASONAL_TAGS=['occasion-christmas','occasion-halloween','occasion-valentines','occasion-hanukkah','occasion-easter','occasion-thanksgiving','occasion-new-years'];
+  // specific beats generic: occasion/recipient tags say WHY she's buying; style tags are everywhere and would drown them
+  var TAG_W={occasion:4,'for':2.5,motif:1.5,style:0.75};
+  // sparse clusters need help: seeing one of these tags in the bundle also credits its neighbors at half weight
+  var RELATED={
+    'occasion-gameday':['for-football','for-college-sports','motif-sports-equipment','for-golf','for-tennis','for-pickleball','for-fishing'],
+    'for-football':['occasion-gameday','for-college-sports','motif-sports-equipment'],
+    'for-college-sports':['occasion-gameday','for-football','motif-sports-equipment'],
+    'motif-sports-equipment':['occasion-gameday','for-golf','for-tennis','for-pickleball','for-football'],
+    'occasion-wedding':['for-bridal','occasion-engagement','occasion-bridal-shower','occasion-bachelorette','motif-wedding'],
+    'for-bridal':['occasion-wedding','occasion-engagement','occasion-bridal-shower'],
+    'occasion-engagement':['occasion-wedding','for-bridal'],
+    'occasion-birthday':['motif-balloons','motif-cakes-sweets','motif-party-hats'],
+    'for-hostess':['occasion-hostess','for-entertaining-hostess','for-wine-bubbly','occasion-cocktail-party'],
+    'occasion-hostess':['for-hostess','for-entertaining-hostess','for-wine-bubbly']
+  };
+  function bundleTagCounts(){
+    var counts={};
+    paid.concat(free).forEach(function(s){if(!s||!s.handle)return;(poolTagMap[s.handle]||[]).forEach(function(t){var g=t.split('-')[0];if(g==='occasion'||g==='style'||g==='motif'||g==='for')counts[t]=(counts[t]||0)+1;});});
+    var expanded={};
+    for(var t in counts){expanded[t]=(expanded[t]||0)+counts[t];(RELATED[t]||[]).forEach(function(r){expanded[r]=(expanded[r]||0)+counts[t]*0.5;});}
+    return expanded;
+  }
+  function affinity(tags,counts){
+    var sc=0;
+    tags.forEach(function(t){if(counts[t])sc+=(TAG_W[t.split('-')[0]]||1)*Math.min(counts[t],3);});  // cap per-tag influence
+    SEASONAL_TAGS.forEach(function(st){if(tags.indexOf(st)>-1&&!counts[st])sc-=2;});   // off-season sinks unless the bundle is that season
+    return sc;
+  }
+  // design "family" key: title minus colorways — so a smart fill never stacks near-identical designs
+  var COLORWORDS=/\b(blue|red|pink|green|navy|orange|purple|yellow|black|white|crimson|grey|gray|gold|silver|royal|pastel|sage|beige|tan|lavender|blush|teal|aqua|coral|mint|ivory|cream|burgundy|maroon|light|dark)\b/g;
+  function familyKey(t){return cleanTitle(t||'').toLowerCase().replace(COLORWORDS,'').replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();}
+  // rank minis by affinity with what's actually in the bundle (works for presets AND hand-built)
+  function rankMinis(){
+    var counts=bundleTagCounts();
+    minisView=minis.map(function(m,i){return {m:m,sc:affinity(m.tags,counts),i:i};})
+      .sort(function(a,b){return b.sc-a.sc||a.i-b.i;}).map(function(x){return x.m;});
+  }
+  // smart wrap candidates for "fill the rest": affinity-ranked, best-seller boosted, max 2 per design family
+  function smartCandidates(){
+    var counts=bundleTagCounts(),have=picked(),famCount={},exact={};
+    paid.concat(free).forEach(function(s){if(s&&s.title){famCount[familyKey(s.title)]=(famCount[familyKey(s.title)]||0)+1;exact[cleanTitle(s.title).toLowerCase()]=1;}});
+    var scored=pool.filter(function(p){return p._bottle===currentBottle&&!have[p.handle];})
+      .map(function(p,i){var sc=affinity(p._tags,counts);if(bestMatch(p))sc+=0.5;return {p:p,sc:sc,i:i};})
+      .sort(function(a,b){return b.sc-a.sc||a.i-b.i;});
+    var out=[];
+    scored.forEach(function(x){
+      var ek=cleanTitle(x.p.title).toLowerCase();if(exact[ek])return;        // never a second copy of the same design (catalog has dupes)
+      var k=familyKey(x.p.title);if((famCount[k]||0)>=2)return;              // max 2 per colorway family
+      exact[ek]=1;famCount[k]=(famCount[k]||0)+1;out.push(x.p);
+    });
+    return out;
+  }
+  function fillSmart(){
+    var cands=smartCandidates(),i=0;
+    while(spendAll()<goalCents()&&paid.length<MAXPAID&&i<cands.length){paid.push(toSlot(cands[i++]));}
+    var fc=freeCount();while(free.length<fc&&i<cands.length){var fs=toSlot(cands[i++]);if(freeOK(fs.bottleType,fs.handle))free.push(fs);}
+  }
+  function packOf(t){t=(t||'').toLowerCase();if(/six|6[- ]?pack/.test(t))return 6;if(/three|3[- ]?pack|set of 3/.test(t))return 3;return 1;}
+  function minisTotal(){var s=0;minis.forEach(function(m){s+=(minisQty[m.handle]||0)*m.price;});return s;}
+  function minisSelList(){return minis.filter(function(m){return (minisQty[m.handle]||0)>0;}).map(function(m){return {variantId:m.variantId,qty:minisQty[m.handle]};});}
+  function minisReset(){minisQty={};renderMinis();}
+  function cleanMiniTitle(t){return (t||'').replace(/mini prosecco (collection|wraps?)/ig,'').replace(/set of \d+ wraps? only/ig,'').replace(/\(\s*\d+[- ]?pack\s*\)/ig,'').replace(/beau bottles/ig,'').replace(/[–—-]\s*/g,' ').replace(/\s{2,}/g,' ').trim();}
+  function loadMinis(){
+    function pg(page,acc){return fetch('/collections/'+MINIS_COL+'/products.json?limit=250&page='+page).then(function(r){return r.json();}).then(function(j){var ps=(j&&j.products)||[];acc=acc.concat(ps);return (ps.length===250&&page<5)?pg(page+1,acc):acc;}).catch(function(){return acc;});}
+    pg(1,[]).then(function(all){
+      minis=all.filter(function(p){var v=p.variants&&p.variants[0];return v&&v.available&&/mini/.test(p.handle)&&(p.product_type||'')==='Bottle Wrap'&&toCents(v.price)>0;}).map(function(p){var v=p.variants[0];return {handle:p.handle,variantId:v.id,price:toCents(v.price),title:p.title,img:(p.images&&p.images[0]?p.images[0].src:''),pack:packOf(p.title+' '+p.handle),tags:(p.tags||[]).map(function(t){return (''+t).toLowerCase();})};});
+      minisView=minis.slice();
+      rankMinis();renderGrid();   // minis render inside the main grid now (no rail)
+    });
+  }
+  function renderMinis(){
+    if(!minisRow)return;
+    var list=(minisView.length?minisView:minis).slice(0,14);
+    minisRow.innerHTML=list.map(function(m,i){
+      var q=minisQty[m.handle]||0;
+      var per=m.pack>1?' <small>· '+m.pack+'-pack · '+money(Math.round(m.price/m.pack))+'/mini</small>':'';
+      return '<div class="bb-bb-mini'+(q>0?' has-qty':'')+'"><img src="'+withW(m.img,300)+'" loading="lazy" alt=""><span class="bb-bb-mini__t">'+cleanMiniTitle(m.title)+'</span><span class="bb-bb-mini__p">'+money(m.price)+per+'</span><span class="bb-bb-mini__step"><button type="button" data-mini-minus="'+i+'" aria-label="Remove one pack">−</button><span class="bb-bb-mini__q">'+q+'</span><button type="button" data-mini-plus="'+i+'" aria-label="Add one pack">+</button></span></div>';
+    }).join('');
+    minisRow.querySelectorAll('[data-mini-plus]').forEach(function(b){b.addEventListener('click',function(){var m=list[parseInt(b.dataset.miniPlus,10)];minisQty[m.handle]=Math.min(8,(minisQty[m.handle]||0)+1);if(!minisTracked){minisTracked=true;try{(window.dataLayer=window.dataLayer||[]).push({event:'bb_minis_attach'});}catch(e){}}renderMinis();render();});});
+    minisRow.querySelectorAll('[data-mini-minus]').forEach(function(b){b.addEventListener('click',function(){var m=list[parseInt(b.dataset.miniMinus,10)];minisQty[m.handle]=Math.max(0,(minisQty[m.handle]||0)-1);renderMinis();render();});});
+    if(minisRow._railUpd)minisRow._railUpd();
+    updateMinisSum();
+  }
+  function updateMinisSum(){
+    if(!minisSumEl)return;var t=minisTotal(),n=0;
+    minis.forEach(function(m){n+=(minisQty[m.handle]||0)*m.pack;});
+    if(t>0){minisSumEl.hidden=false;minisSumEl.textContent='Party favors: '+n+' minis · '+money(t)+' — counts toward your free-wrap total, added with your bundle at checkout';}
+    else{minisSumEl.hidden=true;}
+  }
+  function updateMinisUI(bundleFull){
+    // Re-rank minis to the bundle's theme as picks change — but NEVER rebuild the grid
+    // unless the Mini tab is showing (a full grid rebuild on every pick collapses the
+    // page height mid-reflow and dumps the scroll position — Shaun's "jumps to top").
+    if(!minis.length||minisTotal()>0)return;
+    var sig=paid.map(function(s){return s?s.handle:'';}).join(',');
+    if(sig!==minisSig){minisSig=sig;rankMinis();if(currentBottle==='Mini')renderGrid();}
+  }
+
+  // URL-seeded entry: ?size=10&collection=wedding&q=floral&bottle=Champagne&seed=h1,h2&preset=the-hostess-set
+  (function initSeed(){
+    var sp;try{sp=new URLSearchParams(location.search);}catch(e){return;}
+    if(sp.get('claim')==='1')claimMode=true;   // cart banners: "pick your free wraps" — no pack required
+    var ps=parseInt(sp.get('size'),10);if([5,10,15].indexOf(ps)>-1){urlSized=true;claimMode=false;paidTarget=ps;root.querySelectorAll('.bb-bb-size').forEach(function(x){x.classList.toggle('is-active',parseInt(x.dataset.size,10)===paidTarget);});}
+    var pb=sp.get('bottle');if(pb==='Prosecco'||pb==='Champagne'){currentBottle=pb;setBottleUI(pb);}
+    var pq=sp.get('q');if(pq){query=pq;qtokens=tokenize(pq);if(searchEl)searchEl.value=pq;if(clearEl)clearEl.hidden=false;}
+    var psd=sp.get('seed');seedHandles=psd?psd.split(',').map(function(x){return x.trim();}).filter(Boolean):[];
+    var ppr=sp.get('preset');if(ppr)presetPending=ppr.trim().toLowerCase();
+    // Bundle-bridge ingest: wraps staged site-wide via "Add to bundle" (localStorage bbStage,
+    // written by bb-bundle-core) join the builder as paid picks. URL ?seed handles come first;
+    // a staged qty>1 becomes that many copies. Stage is re-synced from the bundle in save().
+    try{
+      var stg=JSON.parse(localStorage.getItem('bbStage')||'[]');
+      (stg||[]).forEach(function(x){
+        if(!x||!x.handle)return;
+        var q=Math.max(1,parseInt(x.qty,10)||1),start=seedHandles.indexOf(x.handle)>-1?1:0;
+        for(var i=start;i<q&&seedHandles.length<MAXPAID;i++)seedHandles.push(x.handle);
+      });
+    }catch(e){}
+    // PDP tier picker wrote a pack size (bbStageSize) — open at that size (URL ?size= wins)
+    if(!urlSized){var ss=parseInt(localStorage.getItem('bbStageSize')||'',10);if([5,10,15].indexOf(ss)>-1&&ss!==paidTarget){userSized=true;paidTarget=ss;syncSizeBtns();}}
+  })();
+
+  updateSizeUI();
+  loadPool();
+  loadMinis();
+})();
+</script>
+
+<style>
+  /* mobile feedback layer (toast + tier progress strip; elements created by the builder script) */
+  .bb-bb-toast{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:99987;background:#2B2F3D;color:#F5F0E6;font-family:'Montserrat',system-ui,sans-serif;font-size:13px;font-weight:600;line-height:1.45;padding:12px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(23,26,34,.35);text-align:center;opacity:0;transform:translateY(6px);transition:opacity .22s,transform .22s;pointer-events:none}
+  .bb-bb-toast.is-on{opacity:1;transform:none}
+  .bb-bb-barprog{position:absolute;left:0;right:0;top:-3px;height:3px;background:rgba(43,47,61,.08);overflow:hidden}
+  .bb-bb-barprog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#C9A961,#f6bdd5);transition:width .3s}
+  .bb-bb-stickybar.is-unlock{animation:bbBarGold .9s ease}
+  @keyframes bbBarGold{0%,100%{box-shadow:0 -6px 22px rgba(43,47,61,.13)}40%{box-shadow:0 -6px 26px rgba(201,169,97,.65)}}
+  @media (min-width:801px){.bb-bb-toast,.bb-bb-barprog{display:none}}
+  @media (prefers-reduced-motion: reduce){.bb-bb-stickybar.is-unlock{animation:none}.bb-bb-toast{transition:none}}
+</style>
+<style>
+  /* ============ ATELIER SKIN (Jul 2026) — editorial luxury override layer ============ */
+  .bb-bb{--gold:#C9A961;--gold-deep:#A98B45;--tray-ink:#23262E;--tray-line:rgba(255,255,255,.10);--tray-cream:#F5F0E6;background:#FAF7F2;position:relative}
+  .bb-bb::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.028;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .bb-bb-inner{position:relative;z-index:1}
+  .bb-bb-heading{font-size:clamp(34px,4.6vw,56px);letter-spacing:-.015em}
+  .bb-bb-sub{font-size:15px;color:#8A93A0}
+  .bb-bb-trustbar{letter-spacing:.06em;text-transform:uppercase;font-size:10.5px}
+  .bb-bb-step{background:transparent;border:none;border-radius:0;box-shadow:none;border-top:1px solid rgba(43,47,61,.14);margin:0 0 8px;padding:26px 4px 30px;position:relative}
+  .bb-bb-step::before{content:attr(data-step);position:absolute;top:6px;left:0;font-family:var(--titleFont,Georgia,serif);font-size:clamp(64px,7vw,96px);line-height:1;color:rgba(43,47,61,.055);font-style:italic;pointer-events:none}
+  .bb-bb-step .bb-bb-steplbl{justify-content:flex-start;padding-left:clamp(48px,6vw,84px);font-size:11px;letter-spacing:.24em;color:#8A93A0;margin-bottom:18px}
+  .bb-bb-step .bb-bb-steplbl__n{display:none}
+  .bb-bb-grid-wrap{background:transparent;border:none;border-radius:0;box-shadow:none;padding:0;border-top:1px solid rgba(43,47,61,.14);padding-top:24px}
+  .bb-bb-steplbl--fill{justify-content:flex-start;font-size:11px;letter-spacing:.24em;color:#8A93A0}
+  .bb-bb-size{border-radius:2px;box-shadow:none;border:1px solid rgba(43,47,61,.18);background:transparent}
+  .bb-bb-size:hover{transform:none;box-shadow:0 10px 24px rgba(43,47,61,.08);border-color:#2B2F3D}
+  .bb-bb-size.is-active{background:#2B2F3D;border-color:#2B2F3D}
+  .bb-bb-size__tag{border-radius:0;background:#2B2F3D;color:#F5F0E6;letter-spacing:.14em}
+  .bb-bb-size__tag--alt{background:var(--gold-deep);color:#fff}
+  .bb-bb-size__free{color:#C9898D}
+  .bb-bb-size.is-active .bb-bb-size__free{color:#f6bdd5}
+  .bb-bb-size__pwrap .bb-bb-size__p{font-variant-numeric:tabular-nums}
+  .bb-bb-size.is-active .bb-bb-size__n,.bb-bb-size.is-active .bb-bb-size__p{color:#F5F0E6}
+  .bb-bb-size.is-active .bb-bb-size__was{color:rgba(245,240,230,.55)}
+  .bb-bb-size.is-active .bb-bb-size__ship{color:rgba(255,255,255,.85)}
+  .bb-bb-set{border:none;border-radius:0;box-shadow:none;background:transparent;padding:14px 10px 12px;border-bottom:2px solid transparent}
+  .bb-bb-set:hover{transform:none;box-shadow:none;border-bottom-color:var(--gold)}
+  .bb-bb-set.is-active{border-bottom-color:#2B2F3D}
+  .bb-bb-set__name{font-family:var(--titleFont,Georgia,serif);font-size:17px;font-weight:400;line-height:1.2;margin-top:2px}
+  .bb-bb-set__tag{display:none}
+  .bb-bb-set__cta{display:none}
+  .bb-bb-set__meta{font-size:12px;letter-spacing:.01em;color:#5A6472;margin-top:2px}
+  .bb-bb-set__badge{border-radius:0;background:#2B2F3D;color:#F5F0E6;letter-spacing:.14em}
+  .bb-bb-set__thumbs span,.bb-bb-set__thumbs img{border-radius:1px;border-color:rgba(43,47,61,.14)}
+  .bb-bb-set__meta{color:#8A93A0}
+  .bb-bb-set__cta{color:var(--gold-deep)}
+  .bb-bb-set:hover .bb-bb-set__cta{color:#2B2F3D}
+  .bb-bb-sets__lbl{letter-spacing:.22em}
+  .bb-bb-bottle__opts{border-radius:0;background:transparent;border:1px solid rgba(43,47,61,.18);padding:3px}
+  .bb-bb-bottle__opt{border-radius:0}
+  .bb-bb-bottle__opt.is-active{background:#2B2F3D;color:#F5F0E6}
+  .bb-bb-fitlink{border-radius:0}
+  .bb-bb-search__in,.bb-bb-findbar,.bb-bb-themesbtn{border-radius:0;background:transparent;border:1px solid rgba(43,47,61,.2)}
+  .bb-bb-grid .bb-bb-card{border:none;border-radius:0;background:transparent;box-shadow:none;overflow:visible}
+  .bb-bb-card__imgw{position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:3/4;background:#fff;border:1px solid rgba(43,47,61,.07)}
+  .bb-bb-card__imgw img{width:100%;height:100%;object-fit:contain;padding:8px}
+  .bb-bb-card__imgw .bb-bb-card__zoom{position:absolute;bottom:8px;right:8px;opacity:0}
+  .bb-bb-grid .bb-bb-card:hover .bb-bb-card__imgw .bb-bb-card__zoom{opacity:1}
+  @media (hover:none){.bb-bb-card__imgw .bb-bb-card__zoom{opacity:.92}}
+  .bb-bb-grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:18px}
+  .bb-bb-grid .bb-bb-card img{filter:none;transition:transform .18s}
+  .bb-bb-grid .bb-bb-card:hover{transform:translateY(-2px);border-color:transparent;box-shadow:none}
+  .bb-bb-grid .bb-bb-card:hover .bb-bb-card__imgw{border-color:rgba(43,47,61,.28)}
+  .bb-bb-grid .bb-bb-card__t{font-size:11px;letter-spacing:.04em;color:#5A6472;padding:6px 6px 10px}
+  .bb-bb-card__chk{border-radius:0;background:var(--gold);color:#fff}
+  .bb-bb-card__minus{border-radius:0}
+  .bb-bb-tray{background:var(--tray-ink);border:1px solid rgba(255,255,255,.06);box-shadow:0 24px 60px rgba(35,38,46,.35),inset 0 0 0 1px rgba(255,255,255,.03);border-radius:4px;color:var(--tray-cream)}
+  .bb-bb-tray__title{color:var(--tray-cream);font-family:var(--titleFont,Georgia,serif);font-weight:400;letter-spacing:.02em}
+  .bb-bb-clearall{color:rgba(245,240,230,.55)}
+  .bb-bb-slot{background:rgba(255,255,255,.04);border:1px solid var(--tray-line);border-radius:2px;box-shadow:inset 0 2px 6px rgba(0,0,0,.35)}
+  .bb-bb-slot.is-filled{background:#FDFCF9;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  .bb-bb-slot.is-free{border-color:rgba(201,169,97,.5);background:rgba(201,169,97,.08)}
+  .bb-bb-slot.is-free.is-filled{background:#FDFCF9}
+  .bb-bb-slot__free{background:var(--gold);color:#23262E;border-radius:0;font-weight:800}
+  .bb-bb-slot__lockv{color:rgba(201,169,97,.85)}
+  .bb-bb-slot__type{color:#8A93A0}
+  .bb-bb-slot__switch{color:var(--tray-cream);background:rgba(255,255,255,.08);border-radius:0}
+  .bb-bb-fillrest{background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:0}
+  .bb-bb-fillrest:hover{background:rgba(201,169,97,.12)}
+  .bb-bb-more{background:transparent;border:1px dashed var(--tray-line);color:rgba(245,240,230,.7);border-radius:0}
+  .bb-bb-tray__count,.bb-bb-tray__count *{color:rgba(245,240,230,.85);font-variant-numeric:tabular-nums}
+  .bb-bb-nudge{color:rgba(245,240,230,.85)}
+  .bb-bb-ship__txt{color:rgba(245,240,230,.75)}
+  .bb-bb-ship__done{color:var(--gold)}
+  .bb-bb-ship__bar{background:rgba(255,255,255,.1)}
+  .bb-bb-ship__bar i{background:var(--gold)}
+  .bb-bb-value{background:rgba(255,255,255,.05);border:1px solid var(--tray-line);border-radius:2px}
+  .bb-bb-value__k{color:rgba(245,240,230,.6)}
+  .bb-bb-value__v{color:rgba(245,240,230,.75)}
+  .bb-bb-value__v--now{color:var(--tray-cream);font-variant-numeric:tabular-nums}
+  .bb-bb-value__vs{color:var(--gold)}
+  .bb-bb-value__save{color:var(--gold)}
+  .bb-bb-add{border-radius:0;letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+  .bb-bb-atctrust{color:rgba(245,240,230,.55)}
+  .bb-bb-note{color:rgba(245,240,230,.8)}
+  .bb-bb-guard{background:rgba(255,255,255,.06);border:1px solid var(--tray-line);color:var(--tray-cream)}
+  .bb-bb-tray.bb-shine::before{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(201,169,97,.28) 48%,rgba(255,255,255,.18) 52%,transparent 70%);transform:translateX(-110%);animation:bbShine .95s ease forwards}
+  @keyframes bbShine{to{transform:translateX(110%)}}
+  @media (prefers-reduced-motion: reduce){.bb-bb-tray.bb-shine::before{animation:none;display:none}}
+  .bb-bb-tray__title{font-size:17px;white-space:nowrap}
+  .bb-bb-clearall{background:transparent;border:none;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);text-decoration:underline;text-underline-offset:3px;padding:0}
+  .bb-bb-steplbl--fill{padding-left:clamp(48px,6vw,84px);position:relative;z-index:1;margin-top:30px;min-height:44px;display:flex;align-items:center}
+  .bb-bb-steplbl--fill::before{content:"02";position:absolute;top:-16px;left:0;font-family:var(--titleFont,Georgia,serif);font-size:clamp(64px,7vw,96px);line-height:1;color:rgba(43,47,61,.055);font-style:italic;pointer-events:none}
+  .bb-bb-steplbl--fill .bb-bb-steplbl__n{display:none}
+  @media (max-width:800px){
+    .bb-bb-stickybar{background:rgba(250,247,242,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid rgba(43,47,61,.12)}
+    .bb-bb-step{padding-left:0;padding-right:0}
+    .bb-bb-step::before{font-size:56px}
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Build-a-Bundle",
+  "tag": "section",
+  "settings": [
+    { "type": "url", "id": "shop_url", "label": "Continue-shopping fallback URL", "info": "Where 'Continue shopping' goes if the previous page can't be detected. Default: /collections/all." },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Build a Bundle" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Build Your Bundle" },
+    { "type": "text", "id": "subheading", "label": "Subheading", "default": "Pick your wraps, switch the bottle, and unlock free ones as you spend — a fraction of the cost of hand-painted bottles." },
+    { "type": "select", "id": "default_bottle", "label": "Default bottle", "options": [ {"value":"Prosecco","label":"Prosecco"}, {"value":"Champagne","label":"Champagne"} ], "default": "Prosecco", "info": "Prosecco has the widest design coverage." },
+    { "type": "select", "id": "default_size", "label": "Default size", "options": [ {"value":"5","label":"5-pack"}, {"value":"10","label":"10-pack"}, {"value":"15","label":"15-pack"} ], "default": "10" },
+    { "type": "collection", "id": "source_collection", "label": "Prosecco wraps collection (pool)", "info": "Default: la-marca-wraps. Single wraps only — minis/multipacks are auto-excluded." },
+    { "type": "collection", "id": "champagne_collection", "label": "Champagne wraps collection (pool)", "info": "Default: champagne-collection." },
+    { "type": "checkbox", "id": "enable_wine", "label": "Enable Wine bottle", "default": true, "info": "Adds a third 'Wine' toggle (e.g. the DAOU wine line)." },
+    { "type": "collection", "id": "wine_collection", "label": "Wine wraps collection (pool)", "info": "Default: wine-collection." },
+    { "type": "range", "id": "grid_cap", "label": "Max wraps shown at once", "min": 8, "max": 40, "step": 4, "default": 16 },
+    { "type": "range", "id": "painted_bottle_value", "label": "Hand-painted bottle value per wrap ($)", "min": 50, "max": 500, "step": 10, "default": 250, "unit": "$" },
+    { "type": "range", "id": "free_ship_threshold", "label": "Free-shipping threshold ($)", "min": 0, "max": 150, "step": 5, "default": 40, "unit": "$", "info": "Set to 0 to hide the free-shipping bar." },
+    { "type": "header", "content": "Free wraps per spend tier" },
+    { "type": "paragraph", "content": "Tiers are clean $39/$79/$119 thresholds and MUST match the deployed Free Wraps function." },
+    { "type": "range", "id": "free_5", "label": "Tier 1 free wraps", "min": 0, "max": 8, "step": 1, "default": 2 },
+    { "type": "range", "id": "free_10", "label": "Tier 2 free wraps", "min": 0, "max": 12, "step": 1, "default": 5 },
+    { "type": "range", "id": "free_15", "label": "Tier 3 free wraps", "min": 0, "max": 16, "step": 1, "default": 10 },
+    { "type": "header", "content": "Add more wraps (beyond Tier 3)" },
+    { "type": "range", "id": "max_paid", "label": "Max paid wraps", "min": 15, "max": 60, "step": 1, "default": 30 },
+    { "type": "range", "id": "free_extra_per5", "label": "Extra free wraps per +5 beyond 15", "min": 0, "max": 4, "step": 1, "default": 2 },
+    { "type": "header", "content": "Trust signals" },
+    { "type": "checkbox", "id": "show_trust", "label": "Show trust signals", "default": true },
+    { "type": "text", "id": "trust_rating", "label": "Average rating", "default": "4.7", "info": "Your real Judge.me average — keep it accurate. A flat 5.0 reads as fake." },
+    { "type": "text", "id": "trust_reviews", "label": "Review count", "default": "200" },
+    { "type": "text", "id": "trust_customers", "label": "Customer count", "default": "120,000" },
+    { "type": "text", "id": "guarantee_text", "label": "Guarantee label", "default": "30-Day Money-Back Guarantee" },
+    { "type": "header", "content": "Party minis (step 4)" },
+    { "type": "collection", "id": "minis_collection", "label": "Minis collection", "info": "Mini packs offered as add-on party favors. Default: mini-la-marca. They join the cart as normal lines and their price COUNTS toward the spend-based free-wrap tiers (testers never do)." },
+    { "type": "header", "content": "Mini bundle (separate builder)" },
+    { "type": "checkbox", "id": "enable_mini", "label": "Show \"Wrapping minis?\" link", "default": false, "info": "Keep OFF until the separate Mini bundle builder + its own Simple Bundles config exist. Minis are multi-packs with different economics and are excluded from in-slot switching." },
+    { "type": "url", "id": "mini_url", "label": "Mini bundle page URL" }
+  ],
+  "presets": [ { "name": "Build-a-Bundle" } ],
+  "enabled_on": { "templates": ["page","index"] }
+}
+{% endschema %}
