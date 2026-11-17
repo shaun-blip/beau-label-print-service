@@ -299,7 +299,7 @@ function setPhoto(file){
       state.photo = {url, data:reader.result, name:file.name, w:img.naturalWidth, h:img.naturalHeight, small:Math.max(img.naturalWidth, img.naturalHeight) < 1000};
       state.prights = false; state.photoPos = "YMid";
       if (!tplById(state.tpl).photo) state.tpl = "photo1";
-      buildPhoto(); buildTemplates(); changed();
+      changed();
     };
     img.onerror = () => fail("We couldn't read that photo. Please try another file.");
     img.src = url;
@@ -331,7 +331,7 @@ function setLogo(file){
                     small:!vector && Math.max(img.naturalWidth, img.naturalHeight) < 600};
       state.rights = false;
       if (!tplById(state.tpl).logo && state.tpl !== "monogram") state.tpl = "logo1";
-      buildLogo(); buildTemplates(); changed();
+      changed();
     };
     img.onerror = () => { $("logowarn").textContent = "We couldn't read that image. Please try another file."; $("logowarn").hidden = false; };
     img.src = url;
@@ -416,9 +416,34 @@ function syncFields(){
   });
 }
 
+/* ---------- derived panels ----------
+   The same idea as the wrapKey memo in render(), applied to every panel: each builder lists the state it
+   draws, and render() re-runs it only when that state has changed. An event handler just mutates state and
+   calls changed() — it never has to know which panels its change touches. If a builder starts drawing a
+   new piece of state, add that state to its line here; that is the whole contract. */
+let uiKeys = {};
+const resetDerived = () => { uiKeys = {}; };   // applyDesign restores many fields at once: rebuild everything
+const UI_DEPS = [   // in dependency order: sizes sets W/H, templates may reassign state.tpl, ready reads it
+  [() => buildSizes(),     () => state.size],
+  [() => buildOccasions(), () => [state.group, state.sub].join("|")],
+  [() => buildTemplates(), () => [state.group, state.sub, state.size, !!state.logo, !!state.photo].join("|")],
+  [() => buildPath(),      () => [state.path, state.hasReady, state.rocc, state.age].join("|")],
+  [() => buildReady(),     () => [state.rocc, state.rmode, state.age, state.size, state.qty, readyTotal(), !!(tplById(state.tpl) || {}).number].join("|")],
+  [() => buildSwatches(),  () => [state.pal, state.custom, state.dark].join("|")],
+  [() => buildFonts(),     () => state.font],
+  [() => buildModes(),     () => [state.mode, state.qty, state.size, state.mixAll, state.scopePicked, state.nameField, state.path, state.rmode].join("|")],
+  [() => buildLogo(),      () => [state.logo && state.logo.url, state.rights].join("|")],
+  [() => buildPhoto(),     () => [state.photo && state.photo.url, state.prights, state.photoPos].join("|")],
+  [() => buildViews(),     () => state.view],
+];
+function syncDerived(){
+  UI_DEPS.forEach(([build, deps], i) => { const k = String(deps()); if (uiKeys[i] !== k){ uiKeys[i] = k; build(); } });
+}
+
 /* ---------- render ---------- */
 let proofTimer = 0;
 function render(){
+  syncDerived();
   { const key = [state.group, state.sub, state.size, labelCount(), state.wraps.map(w => w.id + wrapQty(w)).join()].join("|");
     if (key !== state.wrapKey){ state.wrapKey = key; buildWraps(); } }
   const t = tplById(state.tpl), c = colors(), cur = current(), list = labels(), per = perSheet(), sz = sizeNow();

@@ -65,7 +65,7 @@ function applyDesign(d){
   setSize(sizeNow()); Object.assign(F, fontNow().f);
   state.occKey = groupNow().subs[state.sub][0]; state.hasReady = !!SUB_READY[state.occKey];
   state.tplPicked = true; state.palEdited = true; state.edited = true; state.scopePicked = true; state.sel = 0;
-  buildSizes(); buildQty(); buildPath(); buildReady(); buildOccasions(); buildTemplates(); buildSwatches(); buildFonts(); buildModes(); buildLogo(); buildPhoto(); buildWraps();
+  resetDerived();   // a restored design touches most of the state: every panel rebuilds on the next render
   $("rnote").value = state.rnote; $("age").value = state.age;
   $("stage").classList.remove("idle"); render();
 }
@@ -194,13 +194,12 @@ function applyOccasion(){
     if (id === "milestone"){ const n = parseInt(s[0], 10); if (n) state.age = n; $("age").value = state.age; } }
   state.occKey = s[0];
   state.path = m && state.want === "ready" ? "ready" : "custom";
-  buildPath(); buildReady();
   if (!state.edited){ state.words = subWords(s); state.mix = []; }
   if (!state.palEdited){ const i = PALETTES.findIndex(p => p.name === (s[5] || g.pal)); if (i >= 0){ state.pal = i; state.dark = false; } }
   // a new occasion starts on a design made for it, unless the customer has already chosen a design that still applies
   { const list = TEMPLATES.filter(available), made = list.find(t => (t.themed || (t.subs && !t.groups)) && !t.logo && !t.photo);
     if (!state.tplPicked || !list.some(t => t.id === state.tpl)){ state.tpl = (made || list[0]).id; state.tplPicked = false; } }
-  buildOccasions(); buildTemplates(); buildSwatches(); changed();
+  changed();
 }
 pick("sizes", ".chip", b => {
   if (b.dataset.id !== state.size && state.wraps.length){   // wraps are made for one bottle size, so they can't follow a change of bottle
@@ -209,14 +208,14 @@ pick("sizes", ".chip", b => {
     state.wraps = [];
   }
   if (b.dataset.id !== state.size){ wrapShot = null; wrapShotCall++; if (state.lastWrap === "shot") state.lastWrap = "stripe"; }
-  state.size = b.dataset.id; state.sel = 0; buildSizes(); buildReady(); buildTemplates(); buildModes(); buildWraps(); changed();
+  state.size = b.dataset.id; state.sel = 0; changed();
 });
 pick("paths", ".chip", b => { state.want = b.dataset.id; state.sel = 0; applyOccasion(); });
 $("age").addEventListener("input", e => {
   const n = parseInt(e.target.value, 10), ok = n >= 21 && n <= 110;
   $("agehint").textContent = !e.target.value || ok ? "Type any age from 21 up and the sayings below change to match." : n < 21 ? "Our labels go on champagne and prosecco, so ages start at 21." : "Please enter an age up to 110.";
   if (!ok) return;
-  state.age = n; state.sel = 0; buildReady(); changed();
+  state.age = n; state.sel = 0; changed();
 });
 $("rmore").addEventListener("click", () => { state.rall = true; buildReady(); render(); });
 $("rgrid").addEventListener("click", e => {
@@ -225,27 +224,27 @@ $("rgrid").addEventListener("click", e => {
     const counts = readyCounts(), i = +c.dataset.i, d = +c.dataset.d;
     if (d > 0 && readyTotal() >= readyTarget()) return;
     counts[i] = Math.max(0, counts[i] + d);
-    state.sel = 0; buildReady(); changed(); return;
+    state.sel = 0; changed(); return;
   }
   const b = e.target.closest("button.say");
   if (b){ state.ritem = +b.dataset.i; state.sel = 0; changed(); }
 });
-pick("rmodes", ".chip", b => { state.rmode = b.dataset.id; state.sel = 0; buildQty(); buildReady(); changed(); });
+pick("rmodes", ".chip", b => { state.rmode = b.dataset.id; state.sel = 0; changed(); });
 document.addEventListener("click", e => { if (e.target.id === "showsay"){ state.want = "ready"; state.sel = 0; applyOccasion(); $("hr").scrollIntoView({block:"start"}); } });
-document.addEventListener("click", e => { if (e.target.id === "qtydiff"){ state.mixAll = true; state.scopePicked = true; state.qty = Math.min(state.qty, 5); state.sel = 0; syncMix(); buildModes(); changed(); } });
-pick("mixscope", ".chip", b => { state.mixAll = b.dataset.id === "all"; state.scopePicked = true; state.sel = 0; syncMix(); buildModes(); changed(); });
+document.addEventListener("click", e => { if (e.target.id === "qtydiff"){ state.mixAll = true; state.scopePicked = true; state.qty = Math.min(state.qty, 5); state.sel = 0; syncMix(); changed(); } });
+pick("mixscope", ".chip", b => { state.mixAll = b.dataset.id === "all"; state.scopePicked = true; state.sel = 0; syncMix(); changed(); });
 // Names mode: sheets sell whole, so offer to top up a part-full last sheet (add names, or repeat the ones entered).
-function fillNamesToSheet(){ const per = perSheet(), cur = nameList(); if (!cur.length) return; const target = Math.min(MAX_NAMES, Math.ceil(cur.length / per) * per); const out = cur.slice(); for (let i = 0; out.length < target; i++) out.push(cur[i % cur.length]); state.names = out.join("\n"); if ($("names").value !== state.names) $("names").value = state.names; buildModes(); changed(); }
+function fillNamesToSheet(){ const per = perSheet(), cur = nameList(); if (!cur.length) return; const target = Math.min(MAX_NAMES, Math.ceil(cur.length / per) * per); const out = cur.slice(); for (let i = 0; out.length < target; i++) out.push(cur[i % cur.length]); state.names = out.join("\n"); if ($("names").value !== state.names) $("names").value = state.names; changed(); }
 document.addEventListener("click", e => { if (e.target.id === "fillnames"){ const n = $("names"); n.focus(); try { n.setSelectionRange(n.value.length, n.value.length); } catch {} n.scrollIntoView({block:"center"}); } });
 document.addEventListener("click", e => { if (e.target.id === "fillrepeat"){ fillNamesToSheet(); } });
 $("rnote").addEventListener("input", e => { state.rnote = e.target.value; changed(); });
 pick("groups", ".chip", b => { state.group = b.dataset.id; state.sub = 0; state.want = "ready"; applyOccasion(); });
 pick("subs", ".chip", b => { state.sub = +b.dataset.id; state.want = "ready"; applyOccasion(); });
-pick("templates", ".tpl", b => { state.tpl = b.dataset.id; state.tplPicked = true; buildReady(); changed(); });   // buildReady so the age field shows/hides for number designs
-pick("swatches", ".sw", b => { state.pal = +b.dataset.i; state.palEdited = true; buildSwatches(); changed(); });
-pick("tones", ".chip", b => { state.dark = b.dataset.id === "dark"; state.palEdited = true; buildSwatches(); changed(); });
-$("custom").addEventListener("input", e => { state.custom = e.target.value; state.pal = -1; state.palEdited = true; buildSwatches(); changed(); });
-pick("modes", ".chip", b => { state.mode = b.dataset.id; state.sel = 0; if (state.mode === "mix") syncMix(); buildModes(); changed(); });
+pick("templates", ".tpl", b => { state.tpl = b.dataset.id; state.tplPicked = true; changed(); });
+pick("swatches", ".sw", b => { state.pal = +b.dataset.i; state.palEdited = true; changed(); });
+pick("tones", ".chip", b => { state.dark = b.dataset.id === "dark"; state.palEdited = true; changed(); });
+$("custom").addEventListener("input", e => { state.custom = e.target.value; state.pal = -1; state.palEdited = true; changed(); });
+pick("modes", ".chip", b => { state.mode = b.dataset.id; state.sel = 0; if (state.mode === "mix") syncMix(); changed(); });
 pick("proof", ".pl", b => { state.sel = +b.dataset.i; render(); });
 pick("labstrip", "button", b => { state.sel = +b.dataset.i; render(); });
 function stepLabel(d){
@@ -262,8 +261,8 @@ $("names").addEventListener("input", e => { state.names = e.target.value; change
 $("namefield").addEventListener("change", e => { state.nameField = e.target.value; changed(); });
 $("copyall").addEventListener("click", () => { syncMix(); const src = {...state.mix[state.sel]}; state.mix = state.mix.map(() => ({...src})); changed(); });
 $("logofile").addEventListener("change", e => { if (e.target.files[0]) setLogo(e.target.files[0]); e.target.value = ""; });
-$("logoremove").addEventListener("click", () => { if (state.logo) URL.revokeObjectURL(state.logo.url); state.logo = null; state.rights = false; buildLogo(); buildTemplates(); changed(); });
-pick("views", ".chip", b => { state.view = b.dataset.id; buildViews(); render(); });
+$("logoremove").addEventListener("click", () => { if (state.logo) URL.revokeObjectURL(state.logo.url); state.logo = null; state.rights = false; changed(); });
+pick("views", ".chip", b => { state.view = b.dataset.id; render(); });
 function wrapsChanged(){ $("output").hidden = true; buildViews(); buildWraps(); render(); }
 $("wrapcards").addEventListener("scroll", syncWrapNav, {passive:true});
 addEventListener("resize", syncWrapNav);
@@ -279,14 +278,14 @@ pick("wrapcards", ".wm", b => { state.wraps.find(x => x.id === b.dataset.id).aut
 pick("fonts", ".fontopt", b => {
   state.font = b.dataset.id;
   Object.assign(F, fontNow().f);   // artwork that sets its own type follows the style too
-  buildFonts(); changed();
+  changed();
   // Lettering files arrive a moment after they are first used, so fit the words again once they have.
   if (document.fonts && document.fonts.ready) setTimeout(() => document.fonts.ready.then(render), 60);
 });
 $("photofile").addEventListener("change", e => { if (e.target.files[0]) setPhoto(e.target.files[0]); e.target.value = ""; });
-$("photoremove").addEventListener("click", () => { if (state.photo) URL.revokeObjectURL(state.photo.url); state.photo = null; state.prights = false; buildPhoto(); buildTemplates(); changed(); });
+$("photoremove").addEventListener("click", () => { if (state.photo) URL.revokeObjectURL(state.photo.url); state.photo = null; state.prights = false; changed(); });
 $("prights").addEventListener("change", e => { state.prights = e.target.checked; changed(); });
-pick("photopos", ".chip", b => { state.photoPos = b.dataset.id; buildPhoto(); changed(); });
+pick("photopos", ".chip", b => { state.photoPos = b.dataset.id; changed(); });
 $("rights").addEventListener("change", e => { state.rights = e.target.checked; changed(); });
 $("approve").addEventListener("change", () => render());   // ticking the box drops the "Your name here" prompt, so what they approve is what prints
 $("nameadd").addEventListener("click", () => { $("sec-name").scrollIntoView({behavior:"smooth", block:"center"}); setTimeout(() => $("rnote").focus({preventScroll:true}), 350); });
@@ -295,10 +294,9 @@ $("make").addEventListener("click", makeSheets);
 $("qty").addEventListener("input", e => { state.qty = +e.target.value; });
 $("qty").addEventListener("change", e => {
   state.qty = +e.target.value;
-  if (spanReady()){ state.sel = 0; buildReady(); changed(); }
-  else if (!everySheet()){ buildModes(); render(); if (!$("output").hidden) makeSheets(); }
-  else if (everySheet()){ state.sel = Math.min(state.sel, perSheet() * state.qty - 1); syncMix(); buildModes(); changed(); }
-  else if (!$("output").hidden) makeSheets();
+  if (spanReady()){ state.sel = 0; changed(); }
+  else if (everySheet()){ state.sel = Math.min(state.sel, perSheet() * state.qty - 1); syncMix(); changed(); }
+  else { render(); if (!$("output").hidden) makeSheets(); }   // same-labels: more sheets is not a new design, so approval stands
 });
 $("copy").addEventListener("click", async () => {
   const file = printFile();
@@ -338,5 +336,5 @@ document.querySelector(".steps").addEventListener("focusout", () => setTimeout((
 // The preview appears at the first touch of any step from "Pick a design" onward, including steps added later.
 { const steps = [...document.querySelectorAll(".steps > section")], from = steps.indexOf($("h2").closest("section"));
   steps.slice(from).forEach(sec => ["click", "input", "change"].forEach(ev => sec.addEventListener(ev, start))); }
-buildSizes(); buildPath(); buildFields(); buildModes(); buildFonts(); buildLogo(); buildPhoto(); buildViews(); buildWraps(); buildHow(); state.group = "birthdays"; state.sub = 0; applyOccasion();
+buildFields(); buildHow(); state.group = "birthdays"; state.sub = 0; applyOccasion();   // every panel builds itself on the first render
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
