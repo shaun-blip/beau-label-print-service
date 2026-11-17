@@ -75,6 +75,14 @@ setTimeout(async () => {
 }, 15000);
 
 async function handlePaidOrder(order) {
+  // The same endpoint now takes orders/create AND orders/paid: a $0 order (100% discount) has no
+  // payment transaction, so orders/paid never fires for it — but it is born paid, so the creation
+  // notice carries financial_status "paid". An order not yet paid at creation is skipped here and
+  // handled when its orders/paid notice arrives; lines are deduped, so hearing twice is harmless.
+  if (order.financial_status && order.financial_status !== "paid") {
+    console.log(`order notice for ${order.name || order.id}: financial_status "${order.financial_status}" — waiting for payment`);
+    return;
+  }
   const lines = (order.line_items || []).map(li => ({ li, designId: (li.properties || []).find(p => p.name === DESIGN_PROP)?.value })).filter(x => x.designId);
   console.log(`order notice accepted: ${order.name || order.id || "(test)"}, ${lines.length} label line(s)`);
   if (!lines.length) return;
