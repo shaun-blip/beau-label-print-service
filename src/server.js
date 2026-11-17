@@ -103,21 +103,32 @@ async function handlePaidOrder(order) {
 
 // ---------- 3. test links (need ADMIN_KEY) ----------
 const admin = (req, res, next) => (ADMIN_KEY && req.query.key === ADMIN_KEY) ? next() : res.sendStatus(404);
-app.get("/designs/:id.json", admin, async (req, res) => {        // rescue hatch: pull a design to render elsewhere
+// Express 4 does not catch an async route's rejection — it becomes an unhandled rejection and
+// kills the process (Render then serves a bare 502 and the real error is never seen). Every
+// async route goes through this wrapper, so a failure answers 500 with its message instead.
+const safe = fn => (req, res) => fn(req, res).catch(err => {
+  console.error(req.method + " " + req.path + " failed", err);
+  if (!res.headersSent) res.status(500).json({ error: String(err && err.message || err) });
+});
+app.get("/designs/:id.json", admin, safe(async (req, res) => {   // rescue hatch: pull a design to render elsewhere
   const design = await loadDesign(req.params.id);
   if (!design) return res.sendStatus(404);
   res.json(design);
-});
-app.get("/designs/:id.pdf", admin, async (req, res) => {
+}));
+app.get("/designs/:id.pdf", admin, safe(async (req, res) => {
   const design = await loadDesign(req.params.id);
   if (!design) return res.sendStatus(404);
   if (req.query.qty) design.qty = Math.max(1, Math.min(10, +req.query.qty || 1));
   const out = await renderDesign(design);
   res.set({ "Content-Type": "application/pdf", "X-Pages": out.pages, "X-Copies": out.copies }).send(out.pdf);
-});
-app.post("/render", admin, express.json({ limit: "25mb" }), async (req, res) => {
+}));
+app.post("/render", admin, express.json({ limit: "25mb" }), safe(async (req, res) => {
   const out = await renderDesign(req.body);
   res.set({ "Content-Type": "application/pdf", "X-Pages": out.pages, "X-Copies": out.copies }).send(out.pdf);
-});
+}));
+
+// Last-resort guards: log instead of dying, so one bad request can never take the service down.
+process.on("unhandledRejection", err => console.error("unhandled rejection", err));
+process.on("uncaughtException", err => console.error("uncaught exception", err));
 
 app.listen(PORT, () => console.log(`label print service listening on ${PORT}`));
