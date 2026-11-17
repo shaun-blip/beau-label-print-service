@@ -220,7 +220,7 @@ function buildReady(){
       + `<button class="cnt" data-i="${i}" data-d="-1" aria-label="One fewer"${counts[i] ? "" : " disabled"}>−</button><span>${counts[i]}</span>`
       + `<button class="cnt" data-i="${i}" data-d="1" aria-label="One more"${total >= per ? " disabled" : ""}>+</button></div></div>`
     : `<button class="say" data-i="${i}" aria-pressed="${i === state.ritem}">${words(it)}</button>`).join("");
-  $("agewrap").hidden = state.rocc !== "milestone";
+  $("agewrap").hidden = state.rocc !== "milestone" && !(tplById(state.tpl) || {}).number;   // number designs (Watercolor Number) can set their number here too
   $("rmodes").innerHTML = chip("one", "One saying on every label", !mixed) + chip("mixed", "Mix several sayings", mixed);
   $("rmodehint").hidden = !mixed;
   $("rmodehint").innerHTML = total === per ? `<strong>${total} of ${per} labels chosen${state.qty > 1 ? ` across ${state.qty} sheets` : ""}.</strong> ${state.qty > 1 ? "Your sheets are" : "Your sheet is"} full. Use the plus and minus buttons to change the mix.`

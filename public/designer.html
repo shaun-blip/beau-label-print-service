@@ -2611,10 +2611,10 @@ const WD_DAY = ["Wedding favors", "Rehearsal dinner", "Wedding thank-you"], WD_E
 // Line art is stored white-on-clear and printed in a palette color, like the hand lettering.
 const wdInk = (inner, col) => { const m = "xk" + (xmN++); return `<mask id="${m}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">${inner}</mask><rect width="${W}" height="${H}" fill="${col}" mask="url(#${m})"/>`; };
 const wdNoMain = z => { const {main, ...rest} = z; return rest; };
-// The number a label is about: the first number typed in its lines, or the birthday age.
+// The number a label is about: the first number typed in its lines, or the age/number from the age field.
 function wdNumber(words){
   for (const k of ["main", "top", "detail"]){ const m = String((words && words[k]) || "").match(/\d{1,3}/); if (m) return +m[0]; }
-  return state.group === "birthdays" && state.age ? +state.age : 1;
+  return state.age && (state.group === "birthdays" || (tplById(state.tpl) || {}).number) ? +state.age : 1;
 }
 const WD_G = {"cap": 328.5, "dy": {"1": -0.5, "7": -2.9, "3": -0.5, "5": -29.3, "2": 0.0, "9": 1.0, "6": -34.2, "4": -15.6, "0": 1.0, "8": 0.0}};   // watercolor numerals: cap height and each digit's drop from the cap line, in image pixels
 function wdDigits(n, cx, top, cap){
@@ -2651,10 +2651,10 @@ const WD_PICTURES = [
    art:c => { const ids = wide() ? ["wd_d_glasses", "wd_d_cake", "wd_d_bands", "wd_d_tower", "wd_d_bouquet", "wd_d_bottle", "wd_d_heartcake"] : ["wd_d_glasses", "wd_d_cake", "wd_d_bands", "wd_d_bouquet"];
      return wdInk(xmRow(ids, 8 * S, W - 8 * S, H - 9 * S, (wide() ? .4 : .34) * H / 499), c.ink); },
    zones:xmZones(() => wide() ? {x:W / 2, y0:.06 * H, y1:.52 * H, w:.8 * W} : {x:W / 2, y0:.08 * H, y1:.64 * H, w:.84 * W})},
-  {id:"wd-number", name:"Watercolor Number", subs:["Anniversary", "Table bottles"].concat(BDAY), picture:true, tint:softPal("#fffdfa"), uses:["main"],
+  {id:"wd-number", name:"Watercolor Number", subs:["Anniversary", "Table bottles"].concat(BDAY), picture:true, tint:softPal("#fffdfa"), number:true,
    art:(c, words) => { const n = wdNumber(words); if (wide()){ const cap = Math.min(.6 * H, .4 * W * .6 * H / wdDigitsW(n, .6 * H)); return wdDigits(n, .25 * W, H / 2 - cap / 2, cap); }
      const cap = Math.min(.36 * H, .8 * W * .36 * H / wdDigitsW(n, .36 * H)); return wdDigits(n, W / 2, .09 * H, cap); },
-   zones:wdNoMain(xmZones(() => wide() ? {x:.72 * W, y0:.2 * H, y1:.8 * H, w:.46 * W} : {x:W / 2, y0:.52 * H, y1:.95 * H, w:.84 * W}))},
+   zones:xmSub(() => wide() ? {x:.72 * W, y0:.2 * H, y1:.8 * H, w:.46 * W} : {x:W / 2, y0:.52 * H, y1:.95 * H, w:.84 * W})},
   {id:"wd-tablescript", name:"Script Table Number", subs:["Table bottles"], uses:["main"],
    art:(c, words) => { const n = wdNumber(words), head = /head/i.test((words && words.main) || ""), id1 = head ? "wd_headtable" : "wd_tableno", id2 = !head && n >= 1 && n <= 30 ? "wd_n" + n : null, k = (wide() ? .3 : .3) * H / 175, sub = xmHasSub(words);
      const h1 = XM[id1][1] * k, h2 = id2 ? XM[id2][1] * k : 0, fit = Math.min(1, .84 * W / Math.max(XM[id1][0] * k, id2 ? XM[id2][0] * k : 0)), y = (sub ? .4 : .5) * H - (h1 + h2 * .92) * fit / 2;
@@ -3063,7 +3063,7 @@ function buildReady(){
       + `<button class="cnt" data-i="${i}" data-d="-1" aria-label="One fewer"${counts[i] ? "" : " disabled"}>−</button><span>${counts[i]}</span>`
       + `<button class="cnt" data-i="${i}" data-d="1" aria-label="One more"${total >= per ? " disabled" : ""}>+</button></div></div>`
     : `<button class="say" data-i="${i}" aria-pressed="${i === state.ritem}">${words(it)}</button>`).join("");
-  $("agewrap").hidden = state.rocc !== "milestone";
+  $("agewrap").hidden = state.rocc !== "milestone" && !(tplById(state.tpl) || {}).number;   // number designs (Watercolor Number) can set their number here too
   $("rmodes").innerHTML = chip("one", "One saying on every label", !mixed) + chip("mixed", "Mix several sayings", mixed);
   $("rmodehint").hidden = !mixed;
   $("rmodehint").innerHTML = total === per ? `<strong>${total} of ${per} labels chosen${state.qty > 1 ? ` across ${state.qty} sheets` : ""}.</strong> ${state.qty > 1 ? "Your sheets are" : "Your sheet is"} full. Use the plus and minus buttons to change the mix.`
@@ -3616,7 +3616,7 @@ document.addEventListener("click", e => { if (e.target.id === "fillrepeat"){ fil
 $("rnote").addEventListener("input", e => { state.rnote = e.target.value; changed(); });
 pick("groups", ".chip", b => { state.group = b.dataset.id; state.sub = 0; state.want = "ready"; applyOccasion(); });
 pick("subs", ".chip", b => { state.sub = +b.dataset.id; state.want = "ready"; applyOccasion(); });
-pick("templates", ".tpl", b => { state.tpl = b.dataset.id; state.tplPicked = true; changed(); });
+pick("templates", ".tpl", b => { state.tpl = b.dataset.id; state.tplPicked = true; buildReady(); changed(); });   // buildReady so the age field shows/hides for number designs
 pick("swatches", ".sw", b => { state.pal = +b.dataset.i; state.palEdited = true; buildSwatches(); changed(); });
 pick("tones", ".chip", b => { state.dark = b.dataset.id === "dark"; state.palEdited = true; buildSwatches(); changed(); });
 $("custom").addEventListener("input", e => { state.custom = e.target.value; state.pal = -1; state.palEdited = true; buildSwatches(); changed(); });

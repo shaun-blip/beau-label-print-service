@@ -241,7 +241,7 @@ document.addEventListener("click", e => { if (e.target.id === "fillrepeat"){ fil
 $("rnote").addEventListener("input", e => { state.rnote = e.target.value; changed(); });
 pick("groups", ".chip", b => { state.group = b.dataset.id; state.sub = 0; state.want = "ready"; applyOccasion(); });
 pick("subs", ".chip", b => { state.sub = +b.dataset.id; state.want = "ready"; applyOccasion(); });
-pick("templates", ".tpl", b => { state.tpl = b.dataset.id; state.tplPicked = true; changed(); });
+pick("templates", ".tpl", b => { state.tpl = b.dataset.id; state.tplPicked = true; buildReady(); changed(); });   // buildReady so the age field shows/hides for number designs
 pick("swatches", ".sw", b => { state.pal = +b.dataset.i; state.palEdited = true; buildSwatches(); changed(); });
 pick("tones", ".chip", b => { state.dark = b.dataset.id === "dark"; state.palEdited = true; buildSwatches(); changed(); });
 $("custom").addEventListener("input", e => { state.custom = e.target.value; state.pal = -1; state.palEdited = true; buildSwatches(); changed(); });
