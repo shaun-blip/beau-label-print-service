@@ -44,3 +44,10 @@ export async function listTodos() {
     return out;
   } catch { return []; }
 }
+// What the disk knows, for remote diagnosis: which notices arrived, which lines finished, when.
+export async function debugState() {
+  const names = await fs.readdir(DIR).catch(() => []);
+  const stat = async n => { try { const s = await fs.stat(path.join(DIR, n)); return { file: n, at: s.mtime.toISOString(), bytes: s.size }; } catch { return { file: n }; } };
+  const of = async p => (await Promise.all(names.filter(n => n.startsWith(p)).map(stat))).sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+  return { todos: await of("todo_"), done: (await of("done_")).slice(0, 25), designCount: names.filter(n => n.startsWith("d_")).length, newestDesigns: (await of("d_")).slice(0, 5) };
+}
