@@ -6,6 +6,20 @@ import { shopifyReady, uploadPdf, attachToOrder, flagOrder } from "./shopify.js"
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// The last few hundred console lines, readable remotely (admin /log): Render's log screen is not
+// always at hand, and every mystery so far has come down to one console line nobody could see.
+const LOG = [];
+for (const level of ["log", "warn", "error"]) {
+  const orig = console[level].bind(console);
+  console[level] = (...a) => {
+    try {
+      LOG.push(new Date().toISOString() + " " + level + " " + a.map(x => typeof x === "string" ? x : (x && x.stack) || JSON.stringify(x)).join(" "));
+      if (LOG.length > 300) LOG.splice(0, LOG.length - 300);
+    } catch {}
+    orig(...a);
+  };
+}
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);   // e.g. https://www.beaubottles.com
 const WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET || "";
 const ADMIN_KEY = process.env.ADMIN_KEY || "";                // protects the test links below
@@ -119,6 +133,7 @@ const safe = fn => (req, res) => fn(req, res).catch(err => {
   if (!res.headersSent) res.status(500).json({ error: String(err && err.message || err) });
 });
 app.get("/state", admin, safe(async (req, res) => res.json(await debugState())));   // which notices arrived, which lines finished
+app.get("/log", admin, (req, res) => res.type("text/plain").send(LOG.join("\n") || "(empty since boot)"));
 app.get("/designs/:id.json", admin, safe(async (req, res) => {   // rescue hatch: pull a design to render elsewhere
   const design = await loadDesign(req.params.id);
   if (!design) return res.sendStatus(404);
