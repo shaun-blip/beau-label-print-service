@@ -3129,25 +3129,56 @@ function buildPhoto(){
   const warn = ph && ph.small ? `This photo is only ${ph.w} × ${ph.h} pixels and may print soft. Use the original from your phone or camera if you can.` : "";
   $("photowarn").textContent = warn; $("photowarn").hidden = !warn;
 }
+/* A 12 MB JPEG can hold 200+ megapixels (a panorama, a scan). The byte check alone lets that
+   through, and every later step then pays for it: the preview, each design tile, the customer's
+   whole browser, and the print service's small instance. So any upload past the pixel cap is
+   shrunk ONCE, here, and everything downstream only ever sees the shrunk copy. The caps leave
+   ~600 dpi on the largest label, well past print quality. Decode happens in createImageBitmap
+   (off the main thread); a browser without it keeps the old path. */
+const PHOTO_CAP = 3000, LOGO_CAP = 2000;
+function shrinkUpload(file, cap, mime, q){
+  return new Promise(resolve => {
+    if (!window.createImageBitmap) return resolve(null);
+    createImageBitmap(file).then(bmp => {
+      const m = Math.max(bmp.width, bmp.height);
+      if (m <= cap){ bmp.close && bmp.close(); return resolve(null); }         // small enough: keep the original
+      const w = Math.round(bmp.width * cap / m), h = Math.round(bmp.height * cap / m);
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(bmp, 0, 0, w, h);
+      bmp.close && bmp.close();
+      const data = c.toDataURL(mime, q);
+      c.toBlob(b => resolve(b ? {blob:b, data, w, h} : null), mime, q);
+    }).catch(() => resolve(null));                                             // unreadable here: the old path shows its own message
+  });
+}
 function setPhoto(file){
   const fail = msg => { $("photowarn").textContent = msg; $("photowarn").hidden = false; };
   $("photowarn").hidden = true;
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return fail("That file type won't work. Please upload a JPG or PNG photo.");
   if (file.size > 12 * 1024 * 1024) return fail("That photo is over 12 MB. Please upload a smaller copy.");
-  const reader = new FileReader();
-  reader.onload = () => {
-    const url = URL.createObjectURL(file), img = new Image();
-    img.onload = () => {
+  shrinkUpload(file, PHOTO_CAP, "image/jpeg", .92).then(sm => {
+    if (sm){
       if (state.photo) URL.revokeObjectURL(state.photo.url);
-      state.photo = {url, data:reader.result, name:file.name, w:img.naturalWidth, h:img.naturalHeight, small:Math.max(img.naturalWidth, img.naturalHeight) < 1000};
+      state.photo = {url:URL.createObjectURL(sm.blob), data:sm.data, name:file.name, w:sm.w, h:sm.h, small:false};
       state.prights = false; state.photoPos = "YMid";
       if (!tplById(state.tpl).photo) state.tpl = "photo1";
-      changed();
+      changed(); return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        if (state.photo) URL.revokeObjectURL(state.photo.url);
+        state.photo = {url, data:reader.result, name:file.name, w:img.naturalWidth, h:img.naturalHeight, small:Math.max(img.naturalWidth, img.naturalHeight) < 1000};
+        state.prights = false; state.photoPos = "YMid";
+        if (!tplById(state.tpl).photo) state.tpl = "photo1";
+        changed();
+      };
+      img.onerror = () => fail("We couldn't read that photo. Please try another file.");
+      img.src = url;
     };
-    img.onerror = () => fail("We couldn't read that photo. Please try another file.");
-    img.src = url;
-  };
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
+  });
 }
 function buildLogo(){
   const l = state.logo;
@@ -3164,22 +3195,31 @@ function setLogo(file){
   $("logowarn").hidden = true;
   if (!/^image\/(png|jpeg|svg\+xml|webp)$/.test(file.type)){ $("logowarn").textContent = "That file type won't work. Please upload a PNG, JPG or SVG."; $("logowarn").hidden = false; return; }
   if (file.size > 5 * 1024 * 1024){ $("logowarn").textContent = "That file is over 5 MB. Please upload a smaller one."; $("logowarn").hidden = false; return; }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const url = URL.createObjectURL(file), img = new Image();
-    img.onload = () => {
+  const vector = file.type === "image/svg+xml";
+  (vector ? Promise.resolve(null) : shrinkUpload(file, LOGO_CAP, "image/png")).then(sm => {   // PNG keeps a logo's transparency
+    if (sm){
       if (state.logo) URL.revokeObjectURL(state.logo.url);
-      const vector = file.type === "image/svg+xml";
-      state.logo = {url, data:reader.result, name:file.name, w:img.naturalWidth, h:img.naturalHeight, vector,
-                    small:!vector && Math.max(img.naturalWidth, img.naturalHeight) < 600};
+      state.logo = {url:URL.createObjectURL(sm.blob), data:sm.data, name:file.name, w:sm.w, h:sm.h, vector:false, small:false};
       state.rights = false;
       if (!tplById(state.tpl).logo && state.tpl !== "monogram") state.tpl = "logo1";
-      changed();
+      changed(); return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        if (state.logo) URL.revokeObjectURL(state.logo.url);
+        state.logo = {url, data:reader.result, name:file.name, w:img.naturalWidth, h:img.naturalHeight, vector,
+                      small:!vector && Math.max(img.naturalWidth, img.naturalHeight) < 600};
+        state.rights = false;
+        if (!tplById(state.tpl).logo && state.tpl !== "monogram") state.tpl = "logo1";
+        changed();
+      };
+      img.onerror = () => { $("logowarn").textContent = "We couldn't read that image. Please try another file."; $("logowarn").hidden = false; };
+      img.src = url;
     };
-    img.onerror = () => { $("logowarn").textContent = "We couldn't read that image. Please try another file."; $("logowarn").hidden = false; };
-    img.src = url;
-  };
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
+  });
 }
 function buildOccasions(){
   $("groups").innerHTML = GROUPS.map(g => chip(g.id, g.name, g.id === state.group)).join("");

@@ -78,6 +78,7 @@ export function warmUp() {
 }
 
 async function renderNow(design) {
+  dropWarmPage();                      // a PDF render (photos especially) needs the whole small instance; the next health check re-warms
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {

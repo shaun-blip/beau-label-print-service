@@ -1,6 +1,6 @@
 import express from "express";
 import crypto from "node:crypto";
-import { saveDesign, loadDesign, markDone, isDone } from "./store.js";
+import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos } from "./store.js";
 import { renderDesign, checkDesign, warmUp } from "./render.js";
 import { shopifyReady, uploadPdf, attachToOrder, flagOrder } from "./shopify.js";
 
@@ -43,11 +43,27 @@ app.post("/webhooks/orders-paid", express.raw({ type: "*/*", limit: "5mb" }), as
   const ours = crypto.createHmac("sha256", WEBHOOK_SECRET).update(req.body).digest("base64");
   const ok = WEBHOOK_SECRET && sent.length === ours.length && crypto.timingSafeEqual(Buffer.from(sent), Buffer.from(ours));
   if (!ok) { console.warn("order notice refused: the signature did not match SHOPIFY_WEBHOOK_SECRET"); return res.sendStatus(401); }
-  res.sendStatus(200);                                           // answer Shopify quickly, then do the work
   let order;
-  try { order = JSON.parse(req.body.toString("utf8")); } catch { return; }
-  handlePaidOrder(order).catch(err => console.error("order " + order?.id + " failed", err));
+  try { order = JSON.parse(req.body.toString("utf8")); } catch { return res.sendStatus(200); }   // not an order: nothing to do
+  // Shopify never retries once we answer 200, so the notice is saved to disk FIRST. If the
+  // instance dies mid-render, the next boot finds the saved notice and finishes the job.
+  try { await saveTodo(order.id, order); } catch (err) { console.error("could not save order notice", err); }
+  res.sendStatus(200);                                           // answer Shopify quickly, then do the work
+  handlePaidOrder(order)
+    .then(() => clearTodo(order.id))                             // kept on failure: the next boot retries it
+    .catch(err => console.error("order " + order?.id + " failed", err));
 });
+
+// Finish any order a crash or restart interrupted. Runs once, shortly after boot.
+setTimeout(async () => {
+  const todos = await listTodos();
+  if (!todos.length) return;
+  console.log(`resuming ${todos.length} interrupted order notice(s)`);
+  for (const order of todos) {
+    try { await handlePaidOrder(order); await clearTodo(order.id); console.log(`order ${order.name || order.id}: resumed and finished`); }
+    catch (err) { console.error(`order ${order.name || order.id}: resume failed`, err); }
+  }
+}, 15000);
 
 async function handlePaidOrder(order) {
   const lines = (order.line_items || []).map(li => ({ li, designId: (li.properties || []).find(p => p.name === DESIGN_PROP)?.value })).filter(x => x.designId);
@@ -78,6 +94,11 @@ async function handlePaidOrder(order) {
 
 // ---------- 3. test links (need ADMIN_KEY) ----------
 const admin = (req, res, next) => (ADMIN_KEY && req.query.key === ADMIN_KEY) ? next() : res.sendStatus(404);
+app.get("/designs/:id.json", admin, async (req, res) => {        // rescue hatch: pull a design to render elsewhere
+  const design = await loadDesign(req.params.id);
+  if (!design) return res.sendStatus(404);
+  res.json(design);
+});
 app.get("/designs/:id.pdf", admin, async (req, res) => {
   const design = await loadDesign(req.params.id);
   if (!design) return res.sendStatus(404);

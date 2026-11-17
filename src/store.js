@@ -25,3 +25,22 @@ export async function markDone(key, value) {
 export async function isDone(key) {
   try { return JSON.parse(await fs.readFile(file("done_" + key), "utf8")).design; } catch { return null; }
 }
+// An order notice is written to disk BEFORE it is acknowledged to Shopify, and cleared once its
+// work finishes. Shopify never retries an acknowledged notice, so if the instance dies mid-render
+// (it is small, and photos are heavy), the saved notice is what lets the next boot finish the job.
+export async function saveTodo(key, payload) {
+  await fs.mkdir(DIR, { recursive: true });
+  await fs.writeFile(file("todo_" + key), JSON.stringify(payload));
+}
+export async function clearTodo(key) {
+  try { await fs.unlink(file("todo_" + key)); } catch {}
+}
+export async function listTodos() {
+  try {
+    const out = [];
+    for (const n of await fs.readdir(DIR)) if (n.startsWith("todo_")) {
+      try { out.push(JSON.parse(await fs.readFile(path.join(DIR, n), "utf8"))); } catch {}
+    }
+    return out;
+  } catch { return []; }
+}
