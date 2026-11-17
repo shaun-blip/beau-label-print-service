@@ -1,7 +1,7 @@
 import express from "express";
 import crypto from "node:crypto";
 import { saveDesign, loadDesign, markDone, isDone } from "./store.js";
-import { renderDesign, checkDesign } from "./render.js";
+import { renderDesign, checkDesign, warmUp } from "./render.js";
 import { shopifyReady, uploadPdf, attachToOrder, flagOrder } from "./shopify.js";
 
 const app = express();
@@ -11,7 +11,7 @@ const WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET || "";
 const ADMIN_KEY = process.env.ADMIN_KEY || "";                // protects the test links below
 const DESIGN_PROP = process.env.DESIGN_PROPERTY || "_design_id";
 
-app.get("/health", (req, res) => res.json({ ok: true, shopify: shopifyReady() }));
+app.get("/health", (req, res) => { warmUp(); res.json({ ok: true, shopify: shopifyReady() }); });
 
 // ---------- 1. the storefront saves a design when the customer adds to cart ----------
 function cors(req, res, next) {

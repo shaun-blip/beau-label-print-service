@@ -40,6 +40,32 @@ export function renderDesign(design) {
   return job;
 }
 
+// ---------- a designer page kept open between design checks ----------
+// Opening designer.html costs several seconds (3 MB page + fonts), and checkDesign runs while the
+// customer waits on "Add to cart". So one page is opened once, kept, and reused: applyDesign()
+// overwrites the whole state and rebuilds every panel, so designs cannot bleed into each other.
+// The page is recycled every CHECK_RECYCLE checks to keep lazily-activated artwork from piling up.
+const CHECK_RECYCLE = 50;
+let warmPage = null, warmUses = 0;
+async function designerPage() {
+  if (warmPage && !warmPage.isClosed()) return warmPage;
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  await openDesigner(page);
+  await page.evaluate(async () => {
+    await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 12000))]);
+  });
+  warmPage = page; warmUses = 0;
+  return page;
+}
+function dropWarmPage() {
+  const p = warmPage; warmPage = null; warmUses = 0;
+  if (p) p.close().catch(() => {});
+}
+// Called from /health: opens the browser and the designer page ahead of the first customer,
+// and Render's own health checks then keep them warm. Failures stay out of the health answer.
+export function warmUp() { designerPage().catch(err => console.warn("warm-up failed:", err.message)); }
+
 async function renderNow(design) {
   const browser = await getBrowser();
   const page = await browser.newPage();
@@ -80,13 +106,22 @@ async function renderNow(design) {
 }
 
 // Used when a design is saved: runs the designer's own checks on the server, so the browser's check is never trusted alone.
-export async function checkDesign(design) {
-  const browser = await getBrowser();
-  const page = await browser.newPage();
+// Checks share the warm page, so they run one at a time; a dead page is dropped and tried once more fresh.
+let checkQueue = Promise.resolve();
+export function checkDesign(design) {
+  const job = checkQueue.then(() => checkNow(design));
+  checkQueue = job.catch(() => {});
+  return job;
+}
+async function checkNow(design, retried = false) {
   try {
-    await openDesigner(page);
-    return await page.evaluate(d => { applyDesign(d); const e = exportDesign(); return { problem: e.problem, summary: e.summary }; }, design);
-  } finally {
-    await page.close().catch(() => {});
+    const page = await designerPage();
+    const out = await page.evaluate(d => { applyDesign(d); const e = exportDesign(); return { problem: e.problem, summary: e.summary }; }, design);
+    if (++warmUses >= CHECK_RECYCLE) dropWarmPage();
+    return out;
+  } catch (err) {
+    dropWarmPage();
+    if (retried) throw err;
+    return checkNow(design, true);
   }
 }

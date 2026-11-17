@@ -71,23 +71,34 @@ export async function uploadPdf(filename, buffer) {
 }
 
 // Puts the print files on the order: a metafield staff can click, a tag for filtering, and a line in the order note.
+// The three writes are tried independently, so one failing never hides the others; errors are reported together.
 export async function attachToOrder(orderGid, files, existingNote = "") {
   const lines = files.map(f => `Label print file (${f.title}): ${f.url}  |  print ${f.copies} cop${f.copies === 1 ? "y" : "ies"} of ${f.pages} page${f.pages === 1 ? "" : "s"}`);
-  const set = await gql(`mutation($m:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$m){ userErrors{ field message } } }`,
-    { m: [{ ownerId: orderGid, namespace: "custom_labels", key: "print_files", type: "json", value: JSON.stringify(files) }] });
-  userErrors(set.metafieldsSet, "Could not save the print file link on the order");
-  const note = [existingNote, ...lines].filter(Boolean).join("\n");
-  const upd = await gql(`mutation($input:OrderInput!){ orderUpdate(input:$input){ userErrors{ field message } } }`,
-    { input: { id: orderGid, note } });
-  userErrors(upd.orderUpdate, "Could not update the order note");
-  const tag = await gql(`mutation($id:ID!,$tags:[String!]!){ tagsAdd(id:$id,tags:$tags){ userErrors{ field message } } }`,
-    { id: orderGid, tags: ["labels-ready"] });
-  userErrors(tag.tagsAdd, "Could not tag the order");
+  const problems = [];
+  const attempt = async (what, fn) => { try { await fn(); } catch (e) { problems.push(what + ": " + e.message); } };
+  await attempt("metafield", async () => {
+    const set = await gql(`mutation($m:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$m){ userErrors{ field message } } }`,
+      { m: [{ ownerId: orderGid, namespace: "custom_labels", key: "print_files", type: "json", value: JSON.stringify(files) }] });
+    userErrors(set.metafieldsSet, "Could not save the print file link on the order");
+  });
+  await attempt("tag", async () => {
+    const tag = await gql(`mutation($id:ID!,$tags:[String!]!){ tagsAdd(id:$id,tags:$tags){ userErrors{ field message } } }`,
+      { id: orderGid, tags: ["labels-ready"] });
+    userErrors(tag.tagsAdd, "Could not tag the order");
+  });
+  await attempt("note", async () => {
+    const note = [existingNote, ...lines].filter(Boolean).join("\n");
+    const upd = await gql(`mutation($input:OrderInput!){ orderUpdate(input:$input){ userErrors{ field message } } }`,
+      { input: { id: orderGid, note } });
+    userErrors(upd.orderUpdate, "Could not update the order note");
+  });
+  if (problems.length) throw new Error(problems.join("; "));
 }
 
 export async function flagOrder(orderGid, message, existingNote = "") {
+  // Tag first: the tag is how staff find problem orders, so it must land even if the note cannot.
+  await gql(`mutation($id:ID!,$tags:[String!]!){ tagsAdd(id:$id,tags:$tags){ userErrors{ field message } } }`, { id: orderGid, tags: ["labels-problem"] });
   const upd = await gql(`mutation($input:OrderInput!){ orderUpdate(input:$input){ userErrors{ field message } } }`,
     { input: { id: orderGid, note: [existingNote, "LABEL PRINT FILE PROBLEM: " + message].filter(Boolean).join("\n") } });
   userErrors(upd.orderUpdate, "Could not update the order note");
-  await gql(`mutation($id:ID!,$tags:[String!]!){ tagsAdd(id:$id,tags:$tags){ userErrors{ field message } } }`, { id: orderGid, tags: ["labels-problem"] });
 }
