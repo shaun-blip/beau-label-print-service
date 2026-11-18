@@ -3408,9 +3408,10 @@ function render(){
     $("palhint").hidden = !(t.fillBg || t.picture) || !!(t.tint && t.tint.lock);
     $("palhint").textContent = t.picture ? "This design's artwork keeps its own colors. Your color choice changes the words." : 'On this design your color fills the whole background. Tap "Use your own color" to pick any shade.';
     $("rnotehint").hidden = !(state.path === "ready" && foldWords(t, cur).dropped);
-    $("pernote").innerHTML = `Each sheet has <strong>${per} ${sizeNow().name.toLowerCase()} labels</strong> (${sizeNow().label}) · <strong>$${SHEET_PRICE.toFixed(2)}</strong> per sheet.`;
+    $("pernote").innerHTML = `Each sheet has <strong>${per} ${sizeNow().name.toLowerCase()} labels</strong> (${sizeNow().label}) · <strong>$${SHEET_PRICE.toFixed(2)}</strong> per sheet. <span class="savenote">Order 2+ sheets and 10% comes off automatically.</span>`;
     { const shn = namesMode() ? Math.max(1, Math.ceil(list.length / per)) : q;
-      const price = `$${(shn * SHEET_PRICE).toFixed(2)}`;
+      const base = shn * SHEET_PRICE;
+      const price = shn >= 2 ? `<s>$${base.toFixed(2)}</s> $${(base * 0.9).toFixed(2)} <em>(10% off 2+ sheets)</em>` : `$${base.toFixed(2)}`;
       $("ordersum").innerHTML = namesMode() ? `<strong>${shn} ${shn > 1 ? "sheets" : "sheet"} · ${list.length} labels · ${price}</strong>` : `<strong>${sh} · ${tot} labels · ${price}</strong>`; }
     if (namesMode()){ const pg = Math.max(1, Math.ceil(list.length / per)), rem = list.length % per, blanks = rem ? per - rem : 0;
       note.innerHTML = `<strong>${pg} ${pg > 1 ? "sheets" : "sheet"} · ${list.length} labels.</strong> Your list of names sets this: one label for each name.`
