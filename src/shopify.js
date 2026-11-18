@@ -78,7 +78,12 @@ export async function attachToOrder(orderGid, files, existingNote = "") {
   const attempt = async (what, fn) => { try { await fn(); } catch (e) { problems.push(what + ": " + e.message); } };
   await attempt("metafield", async () => {
     const set = await gql(`mutation($m:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$m){ userErrors{ field message } } }`,
-      { m: [{ ownerId: orderGid, namespace: "custom_labels", key: "print_files", type: "json", value: JSON.stringify(files) }] });
+      { m: [
+        { ownerId: orderGid, namespace: "custom_labels", key: "print_files", type: "json", value: JSON.stringify(files) },
+        // list.url shows on the order page as CLICKABLE links once its definition is pinned
+        // (Settings → Custom data → Orders → custom_labels.print_links, type URL, list).
+        { ownerId: orderGid, namespace: "custom_labels", key: "print_links", type: "list.url", value: JSON.stringify(files.map(f => f.url)) },
+      ] });
     userErrors(set.metafieldsSet, "Could not save the print file link on the order");
   });
   await attempt("tag", async () => {

@@ -137,6 +137,14 @@ const safe = fn => (req, res) => fn(req, res).catch(err => {
 });
 app.get("/state", admin, safe(async (req, res) => res.json(await debugState())));   // which notices arrived, which lines finished
 app.get("/whoami", admin, safe(async (req, res) => res.json(await appInfo())));   // which app + which scopes the live token has
+app.get("/redo/:orderId", admin, safe(async (req, res) => {      // forget an order's done-marks so its next notice reprocesses
+  const { promises: fs } = await import("node:fs");
+  const path = (await import("node:path")).default;
+  const DIR = process.env.DATA_DIR || path.resolve("data");
+  let n = 0;
+  for (const f of await fs.readdir(DIR)) if (f.startsWith("done_" + req.params.orderId.replace(/[^0-9]/g, "") + "_")) { await fs.unlink(path.join(DIR, f)); n++; }
+  res.json({ cleared: n });
+}));
 app.get("/log", admin, (req, res) => res.type("text/plain").send(LOG.join("\n") || "(empty since boot)"));
 app.get("/designs/:id.json", admin, safe(async (req, res) => {   // rescue hatch: pull a design to render elsewhere
   const design = await loadDesign(req.params.id);
