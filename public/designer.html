@@ -3636,12 +3636,16 @@ const SUB_READY = {"Wedding favors":"wedding","Engagement":"engaged","Bridal sho
   "Fourth of July":"july4","Halloween":"halloween","Diwali":"diwali","Lunar New Year":"lunar","St. Patrick's Day":"stpat","Cinco de Mayo":"cinco","Grand opening":"opening","Event favor":"event",
   "Girls' trip":"trip","Reunion":"reunion","Book club":"bookclub","Tailgate":"tailgate","Derby party":"derby","Mardi Gras":"mardigras","Celebration of life":"memorial","Memorial":"memorial",
   "Table bottles":"table","Your occasion":"because","Godparent proposal":"godparent"};
+// Occasions whose bottles each carry different words — table numbers change on every bottle —
+// start on Write your own + Different on each label. The customer can still switch to the sayings.
+const SUB_START = {"Table bottles":{want:"custom", mode:"mix"}};
 function applyOccasion(){
   const g = groupNow(), s = g.subs[state.sub];
   const m = SUB_READY[s[0]];
   state.hasReady = !!m;
   if (m && state.occKey !== s[0]){ const [id, i] = m.split(":"); state.rocc = id; state.ritem = +i || 0; state.rall = false;
     if (id === "milestone"){ const n = parseInt(s[0], 10); if (n) state.age = n; $("age").value = state.age; } }
+  { const d = SUB_START[s[0]]; if (d && state.occKey !== s[0]){ state.want = d.want; state.mode = d.mode; state.sel = 0; } }
   state.occKey = s[0];
   state.path = m && state.want === "ready" ? "ready" : "custom";
   if (!state.edited){ state.words = subWords(s); state.mix = []; }
