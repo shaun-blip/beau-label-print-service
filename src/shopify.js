@@ -102,3 +102,10 @@ export async function flagOrder(orderGid, message, existingNote = "") {
     { input: { id: orderGid, note: [existingNote, "LABEL PRINT FILE PROBLEM: " + message].filter(Boolean).join("\n") } });
   userErrors(upd.orderUpdate, "Could not update the order note");
 }
+
+// Who am I? The installed app this service's token belongs to, and the scopes that token carries.
+export async function appInfo() {
+  const d = await gql(`{ currentAppInstallation { accessScopes { handle } app { title apiKey } } }`);
+  const i = d.currentAppInstallation;
+  return { app: i?.app?.title, clientId: i?.app?.apiKey, scopes: (i?.accessScopes || []).map(s => s.handle) };
+}

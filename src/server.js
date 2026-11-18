@@ -2,7 +2,7 @@ import express from "express";
 import crypto from "node:crypto";
 import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState } from "./store.js";
 import { renderDesign, checkDesign, warmUp } from "./render.js";
-import { shopifyReady, uploadPdf, attachToOrder, flagOrder } from "./shopify.js";
+import { shopifyReady, uploadPdf, attachToOrder, flagOrder, appInfo } from "./shopify.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -133,6 +133,7 @@ const safe = fn => (req, res) => fn(req, res).catch(err => {
   if (!res.headersSent) res.status(500).json({ error: String(err && err.message || err) });
 });
 app.get("/state", admin, safe(async (req, res) => res.json(await debugState())));   // which notices arrived, which lines finished
+app.get("/whoami", admin, safe(async (req, res) => res.json(await appInfo())));   // which app + which scopes the live token has
 app.get("/log", admin, (req, res) => res.type("text/plain").send(LOG.join("\n") || "(empty since boot)"));
 app.get("/designs/:id.json", admin, safe(async (req, res) => {   // rescue hatch: pull a design to render elsewhere
   const design = await loadDesign(req.params.id);
