@@ -88,6 +88,7 @@ setTimeout(async () => {
   }
 }, 15000);
 
+const inFlight = new Set();   // lines being worked on right now, so twin deliveries never double-print
 async function handlePaidOrder(order) {
   // The same endpoint now takes orders/create AND orders/paid: a $0 order (100% discount) has no
   // payment transaction, so orders/paid never fires for it — but it is born paid, so the creation
@@ -105,6 +106,8 @@ async function handlePaidOrder(order) {
   for (const { li, designId } of lines) {
     const key = `${order.id}_${li.id}`;
     if (await isDone(key)) continue;                             // Shopify can send the same notice more than once
+    if (inFlight.has(key)) continue;                             // …or twice at once (creation + payment land together)
+    inFlight.add(key);
     try {
       const design = await loadDesign(designId);
       if (!design) throw new Error(`Design ${designId} was not found.`);
@@ -118,7 +121,7 @@ async function handlePaidOrder(order) {
     } catch (err) {
       console.error("line " + li.id + " failed", err);
       await flagOrder(orderGid, `${li.title}: ${err.message}`, order.note || "").catch(() => {});
-    }
+    } finally { inFlight.delete(key); }
   }
   if (files.length) { await attachToOrder(orderGid, files, order.note || ""); console.log(`order ${order.name || order.id}: ${files.length} PDF(s) attached`); }
 }
