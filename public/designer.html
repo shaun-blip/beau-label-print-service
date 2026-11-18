@@ -2906,7 +2906,8 @@ const everySheet = () => state.path === "custom" && state.mode === "mix" && stat
 const needScope = () => state.path === "custom" && state.mode === "mix" && state.qty > 1 && !state.scopePicked;
 function syncMix(){
   const n = perSheet() * (state.mixAll ? state.qty : 1);
-  while (state.mix.length < n) state.mix.push({...state.words});
+  const f = (SUB_START[state.occKey] || {}).number;   // numbered occasion (table bottles): every new label arrives pre-numbered
+  while (state.mix.length < n){ const w = {...state.words}; if (f) w[f] = "No. " + (state.mix.length + 1); state.mix.push(w); }
   state.mix.length = n;
 }
 // Every label on the order, as a list of word sets.
@@ -3637,8 +3638,9 @@ const SUB_READY = {"Wedding favors":"wedding","Engagement":"engaged","Bridal sho
   "Girls' trip":"trip","Reunion":"reunion","Book club":"bookclub","Tailgate":"tailgate","Derby party":"derby","Mardi Gras":"mardigras","Celebration of life":"memorial","Memorial":"memorial",
   "Table bottles":"table","Your occasion":"because","Godparent proposal":"godparent"};
 // Occasions whose bottles each carry different words — table numbers change on every bottle —
-// start on Write your own + Different on each label. The customer can still switch to the sayings.
-const SUB_START = {"Table bottles":{want:"custom", mode:"mix"}};
+// start on Write your own + Different on each label, with the named field counting up from
+// No. 1 (syncMix). The customer can still switch to the sayings.
+const SUB_START = {"Table bottles":{want:"custom", mode:"mix", number:"main"}};
 function applyOccasion(){
   const g = groupNow(), s = g.subs[state.sub];
   const m = SUB_READY[s[0]];
