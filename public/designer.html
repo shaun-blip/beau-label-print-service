@@ -3794,7 +3794,7 @@ document.querySelector(".steps").addEventListener("focusout", () => setTimeout((
 // The preview appears at the first touch of any step from "Pick a design" onward, including steps added later.
 { const steps = [...document.querySelectorAll(".steps > section")], from = steps.indexOf($("h2").closest("section"));
   steps.slice(from).forEach(sec => ["click", "input", "change"].forEach(ev => sec.addEventListener(ev, start))); }
-buildFields(); buildHow(); state.group = "birthdays"; state.sub = 0; applyOccasion();   // every panel builds itself on the first render
+buildFields(); buildHow(); state.group = "holidays"; state.sub = 0; applyOccasion();   // every panel builds itself on the first render; holidays sub 0 = Christmas (seasonal default, winter 2026)
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
 </script>
 
