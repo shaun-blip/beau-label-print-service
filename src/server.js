@@ -1,7 +1,7 @@
 import express from "express";
 import crypto from "node:crypto";
-import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState } from "./store.js";
-import { renderDesign, checkDesign, warmUp } from "./render.js";
+import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState, queueSingle, listSingles, clearSingles } from "./store.js";
+import { renderDesign, renderGang, checkDesign, warmUp } from "./render.js";
 import { shopifyReady, uploadPdf, attachToOrder, flagOrder, appInfo } from "./shopify.js";
 
 const app = express();
@@ -111,9 +111,14 @@ async function handlePaidOrder(order) {
     try {
       const design = await loadDesign(designId);
       if (!design) throw new Error(`Design ${designId} was not found.`);
-      design.qty = li.quantity || design.qty;                    // the cart quantity is the number of sheets
-      const out = await renderDesign(design);
+      if (!design.single) design.qty = li.quantity || design.qty;   // the cart quantity is the number of sheets; single labels carry their own count
+      const out = await renderDesign(design, { tag: design.single ? `Order ${order.name || order.id}` : "" });
       if (out.problem) throw new Error(out.problem);
+      // Single labels also join the batch queue, so they can be printed with other orders' singles on
+      // shared sheets. Queued as soon as the render is good (not after the upload): an upload hiccup
+      // then flags the order but never keeps the label out of the day's print run; the queue and
+      // markDone both dedupe by line key, so a retried upload cannot queue it twice.
+      if (design.single) await queueSingle({ key, designId, size: design.size, count: design.single, times: li.quantity || 1, order: String(order.name || order.id) });
       const name = `labels-${String(order.name || order.id).replace(/[^a-zA-Z0-9]/g, "")}-${li.id}.pdf`;
       const url = await uploadPdf(name, out.pdf);
       files.push({ title: li.variant_title || li.title, url, pages: out.pages, copies: out.copies, lineItemId: li.id, designId });
@@ -161,6 +166,42 @@ app.get("/designs/:id.pdf", admin, safe(async (req, res) => {
 app.post("/render", admin, express.json({ limit: "25mb" }), safe(async (req, res) => {
   const out = await renderDesign(req.body);
   res.set({ "Content-Type": "application/pdf", "X-Pages": out.pages, "X-Copies": out.copies }).send(out.pdf);
+}));
+
+// ---------- 4. single labels, printed together (needs ADMIN_KEY) ----------
+// Open /batch?key=... once or twice a day: it lists the single labels waiting for each bottle size,
+// gives one PDF per size with a pick list, and a button to clear them once printed.
+const SIZE_NAMES = { champagne: "Champagne", prosecco: "Prosecco", mini: "Mini" };
+const page = body => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Single labels to print</title>
+<style>body{font:16px/1.5 system-ui,sans-serif;max-width:640px;margin:32px auto;padding:0 16px;color:#1b2440}h1{font-size:22px}section{border:1px solid #ddd;padding:16px;margin:16px 0}a.b,button{display:inline-block;font:inherit;padding:10px 16px;border:1px solid #1b2440;background:#1b2440;color:#fff;text-decoration:none;cursor:pointer;margin:6px 8px 0 0}button{background:#fff;color:#1b2440}small{color:#555}</style>${body}`;
+app.get("/batch", admin, safe(async (req, res) => {
+  const key = encodeURIComponent(req.query.key), all = await listSingles();
+  const parts = Object.keys(SIZE_NAMES).map(size => {
+    const q = all.filter(e => e.size === size); if (!q.length) return `<section><strong>${SIZE_NAMES[size]}</strong><br><small>Nothing waiting.</small></section>`;
+    const labels = q.reduce((a, e) => a + e.count * e.times, 0), upto = q.reduce((a, e) => e.at > a ? e.at : a, "");
+    return `<section><strong>${SIZE_NAMES[size]}</strong>: ${labels} label${labels === 1 ? "" : "s"} from ${q.length} order line${q.length === 1 ? "" : "s"}<br><small>${q.map(e => e.order).join(", ")}</small><br>
+      <a class="b" href="/batch/${size}.pdf?key=${key}&upto=${encodeURIComponent(upto)}">Open the PDF</a>
+      <form method="post" action="/batch/${size}/done?key=${key}&upto=${encodeURIComponent(upto)}" style="display:inline"><button>Printed: clear these</button></form></section>`;
+  });
+  res.send(page(`<h1>Single labels to print</h1><p>Each PDF holds every waiting label for that bottle size. Every page is one quarter-sheet piece (4.25 x 5.5 in) with the order number printed on the backing.</p>${parts.join("")}`));
+}));
+async function batchItems(size, upto) {
+  const q = (await listSingles(size)).filter(e => !upto || e.at <= upto), items = [];
+  for (const e of q) {
+    const design = await loadDesign(e.designId); if (!design) continue;
+    for (let i = 0; i < e.times; i++) items.push({ design, tag: `Order ${e.order} · ${e.count} label${e.count === 1 ? "" : "s"}${e.times > 1 ? ` (set ${i + 1} of ${e.times})` : ""}` });
+  }
+  return items;
+}
+app.get("/batch/:size.pdf", admin, safe(async (req, res) => {
+  const items = await batchItems(req.params.size, req.query.upto);
+  if (!items.length) return res.status(404).send("Nothing waiting for that size.");
+  const out = await renderGang(items);
+  res.set({ "Content-Type": "application/pdf", "X-Sheets": out.sheets, "X-Labels": out.slots.length }).send(out.pdf);
+}));
+app.post("/batch/:size/done", admin, safe(async (req, res) => {
+  const n = await clearSingles(req.params.size, req.query.upto || new Date().toISOString());
+  res.send(page(`<h1>Cleared</h1><p>${n} order line${n === 1 ? "" : "s"} cleared for ${SIZE_NAMES[req.params.size] || req.params.size}.</p><a class="b" href="/batch?key=${encodeURIComponent(req.query.key)}">Back</a>`));
 }));
 
 // Last-resort guards: log instead of dying, so one bad request can never take the service down.

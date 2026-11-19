@@ -72,6 +72,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .eyebrow{font-size:12px;letter-spacing:.28em;text-transform:uppercase;font-weight:500;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
 h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,50px);line-height:1.08;margin:12px 0 0;text-wrap:balance}
 .lede{font-size:17px;margin:10px 0 0;max-width:520px}
+.printnote{font-size:15px;margin:14px 0 0;max-width:520px;background:var(--cream);padding:10px 14px}
 p{margin:0;max-width:65ch}
 .hint{font-size:14px}
 /* the name or note: its own step on a tinted card, so it is not missed */
@@ -114,7 +115,7 @@ h2 .n::before{content:counter(step, decimal-leading-zero)}
 .tpl[aria-pressed="true"]{border:2px solid var(--ink);padding:5px 5px 8px}
 .tpl{position:relative}
 .tpl .star,.starkey{background:var(--ink);color:#fff;font-style:normal;font-size:11px;line-height:1;display:inline-grid;place-items:center;width:20px;height:20px}
-.tpl .star{position:absolute;top:0;left:0}
+.tpl .star{position:absolute;top:0;left:0;z-index:1}
 .tpl[aria-pressed="true"] .star{top:-1px;left:-1px}
 .starkey{vertical-align:-4px;margin:0 2px}
 /* a question the customer has to answer before ordering */
@@ -205,6 +206,8 @@ textarea.names{min-height:150px;line-height:1.45;resize:vertical}
 .pl svg{width:100%;height:auto;display:block}
 .alert{background:var(--pink);padding:12px 16px;font-size:15px;font-weight:500}
 .sheetwarn{display:block;margin-top:10px;background:var(--pink);padding:12px 16px;font-size:14px;font-weight:500;line-height:1.5}
+#singlewrap{max-width:230px}
+#howmany .chip small{display:block;margin-top:4px;font-size:12.5px;letter-spacing:0;text-transform:none;font-weight:400}
 .linkbtn{background:none;border:0;padding:0;margin:0;font:inherit;font-weight:700;color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer;min-height:auto}
 .linkbtn:hover{opacity:.72}
 .check{display:flex;gap:12px;align-items:flex-start;cursor:pointer}

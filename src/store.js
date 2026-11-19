@@ -44,6 +44,21 @@ export async function listTodos() {
     return out;
   } catch { return []; }
 }
+// Single labels wait here until they are printed together on shared sheets (see /batch).
+const QUEUE = () => path.join(DIR, "singles-queue.json");
+async function readQueue() { try { return JSON.parse(await fs.readFile(QUEUE(), "utf8")); } catch { return []; } }
+export async function queueSingle(entry) {
+  await fs.mkdir(DIR, { recursive: true });
+  const q = await readQueue();
+  if (!q.some(e => e.key === entry.key)) { q.push({ ...entry, at: new Date().toISOString() }); await fs.writeFile(QUEUE(), JSON.stringify(q)); }
+}
+export async function listSingles(size) { const q = await readQueue(); return size ? q.filter(e => e.size === size) : q; }
+// Removes the entries for one bottle size that were queued up to a moment in time: the ones on the sheets just printed.
+export async function clearSingles(size, upto) {
+  const q = await readQueue(), keep = q.filter(e => e.size !== size || e.at > upto);
+  await fs.writeFile(QUEUE(), JSON.stringify(keep));
+  return q.length - keep.length;
+}
 // What the disk knows, for remote diagnosis: which notices arrived, which lines finished, when.
 export async function debugState() {
   const names = await fs.readdir(DIR).catch(() => []);

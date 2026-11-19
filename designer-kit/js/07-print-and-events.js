@@ -45,7 +45,7 @@ async function showWrap(w){
 /* ---------- hand-off to the store: save a design, restore it, and lay out its print pages ----------
    exportDesign() is what the storefront sends when the customer adds to cart.
    applyDesign() and printPages() are what the print service runs after the order is paid. */
-const DESIGN_KEYS = ["size","qty","group","sub","tpl","pal","custom","dark","font","path","want","rocc","ritem","rmode","rcounts","age","rnote","words","mode","mix","mixAll","names","nameField","photoPos","wraps"];
+const DESIGN_KEYS = ["size","qty","group","sub","tpl","pal","custom","dark","font","path","want","rocc","ritem","rmode","rcounts","age","rnote","words","mode","mix","mixAll","names","nameField","photoPos","wraps","single"];
 function exportDesign(){
   const d = {v:1};
   DESIGN_KEYS.forEach(k => d[k] = JSON.parse(JSON.stringify(state[k])));
@@ -60,6 +60,7 @@ function exportDesign(){
 }
 function applyDesign(d){
   DESIGN_KEYS.forEach(k => { if (k in d) state[k] = JSON.parse(JSON.stringify(d[k])); });
+  state.single = Math.max(0, Math.min(PRICES.single.length, +d.single || 0)); if (state.single) state.qty = 1;
   state.logo = d.logo ? {...d.logo, url:d.logo.data} : null; state.rights = !!d.logo;
   state.photo = d.photo ? {...d.photo, url:d.photo.data} : null; state.prights = !!d.photo;
   setSize(sizeNow()); Object.assign(F, fontNow().f);
@@ -70,7 +71,8 @@ function applyDesign(d){
   $("stage").classList.remove("idle"); render();
 }
 // One standalone SVG per distinct sheet, with cut guides removed. copies is how many times to print the set.
-function printPages(){
+function printPages(opts = {}){
+  if (state.single && opts.singles !== "sheet") return piecePages(labelItems(opts.tag));   // single labels print one piece per page unless sheets are asked for
   makeSheets();
   const sz = sizeNow(), sheets = [...$("sheets").querySelectorAll("svg.sheet")], per = perSheet(), list = labels();
   const repeats = namesMode() || list.length > per ? 1 : state.qty;
@@ -83,6 +85,57 @@ function printPages(){
   });
   $("output").hidden = true;
   return {widthIn:sz.sw / 100, heightIn:sz.sh / 100, copies:repeats, labelsPerSheet:per, pages, problem:screen() || ""};
+}
+// ---------- single labels on quarter-sheet pieces ----------
+// A piece is a quarter of a letter sheet (4.25 x 5.5 in) with the label centred on it, matching the Cricut cut files.
+// Champagne is turned upright to fit; minis sit two to a piece. Each page of the PDF is one piece.
+const PIECE = {w:425, h:550, gap:25};
+function pieceLayout(){
+  const rot = W > 380, fw = rot ? H : W, fh = rot ? W : H, k = W < 230 && H < 230 ? 2 : 1, block = k * fh + (k - 1) * PIECE.gap;
+  return {rot, fw, fh, k, x:(PIECE.w - fw) / 2, y:(PIECE.h - block) / 2};
+}
+// The labels of the design now loaded, as items ready to place: inner drawing, bleed color and an optional order tag.
+function labelItems(tag){
+  makeSheets();
+  const t = tplById(state.tpl), c = colors(), bg = (t.tint ? t.tint(c) : c).bg, out = [];
+  $("sheets").querySelectorAll("svg.sheet > svg").forEach(el => out.push({inner:el.innerHTML, bg, tag:tag || ""}));
+  $("output").hidden = true;
+  return out;
+}
+function piecePages(items){
+  const L = pieceLayout(), pages = [], slots = [];
+  for (let i = 0; i < items.length; i += L.k){
+    const part = items.slice(i, i + L.k); let body = `<rect width="${PIECE.w}" height="${PIECE.h}" fill="#ffffff"/>`;
+    part.forEach((it, j) => { const x = L.x, y = L.y + j * (L.fh + PIECE.gap);
+      const art = `<rect x="${-BLEED}" y="${-BLEED}" width="${W + 2 * BLEED}" height="${H + 2 * BLEED}" fill="${it.bg}"/><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${it.inner}</svg>`;
+      body += L.rot ? `<g transform="translate(${x + L.fw} ${y}) rotate(90)">${art}</g>` : `<g transform="translate(${x} ${y})">${art}</g>`;
+      slots.push({page:pages.length + 1, pos:j + 1, tag:it.tag}); });
+    const tags = [...new Set(part.map(it => it.tag).filter(Boolean))].join(" / ");
+    if (tags) body += `<text x="${PIECE.w / 2}" y="${PIECE.h - 14}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#777">${esc(tags)}</text>`;   // on the backing, outside the label
+    const arts = [...new Set(body.match(/#(?:art|xm)-[\w-]+/g) || [])].map(x => x.slice(1));
+    pages.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${PIECE.w / 100}in" height="${PIECE.h / 100}in" viewBox="0 0 ${PIECE.w} ${PIECE.h}"><defs>${WC_DEFS}${arts.map(id => $(id) ? $(id).outerHTML : "").join("")}</defs>${body}</svg>`);
+  }
+  return {widthIn:PIECE.w / 100, heightIn:PIECE.h / 100, copies:1, labelsPerSheet:L.k, cols:1, pieces:true, pages, slots, problem:screen() || ""};
+}
+// Single labels from several orders, laid out together on full sheets. designs: [{design, tag}], all for one bottle size.
+// Returns print pages like printPages(), plus slots: which order's label sits in which position.
+function gangPages(designs, singles){
+  if (singles !== "sheet"){ const all = []; designs.forEach(({design, tag}) => { applyDesign(design); all.push(...labelItems(tag)); }); return piecePages(all); }
+  const items = [];
+  designs.forEach(({design, tag}) => { applyDesign(design); makeSheets();
+    const t = tplById(state.tpl), c = colors(), bg = (t.tint ? t.tint(c) : c).bg;
+    $("sheets").querySelectorAll("svg.sheet > svg").forEach(el => items.push({inner:el.innerHTML, bg, tag})); });
+  $("output").hidden = true;
+  const sz = sizeNow(), hold = sheetHolds(), pages = [], slots = [];
+  for (let i = 0; i < items.length; i += hold){
+    const cell = k => [sz.left + (k % sz.cols) * (W + sz.gx), sz.top + Math.floor(k / sz.cols) * (H + sz.gy)], part = items.slice(i, i + hold);
+    let body = `<rect width="${sz.sw}" height="${sz.sh}" fill="#ffffff"/>`;
+    part.forEach((it, k) => { const [x, y] = cell(k); body += `<rect x="${x - BLEED}" y="${y - BLEED}" width="${W + 2 * BLEED}" height="${H + 2 * BLEED}" fill="${it.bg}"/>`; });
+    part.forEach((it, k) => { const [x, y] = cell(k); body += `<svg x="${x}" y="${y}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${it.inner}</svg>`; slots.push({page:pages.length + 1, pos:k + 1, tag:it.tag}); });
+    const arts = [...new Set(body.match(/#(?:art|xm)-[\w-]+/g) || [])].map(x => x.slice(1));
+    pages.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${sz.sw / 100}in" height="${sz.sh / 100}in" viewBox="0 0 ${sz.sw} ${sz.sh}"><defs>${WC_DEFS}${arts.map(id => $(id) ? $(id).outerHTML : "").join("")}</defs>${body}</svg>`);
+  }
+  return {widthIn:sz.sw / 100, heightIn:sz.sh / 100, copies:1, labelsPerSheet:hold, cols:sz.cols, pages, slots, problem:""};
 }
 const GHOST = "Your name here";
 function markGhost(svg){
@@ -149,7 +202,7 @@ function makeSheets(){
   if (logoUsed()) rows.push(["Logo", `${state.logo.name} · ` + (state.logo.vector ? "vector file" : `${state.logo.w} × ${state.logo.h} px`) + " · customer confirmed permission"]);
   rows.push(
     ["Label stock", sz.stock + " · " + sz.label],
-    ["Quantity", sheets + (sheets === 1 ? " sheet" : " sheets") + " · " + (namesMode() ? list.length : sheets * per) + " labels"],
+    ["Quantity", state.single ? state.single + (state.single === 1 ? " single label" : " single labels") : sheets + (sheets === 1 ? " sheet" : " sheets") + " · " + (namesMode() ? list.length : sheets * per) + " labels"],
     ["Proof", "Approved by customer " + new Date().toLocaleString([], {dateStyle:"medium", timeStyle:"short"})]);
   $("ticket").innerHTML = rows.map(r => `<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join("");
   $("output").hidden = false;
@@ -186,12 +239,17 @@ const SUB_READY = {"Wedding favors":"wedding","Engagement":"engaged","Bridal sho
   "Fourth of July":"july4","Halloween":"halloween","Diwali":"diwali","Lunar New Year":"lunar","St. Patrick's Day":"stpat","Cinco de Mayo":"cinco","Grand opening":"opening","Event favor":"event",
   "Girls' trip":"trip","Reunion":"reunion","Book club":"bookclub","Tailgate":"tailgate","Derby party":"derby","Mardi Gras":"mardigras","Celebration of life":"memorial","Memorial":"memorial",
   "Table bottles":"table","Your occasion":"because","Godparent proposal":"godparent"};
+// Occasions whose bottles each carry different words — table numbers change on every bottle —
+// start on Write your own + Different on each label, with the named field counting up from
+// No. 1 (syncMix). The customer can still switch to the sayings.
+const SUB_START = {"Table bottles":{want:"custom", mode:"mix", number:"main"}};
 function applyOccasion(){
   const g = groupNow(), s = g.subs[state.sub];
   const m = SUB_READY[s[0]];
   state.hasReady = !!m;
   if (m && state.occKey !== s[0]){ const [id, i] = m.split(":"); state.rocc = id; state.ritem = +i || 0; state.rall = false;
     if (id === "milestone"){ const n = parseInt(s[0], 10); if (n) state.age = n; $("age").value = state.age; } }
+  { const d = SUB_START[s[0]]; if (d && state.occKey !== s[0]){ state.want = d.want; state.mode = d.mode; state.sel = 0; } }
   state.occKey = s[0];
   state.path = m && state.want === "ready" ? "ready" : "custom";
   if (!state.edited){ state.words = subWords(s); state.mix = []; }
@@ -238,6 +296,11 @@ function fillNamesToSheet(){ const per = perSheet(), cur = nameList(); if (!cur.
 document.addEventListener("click", e => { if (e.target.id === "fillnames"){ const n = $("names"); n.focus(); try { n.setSelectionRange(n.value.length, n.value.length); } catch {} n.scrollIntoView({block:"center"}); } });
 document.addEventListener("click", e => { if (e.target.id === "fillrepeat"){ fillNamesToSheet(); } });
 $("rnote").addEventListener("input", e => { state.rnote = e.target.value; changed(); });
+// Full sheets or just a few labels. Panels that count labels rebuild through their state.single dependency keys.
+function setSingle(n){ state.single = n; if (n) state.qty = 1; state.sel = 0; if (state.mode === "mix") syncMix(); changed(); }
+pick("howmany", ".chip", b => setSingle(b.dataset.id === "single" ? (state.single || 1) : 0));
+$("singleqty").addEventListener("change", e => setSingle(+e.target.value));
+document.addEventListener("click", e => { if (e.target.id === "tosheet") setSingle(0); });
 pick("groups", ".chip", b => { state.group = b.dataset.id; state.sub = 0; state.want = "ready"; applyOccasion(); });
 pick("subs", ".chip", b => { state.sub = +b.dataset.id; state.want = "ready"; applyOccasion(); });
 pick("templates", ".tpl", b => { state.tpl = b.dataset.id; state.tplPicked = true; changed(); });
@@ -336,5 +399,5 @@ document.querySelector(".steps").addEventListener("focusout", () => setTimeout((
 // The preview appears at the first touch of any step from "Pick a design" onward, including steps added later.
 { const steps = [...document.querySelectorAll(".steps > section")], from = steps.indexOf($("h2").closest("section"));
   steps.slice(from).forEach(sec => ["click", "input", "change"].forEach(ev => sec.addEventListener(ev, start))); }
-buildFields(); buildHow(); state.group = "birthdays"; state.sub = 0; applyOccasion();   // every panel builds itself on the first render
+buildFields(); buildHow(); state.group = "holidays"; state.sub = 0; applyOccasion();   // every panel builds itself on the first render; holidays sub 0 = Christmas (seasonal default, winter 2026)
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);

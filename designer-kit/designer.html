@@ -23,6 +23,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Ms+Madi&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Whisper&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="designer-fonts.css">
+<link rel="preload" as="image" href="assets/bot-champagne.webp">
+<link rel="preload" as="image" href="assets/bot-champagnew.webp">
+<link rel="preload" as="image" href="assets/bot-prosecco.webp">
+<link rel="preload" as="image" href="assets/bot-proseccow.webp">
+<link rel="preload" as="image" href="assets/bot-mini.webp">
+<link rel="preload" as="image" href="assets/bot-miniw.webp">
 <link rel="stylesheet" href="designer.css">
 </head>
 <body>
@@ -202,9 +208,10 @@
   </aside>
 
   <div class="panel">
-    <div class="eyebrow"><span>Printed to order · Sold by the sheet</span><span class="tagnew">With or without a wrap</span></div>
+    <div class="eyebrow"><span>Printed to order · Sold by the sheet</span><span class="tagnew">Use with or without a wrap</span></div>
     <h1>Custom Bottle Labels</h1>
     <p class="lede">Design a label for one of the bottles our wraps fit, and we print it for you. It goes right over the bottle's own label. Use it on its own, or add one of our wraps and your label shows through the clear window.</p>
+    <p class="printnote"><strong>Printed like a photograph.</strong> Every sheet comes off our 10&#8209;channel UltraChrome PRO10 ink system — exhibition&#8209;quality fine art and photographic printing — so your colors come out rich and true, and even the finest script stays crisp.</p>
     <div class="how" aria-label="How it works">
       <div class="howstep"><svg id="how1" viewBox="80 10 240 516" aria-hidden="true"></svg><div class="hn">01</div><div class="ht">Start with a bottle we fit</div><div class="hd">Veuve Clicquot, La Marca and the rest of our tested list.</div></div>
       <div class="howstep"><svg id="how2" viewBox="80 10 240 516" aria-hidden="true"></svg><div class="hn">02</div><div class="ht">Cover it with your label</div><div class="hd">Your design sticks right over the bottle's own label.</div></div>
@@ -220,10 +227,14 @@
       </section>
 
       <section aria-labelledby="hq">
-        <h2 id="hq"><span class="n"></span>How many sheets?</h2>
+        <h2 id="hq"><span class="n"></span>How many?</h2>
+        <div class="chips two" id="howmany" role="group" aria-label="Full sheets or single labels"></div>
         <p class="hint" id="pernote"></p>
         <label class="f qtyf" for="qty" id="qtywrap">Sheets
           <select id="qty"></select>
+        </label>
+        <label class="f qtyf" for="singleqty" id="singlewrap" hidden>Labels
+          <select id="singleqty"></select>
         </label>
         <p class="hint" id="qtynote" aria-live="polite"></p>
       </section>
@@ -254,10 +265,8 @@
         </div>
         </div>
         <div class="alert" id="logowarn" hidden></div>
-        <label class="check" id="rightswrap" hidden><input type="checkbox" id="rights"><span>I own this logo or have permission to print it.</span></label>
         <div class="chips small" id="photopos" role="group" aria-label="Which part of the photo to show" hidden></div>
         <div class="alert" id="photowarn" hidden></div>
-        <label class="check" id="prightswrap" hidden><input type="checkbox" id="prights"><span>I took this photo or have permission to print it.</span></label>
         </div>
         <p class="hint" id="tplcount"></p>
         <div class="grid" id="templates"></div>
@@ -361,6 +370,8 @@
       </div>
       <div class="alert" id="alert" hidden></div>
       <p class="callout nudge" id="namenudge" hidden><span>No name or note added yet.</span><button type="button" class="linkbtn" id="nameadd">Add one</button><button type="button" class="linkbtn" id="nameskip">Leave it off</button></p>
+      <label class="check" id="rightswrap" hidden><input type="checkbox" id="rights"><span>I own this logo or have permission to print it.</span></label>
+      <label class="check" id="prightswrap" hidden><input type="checkbox" id="prights"><span>I took this photo or have permission to print it.</span></label>
       <label class="check"><input type="checkbox" id="approve"><span id="approvetext"></span></label>
       <p class="wrapsum" id="ordersum" aria-live="polite"></p>
       <button class="btn" id="make" disabled>Place sample order</button>

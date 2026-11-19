@@ -109,3 +109,14 @@ PDFs from the test land in `test/out`. Without `SHOPIFY_SHOP` and the app's Clie
 - `src/store.js` — saved designs and the "already done" record
 - `src/fonts.js` — bundled fonts
 - `test/local-test.js` — local checks
+
+## Single labels
+
+Customers can order 1 to 4 single labels instead of a sheet. These print on quarter-sheet pieces (4.25 x 5.5 in), one piece per PDF page, with the order number printed small on the backing. Blanks are cut in house with the Cricut cut files, then trimmed into quarters.
+
+- Each single-label order gets its PDF attached to the order, ready to print on blank pieces.
+- To print the day's singles in one go, open `https://<your service>/batch?key=<ADMIN_KEY>`, open the PDF for each bottle size, print, then press "Printed: clear these".
+- In the printer driver use a custom paper size of 4.25 x 5.5 in, 100% scale, no borderless.
+- To print singles on full label sheets instead, set `SINGLES_OUTPUT=sheet`.
+
+The waiting list is kept in `DATA_DIR/singles-queue.json`.

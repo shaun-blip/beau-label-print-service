@@ -1,5 +1,9 @@
+// Prices shown in the designer. The real prices are the Shopify variants; keep these in step with them.
+// single[i] is the price of i+1 single labels.
+const PRICES = {sheet:29, single:[10, 16, 21, 25]};
+const SHEET_PRICE = PRICES.sheet;
 const state = {
-  age:50, rcounts:{}, mixAll:false, scopePicked:false, qty:1, want:"ready", hasReady:true, occKey:"", rall:false,
+  age:50, rcounts:{}, mixAll:false, scopePicked:false, qty:1, single:0, want:"ready", hasReady:true, occKey:"", rall:false,
   view:"label", wraps:[], lastWrap:"stripe",
   font:"classic", logo:null, rights:false, photo:null, prights:false, photoPos:"YMid",
   path:"ready", rocc:"birthday", ritem:0, rmode:"one", rnote:"",
@@ -34,7 +38,9 @@ function ageItems(n){
 const readyNow = () => { const r = READY.find(x => x.id === state.rocc); return r.id === "milestone" ? {...r, items:ageItems(state.age)} : r; };
 const readyWords = it => ({top:it[0], main:it[1], detail:state.rnote, msg:it[2], ready:true});
 const namesMode = () => state.path === "custom" && state.mode === "names";
-const perSheet = () => { const z = sizeNow(); return z.cols * z.rows; };
+const sheetHolds = () => { const z = sizeNow(); return z.cols * z.rows; };
+// Single labels: state.single is how many (0 = full sheets). Everything that counts labels then works from that number.
+const perSheet = () => state.single || sheetHolds();
 const num = (v, base) => typeof v === "function" ? v() : v * base;
 const colors = () => resolvePalette(state.pal < 0 ? customPalette(state.custom) : PALETTES[state.pal], state.dark);
 
@@ -46,7 +52,7 @@ function nameList(){
 const spanReady = () => state.path === "ready" && state.rmode === "mixed";
 const readyTarget = () => perSheet() * state.qty;
 function readyCounts(){
-  const key = state.rocc + "|" + state.size + "|" + state.qty + (state.rocc === "milestone" ? "|" + state.age : ""), n = readyNow().items.length, per = readyTarget();
+  const key = state.rocc + "|" + state.size + "|" + state.qty + (state.single ? "|s" + state.single : "") + (state.rocc === "milestone" ? "|" + state.age : ""), n = readyNow().items.length, per = readyTarget();
   if (!state.rcounts[key]){ const base = Math.floor(per / n), extra = per - base * n; state.rcounts[key] = Array.from({length:n}, (_, i) => base + (i < extra ? 1 : 0)); }
   return state.rcounts[key];
 }
@@ -56,7 +62,8 @@ const everySheet = () => state.path === "custom" && state.mode === "mix" && stat
 const needScope = () => state.path === "custom" && state.mode === "mix" && state.qty > 1 && !state.scopePicked;
 function syncMix(){
   const n = perSheet() * (state.mixAll ? state.qty : 1);
-  while (state.mix.length < n) state.mix.push({...state.words});
+  const f = (SUB_START[state.occKey] || {}).number;   // numbered occasion (table bottles): every new label arrives pre-numbered
+  while (state.mix.length < n){ const w = {...state.words}; if (f) w[f] = "No. " + (state.mix.length + 1); state.mix.push(w); }
   state.mix.length = n;
 }
 // Every label on the order, as a list of word sets.
@@ -157,10 +164,11 @@ function screen(){
   if (photoUsed() && !state.prights) return "Tick the box under your photo to confirm you can print it.";
   if (logoUsed() && !state.rights) return "Tick the box under your logo to confirm you can print it.";
   if (spanReady() && readyTotal() !== readyTarget()){
-    const d = readyTarget() - readyTotal(), what = state.qty > 1 ? `Your ${state.qty} sheets hold` : "Your sheet holds";
+    const d = readyTarget() - readyTotal(), what = state.single ? "You chose" : state.qty > 1 ? `Your ${state.qty} sheets hold` : "Your sheet holds";
     return d > 0 ? `${what} ${readyTarget()} labels. Add ${d} more under Choose your wording.` : `${what} ${readyTarget()} labels. Take ${-d} off under Choose your wording.`;
   }
   if (namesMode() && !list.length) return "Add at least one name to your list.";
+  if (state.single && namesMode() && list.length !== state.single) return `Your list has ${list.length} ${list.length === 1 ? "name" : "names"} and you chose ${state.single} ${state.single === 1 ? "label" : "labels"}. Change the number under How many, or choose a full sheet.`;
   if (needScope()) return `You're ordering ${state.qty} sheets. Under Choose your wording, choose whether every sheet is the same or different.`;
   const text = list.map(w => FIELDS.map(f => w[f.id] || "").join(" ")).join(" ").toLowerCase();
   const whole = b => new RegExp("(^|[^a-zà-ÿ])" + b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^a-zà-ÿ]|$)").test(text);   // whole words only, so names like Annike still print
@@ -286,25 +294,56 @@ function buildPhoto(){
   const warn = ph && ph.small ? `This photo is only ${ph.w} × ${ph.h} pixels and may print soft. Use the original from your phone or camera if you can.` : "";
   $("photowarn").textContent = warn; $("photowarn").hidden = !warn;
 }
+/* A 12 MB JPEG can hold 200+ megapixels (a panorama, a scan). The byte check alone lets that
+   through, and every later step then pays for it: the preview, each design tile, the customer's
+   whole browser, and the print service's small instance. So any upload past the pixel cap is
+   shrunk ONCE, here, and everything downstream only ever sees the shrunk copy. The caps leave
+   ~600 dpi on the largest label, well past print quality. Decode happens in createImageBitmap
+   (off the main thread); a browser without it keeps the old path. */
+const PHOTO_CAP = 3000, LOGO_CAP = 2000;
+function shrinkUpload(file, cap, mime, q){
+  return new Promise(resolve => {
+    if (!window.createImageBitmap) return resolve(null);
+    createImageBitmap(file).then(bmp => {
+      const m = Math.max(bmp.width, bmp.height);
+      if (m <= cap){ bmp.close && bmp.close(); return resolve(null); }         // small enough: keep the original
+      const w = Math.round(bmp.width * cap / m), h = Math.round(bmp.height * cap / m);
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(bmp, 0, 0, w, h);
+      bmp.close && bmp.close();
+      const data = c.toDataURL(mime, q);
+      c.toBlob(b => resolve(b ? {blob:b, data, w, h} : null), mime, q);
+    }).catch(() => resolve(null));                                             // unreadable here: the old path shows its own message
+  });
+}
 function setPhoto(file){
   const fail = msg => { $("photowarn").textContent = msg; $("photowarn").hidden = false; };
   $("photowarn").hidden = true;
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return fail("That file type won't work. Please upload a JPG or PNG photo.");
   if (file.size > 12 * 1024 * 1024) return fail("That photo is over 12 MB. Please upload a smaller copy.");
-  const reader = new FileReader();
-  reader.onload = () => {
-    const url = URL.createObjectURL(file), img = new Image();
-    img.onload = () => {
+  shrinkUpload(file, PHOTO_CAP, "image/jpeg", .92).then(sm => {
+    if (sm){
       if (state.photo) URL.revokeObjectURL(state.photo.url);
-      state.photo = {url, data:reader.result, name:file.name, w:img.naturalWidth, h:img.naturalHeight, small:Math.max(img.naturalWidth, img.naturalHeight) < 1000};
+      state.photo = {url:URL.createObjectURL(sm.blob), data:sm.data, name:file.name, w:sm.w, h:sm.h, small:false};
       state.prights = false; state.photoPos = "YMid";
       if (!tplById(state.tpl).photo) state.tpl = "photo1";
-      changed();
+      changed(); return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        if (state.photo) URL.revokeObjectURL(state.photo.url);
+        state.photo = {url, data:reader.result, name:file.name, w:img.naturalWidth, h:img.naturalHeight, small:Math.max(img.naturalWidth, img.naturalHeight) < 1000};
+        state.prights = false; state.photoPos = "YMid";
+        if (!tplById(state.tpl).photo) state.tpl = "photo1";
+        changed();
+      };
+      img.onerror = () => fail("We couldn't read that photo. Please try another file.");
+      img.src = url;
     };
-    img.onerror = () => fail("We couldn't read that photo. Please try another file.");
-    img.src = url;
-  };
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
+  });
 }
 function buildLogo(){
   const l = state.logo;
@@ -321,22 +360,31 @@ function setLogo(file){
   $("logowarn").hidden = true;
   if (!/^image\/(png|jpeg|svg\+xml|webp)$/.test(file.type)){ $("logowarn").textContent = "That file type won't work. Please upload a PNG, JPG or SVG."; $("logowarn").hidden = false; return; }
   if (file.size > 5 * 1024 * 1024){ $("logowarn").textContent = "That file is over 5 MB. Please upload a smaller one."; $("logowarn").hidden = false; return; }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const url = URL.createObjectURL(file), img = new Image();
-    img.onload = () => {
+  const vector = file.type === "image/svg+xml";
+  (vector ? Promise.resolve(null) : shrinkUpload(file, LOGO_CAP, "image/png")).then(sm => {   // PNG keeps a logo's transparency
+    if (sm){
       if (state.logo) URL.revokeObjectURL(state.logo.url);
-      const vector = file.type === "image/svg+xml";
-      state.logo = {url, data:reader.result, name:file.name, w:img.naturalWidth, h:img.naturalHeight, vector,
-                    small:!vector && Math.max(img.naturalWidth, img.naturalHeight) < 600};
+      state.logo = {url:URL.createObjectURL(sm.blob), data:sm.data, name:file.name, w:sm.w, h:sm.h, vector:false, small:false};
       state.rights = false;
       if (!tplById(state.tpl).logo && state.tpl !== "monogram") state.tpl = "logo1";
-      changed();
+      changed(); return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        if (state.logo) URL.revokeObjectURL(state.logo.url);
+        state.logo = {url, data:reader.result, name:file.name, w:img.naturalWidth, h:img.naturalHeight, vector,
+                      small:!vector && Math.max(img.naturalWidth, img.naturalHeight) < 600};
+        state.rights = false;
+        if (!tplById(state.tpl).logo && state.tpl !== "monogram") state.tpl = "logo1";
+        changed();
+      };
+      img.onerror = () => { $("logowarn").textContent = "We couldn't read that image. Please try another file."; $("logowarn").hidden = false; };
+      img.src = url;
     };
-    img.onerror = () => { $("logowarn").textContent = "We couldn't read that image. Please try another file."; $("logowarn").hidden = false; };
-    img.src = url;
-  };
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
+  });
 }
 function buildOccasions(){
   $("groups").innerHTML = GROUPS.map(g => chip(g.id, g.name, g.id === state.group)).join("");
@@ -378,11 +426,14 @@ function buildModes(){
     $("scopeq").innerHTML = `You're ordering ${q} sheets. Should they match?` + (open ? ` <span class="ask-tag">Choose one</span>` : "");
     $("mixscope").innerHTML = chip("repeat", `Every sheet the same<small>Write ${per} labels. We print that sheet ${q} times.</small>`, !open && !state.mixAll)
       + chip("all", `Every sheet different<small>Write all ${q * per} labels, ${per} to a sheet.</small>`, !open && state.mixAll);
-    $("mixhint").textContent = q < 2
+    $("mixhint").textContent = state.single ? (state.single > 1 ? `You have ${state.single} labels to write. Type a label's words below, then tap Next label.` : "Type your label's words below.") : q < 2
       ? `One sheet holds ${per} labels. Type a label's words below, then tap Next label. Want more than ${per} different labels? Add sheets in step 2.`
       : state.mixAll ? `${q} sheets of ${per} gives you ${q * per} labels to write. Type a label's words below, then tap Next label.`
       : open ? "Type a label's words below, then tap Next label."
       : `Type a label's words below, then tap Next label. ${q === 2 ? "Both" : "All " + q} sheets print the same ${per} labels.`; }
+  $("howmany").innerHTML = chip("sheet", `Full sheets<small>${sheetHolds()} labels a sheet · $${PRICES.sheet}</small>`, !state.single) + chip("single", `Just a few labels<small>1 to ${PRICES.single.length} labels · from $${PRICES.single[0]}</small>`, !!state.single);
+  $("singlewrap").hidden = !state.single;
+  $("singleqty").innerHTML = PRICES.single.map((p, i) => `<option value="${i + 1}"${i + 1 === state.single ? " selected" : ""}>${i + 1} ${i ? "labels" : "label"} · $${p}</option>`).join("");
   buildQty();
 }
 function buildQty(){
@@ -428,10 +479,10 @@ const UI_DEPS = [   // in dependency order: sizes sets W/H, templates may reassi
   [() => buildOccasions(), () => [state.group, state.sub].join("|")],
   [() => buildTemplates(), () => [state.group, state.sub, state.size, !!state.logo, !!state.photo].join("|")],
   [() => buildPath(),      () => [state.path, state.hasReady, state.rocc, state.age].join("|")],
-  [() => buildReady(),     () => [state.rocc, state.rmode, state.age, state.size, state.qty, readyTotal(), !!(tplById(state.tpl) || {}).number].join("|")],
+  [() => buildReady(),     () => [state.rocc, state.rmode, state.age, state.size, state.qty, state.single, readyTotal(), !!(tplById(state.tpl) || {}).number].join("|")],
   [() => buildSwatches(),  () => [state.pal, state.custom, state.dark].join("|")],
   [() => buildFonts(),     () => state.font],
-  [() => buildModes(),     () => [state.mode, state.qty, state.size, state.mixAll, state.scopePicked, state.nameField, state.path, state.rmode].join("|")],
+  [() => buildModes(),     () => [state.mode, state.qty, state.single, state.size, state.mixAll, state.scopePicked, state.nameField, state.path, state.rmode].join("|")],
   [() => buildLogo(),      () => [state.logo && state.logo.url, state.rights].join("|")],
   [() => buildPhoto(),     () => [state.photo && state.photo.url, state.prights, state.photoPos].join("|")],
   [() => buildViews(),     () => state.view],
@@ -508,7 +559,7 @@ function render(){
       $("labnext").textContent = state.sel === n - 1 ? "All done" : "Next label";
     }
   }
-  $("qtywrap").hidden = namesMode();
+  $("qtywrap").hidden = namesMode() || !!state.single;
   buildQty();
   { const q = state.qty, tot = q * per, sh = q === 1 ? "1 sheet" : q + " sheets", note = $("qtynote");
     note.hidden = false;
@@ -518,14 +569,17 @@ function render(){
       $("pallock").hidden = !lk;
       $("pallocktext").textContent = lk === "colors" ? "This design keeps its own colors so it always matches the artwork. Your words and lettering can still change."
         : "This design's artwork needs a light background, so the dark option is off. Your color choice still changes the words.";
-      const fixedHead = !t.zones.main;
+      const fixedHead = !t.zones.main && !t.names;   // designs that draw the names themselves still take any wording
       off("rgrid", false); $("saylock").hidden = !fixedHead; $("fieldlock").hidden = !fixedHead;   // sayings stay selectable on art-headline designs; the saying's main line just has no zone and drops out
     }
     $("palhint").hidden = !(t.fillBg || t.picture) || !!(t.tint && t.tint.lock);
     $("palhint").textContent = t.picture ? "This design's artwork keeps its own colors. Your color choice changes the words." : 'On this design your color fills the whole background. Tap "Use your own color" to pick any shade.';
     $("rnotehint").hidden = !(state.path === "ready" && foldWords(t, cur).dropped);
-    $("pernote").innerHTML = `Each sheet has <strong>${per} ${sizeNow().name.toLowerCase()} labels</strong> (${sizeNow().label}).`;
-    $("ordersum").innerHTML = namesMode() ? `<strong>${Math.max(1, Math.ceil(list.length / per))} ${Math.ceil(list.length / per) > 1 ? "sheets" : "sheet"} · ${list.length} labels</strong>` : `<strong>${sh} · ${tot} labels</strong>`;
+    $("pernote").innerHTML = `Each sheet has <strong>${per} ${sizeNow().name.toLowerCase()} labels</strong> (${sizeNow().label}) · <strong>$${SHEET_PRICE.toFixed(2)}</strong> per sheet. <span class="savenote">Order 2+ sheets and 10% comes off automatically.</span>`;
+    { const shn = namesMode() ? Math.max(1, Math.ceil(list.length / per)) : q;
+      const base = shn * SHEET_PRICE;
+      const price = shn >= 2 ? `<s>$${base.toFixed(2)}</s> $${(base * 0.9).toFixed(2)} <em>(10% off 2+ sheets)</em>` : `$${base.toFixed(2)}`;
+      $("ordersum").innerHTML = namesMode() ? `<strong>${shn} ${shn > 1 ? "sheets" : "sheet"} · ${list.length} labels · ${price}</strong>` : `<strong>${sh} · ${tot} labels · ${price}</strong>`; }
     if (namesMode()){ const pg = Math.max(1, Math.ceil(list.length / per)), rem = list.length % per, blanks = rem ? per - rem : 0;
       note.innerHTML = `<strong>${pg} ${pg > 1 ? "sheets" : "sheet"} · ${list.length} labels.</strong> Your list of names sets this: one label for each name.`
         + (blanks ? `<span class="sheetwarn">Sheets are sold whole, so your last sheet has <strong>${blanks} blank ${blanks === 1 ? "label" : "labels"}</strong> you'd still pay for. <button type="button" class="linkbtn" id="fillnames">Add ${blanks} more ${blanks === 1 ? "name" : "names"}</button> or <button type="button" class="linkbtn" id="fillrepeat">fill the sheet by repeating your names</button>.</span>` : ""); }
@@ -535,6 +589,11 @@ function render(){
       : everySheet() ? "Every label is its own. You'll write each one under Choose your wording."
       : multi ? (q > 1 ? (needScope() ? "Under Choose your wording, tell us whether every sheet is the same or different." : `Each sheet is a copy of the first. <button type="button" class="linkbtn" id="qtydiff">Make every sheet different</button>`) : "Add a sheet for a copy of this one, or to write more labels.")
       : `All ${tot} labels will match. Want each label different? Choose that under Choose your wording.`);
+    if (state.single){ const n = state.single, price = PRICES.single[n - 1], top = n === PRICES.single.length;
+      note.innerHTML = `<strong>${n} ${n === 1 ? "label" : "labels"} · $${price}.</strong> ` + (top ? `A full sheet of ${sheetHolds()} is only $${PRICES.sheet - price} more. <button type="button" class="linkbtn" id="tosheet">Get the full sheet</button>`
+        : n === 1 ? `Need ${PRICES.single.length + 1} or more? A full sheet of ${sheetHolds()} is $${PRICES.sheet}.` : multi ? "Each one can be different. Write them under Choose your wording." : "They'll all match. Want each one different? Choose that under Choose your wording.");
+      $("ordersum").innerHTML = `<strong>${n} ${n === 1 ? "label" : "labels"} · $${price}</strong>`;
+      $("pernote").innerHTML = `Single ${sizeNow().name.toLowerCase()} labels (${sizeNow().label}), printed to order.`; }
   }
   $("approvetext").textContent = multi ? "I checked every label. Print them exactly as shown." : "I checked the spelling and layout. Print it exactly as shown.";
 

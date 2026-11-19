@@ -63,6 +63,12 @@ the wraps subsystem (real Shopify products vs. samples) and the mini-label `SMAL
 that way: port shared-core changes verbatim, never overwrite those files wholesale, and after a port
 `diff` kit vs. theme should show only those two areas.
 
+`build-single-file.py` no longer inlines artwork (2026-11): the page it writes is ~660 KB, and the
+396 images are copied to `public/art/` as separate lazy files (`data-href`, the theme's JIT
+pattern), so page weight stays flat as designs are added. The print service activates and decodes
+the referenced images before each PDF (`src/render.js`). Fonts stay inline. Commit `public/art/`
+together with `public/designer.html` — one without the other prints empty boxes.
+
 ## Checking your work
 
 `designer-kit/tools/` tests (puppeteer-core + system Chrome against `designer-kit/designer.html`;

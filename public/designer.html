@@ -242,6 +242,8 @@ textarea.names{min-height:150px;line-height:1.45;resize:vertical}
 .pl svg{width:100%;height:auto;display:block}
 .alert{background:var(--pink);padding:12px 16px;font-size:15px;font-weight:500}
 .sheetwarn{display:block;margin-top:10px;background:var(--pink);padding:12px 16px;font-size:14px;font-weight:500;line-height:1.5}
+#singlewrap{max-width:230px}
+#howmany .chip small{display:block;margin-top:4px;font-size:12.5px;letter-spacing:0;text-transform:none;font-weight:400}
 .linkbtn{background:none;border:0;padding:0;margin:0;font:inherit;font-weight:700;color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer;min-height:auto}
 .linkbtn:hover{opacity:.72}
 .check{display:flex;gap:12px;align-items:flex-start;cursor:pointer}
@@ -514,10 +516,14 @@ textarea.code{width:100%;height:120px;font:12px/1.4 ui-monospace,Menlo,monospace
       </section>
 
       <section aria-labelledby="hq">
-        <h2 id="hq"><span class="n"></span>How many sheets?</h2>
+        <h2 id="hq"><span class="n"></span>How many?</h2>
+        <div class="chips two" id="howmany" role="group" aria-label="Full sheets or single labels"></div>
         <p class="hint" id="pernote"></p>
         <label class="f qtyf" for="qty" id="qtywrap">Sheets
           <select id="qty"></select>
+        </label>
+        <label class="f qtyf" for="singleqty" id="singlewrap" hidden>Labels
+          <select id="singleqty"></select>
         </label>
         <p class="hint" id="qtynote" aria-live="polite"></p>
       </section>
@@ -2685,6 +2691,53 @@ const WD_NUMBERS = WD_PICTURES.splice(-2);   // the two number designs also serv
 TEMPLATES.unshift(...WD_PICTURES);
 TEMPLATES.splice(TEMPLATES.reduce((a, t, i) => t.themed ? i : a, -1) + 1, 0, ...WD_NUMBERS, ...WD_LETTERING);
 
+/* ---------- Minimal wedding designs: the couple's names, stacked ---------- */
+// The headline is drawn here, not by a text zone, so it can sit on two lines. It still follows the lettering choice and shrinks to fit.
+// "Emma & Jack", "Emma + Jack" or "Emma and Jack" split at the joining word; any other phrase splits into two even lines.
+function nmSplit(v){
+  v = String(v || "").trim(); if (!v) return [];
+  const m = v.match(/^(.+?)\s*(&|\+|\band\b)\s*(.+)$/i); if (m) return [m[1], /and/i.test(m[2]) ? "&" : m[2], m[3]];
+  const ws = v.split(/\s+/); if (ws.length < 2) return [v];
+  let best = 1, d = 1e9; for (let i = 1; i < ws.length; i++){ const q = Math.abs(ws.slice(0, i).join(" ").length - ws.slice(i).join(" ").length); if (q < d){ d = q; best = i; } }
+  return [ws.slice(0, best).join(" "), "", ws.slice(best).join(" ")];
+}
+const nmHead = () => { const fs = fontNow(), hd = fs.head; return {fam:hd.font, k:hd.script ? fs.scale : .74 * (hd.scale || 1), upper:!hd.script && !!hd.upper, ls:hd.script ? 0 : (hd.ls || 0), weight:hd.weight || 400, italic:!hd.script && !!hd.italic}; };
+const nmText = (v, x, y, size, w, o, fill) => `<text x="${n1(x)}" y="${n1(y)}" text-anchor="middle" font-family="${o.fam}" font-size="${n1(size)}" font-weight="${o.weight || 400}"${o.italic ? ' font-style="italic"' : ""} fill="${fill}"`
+  + ` data-fit="${n1(w)}" data-size="${n1(size)}"${o.ls ? ` style="letter-spacing:${o.ls}em"` : ""}>${esc(o.upper ? v.toUpperCase() : v)}</text>`;
+// Two names (or two lines) around a center line, with the joining mark between them.
+function nmStack(words, c, cx, cy, sz, w, o, sepO, lean = 0){
+  const p = nmSplit(words && words.main); if (!p.length) return "";
+  if (p.length === 1) return nmText(p[0], cx, cy + .3 * sz, sz, w, o, c.ink);
+  if (!p[1]) return nmText(p[0], cx, cy - .2 * sz, sz, w, o, c.ink) + nmText(p[2], cx, cy + .85 * sz, sz, w, o, c.ink);
+  return nmText(p[0], cx - lean, cy - .62 * sz, sz, w, o, c.ink) + nmText(p[1], cx, cy + .14 * sz, sz * (sepO.k || .5), w, sepO, c.ink) + nmText(p[2], cx + lean, cy + .98 * sz, sz, w, o, c.ink);
+}
+const nmDate = {font:F.serif, size:13, ls:.3, upper:true, weight:500};
+const nmZones = (top, detail, msg, w) => ({...(top ? {top:{y:() => top() * H, w:() => w() * .9, font:F.sans, size:10, ls:.3, upper:true}} : {}),
+  detail:{...nmDate, y:() => detail() * H, w:() => w() * .9}, msg:{y:() => msg() * H, w:() => w() * .9, font:F.serif, size:12, italic:true}});
+const nmArch = () => { const m = 10 * S, aw = wide() ? .6 * W : .8 * W, x0 = (W - aw) / 2, r = aw / 2; return {m, aw, x0, r}; };
+const NM_DESIGNS = [
+  {id:"nm-stack", name:"Stacked Names", subs:WD_ALL, names:true, uses:["main"], flow:false,
+   art:(c, words) => { const o = nmHead(), sz = (wide() ? .17 : .16) * H * o.k; return nmStack(words, c, W / 2, (wide() ? .45 : .44) * H, sz, .8 * W, o, {...o, k:.5}, .04 * W); },
+   zones:nmZones(() => .1, () => .8, () => .91, () => .84 * W)},
+  {id:"nm-caps", name:"Names in Capitals", subs:WD_ALL, names:true, uses:["main"], flow:false,
+   art:(c, words) => { const fs = fontNow(), o = {fam:fs.f.serif, upper:true, ls:.16, weight:500}, sz = (wide() ? .115 : .1) * H, cy = (wide() ? .44 : .43) * H, hw = (wide() ? .16 : .22) * W;
+     const rule = y => `<line x1="${n1(W / 2 - hw)}" y1="${n1(y)}" x2="${n1(W / 2 + hw)}" y2="${n1(y)}" stroke="${c.a}" stroke-width="${n1(S)}"/>`;
+     return rule(cy - 1.75 * sz) + nmStack(words, c, W / 2, cy - .1 * sz, sz, .8 * W, o, {fam:fs.f.serif, italic:true, k:.62}) + rule(cy + 1.5 * sz); },
+   zones:nmZones(() => .1, () => (wide() ? .8 : .78), () => .91, () => .84 * W)},
+  {id:"nm-initials", name:"Script Initials", subs:WD_ALL, names:true, uses:["main"], flow:false,
+   art:(c, words) => { const p = nmSplit(words && words.main), o = nmHead(), fs = fontNow(), sz = (wide() ? .36 : .3) * H * o.k, cy = (wide() ? .46 : .4) * H, a = (p[0] || "").trim().charAt(0).toUpperCase(), b = (p[2] || "").trim().charAt(0).toUpperCase(), g = .2 * (wide() ? H * 1.1 : W);
+     const small = {fam:fs.f.sans, upper:true, ls:.3, weight:400}, both = p.length === 3 && p[1];
+     return (both ? nmText(a, W / 2 - g, cy, sz, .3 * W, o, c.ink) + `<line x1="${n1(W / 2)}" y1="${n1(cy - .62 * sz)}" x2="${n1(W / 2)}" y2="${n1(cy + .12 * sz)}" stroke="${c.a}" stroke-width="${n1(1.1 * S)}"/>` + nmText(b, W / 2 + g, cy, sz, .3 * W, o, c.ink)
+       : nmText(a, W / 2, cy, sz, .4 * W, o, c.ink)) + nmText(String((words && words.main) || "").trim(), W / 2, cy + .52 * sz + 10 * S, sm(11 * S * 1.2), .8 * W, small, c.ink); },
+   zones:nmZones(() => .1, () => (wide() ? .82 : .78), () => .92, () => .84 * W)},
+  {id:"nm-arch", name:"Arch & Names", subs:WD_ALL, names:true, uses:["main"], flow:false,
+   art:(c, words) => { const q = nmArch(), o = nmHead(), sz = (wide() ? .15 : .13) * H * o.k, i = 4 * S;
+     const arch = (x0, r, top, sw) => `<path d="M${n1(x0)} ${n1(H - q.m - (top - q.m))} V${n1(top + r)} A${n1(r)} ${n1(r)} 0 0 1 ${n1(x0 + 2 * r)} ${n1(top + r)} V${n1(H - q.m - (top - q.m))} Z" fill="none" stroke="${c.a}" stroke-width="${n1(sw)}"/>`;
+     return arch(q.x0, q.r, q.m, 1.3 * S) + arch(q.x0 + i, q.r - i, q.m + i, .6 * S) + nmStack(words, c, W / 2, (wide() ? .47 : .46) * H, sz, .8 * q.aw, o, {...o, k:.5}); },
+   zones:nmZones(null, () => (wide() ? .78 : .76), () => .87, () => .8 * nmArch().aw)}
+];
+TEMPLATES.splice(TEMPLATES.findIndex(t => t.id === "wd-wreath") + 1, 0, ...NM_DESIGNS);
+
 /* ---------- Hanukkah designs built from the BeauBottles clipart library ---------- */
 Object.assign(XM, {"hk_w_donut":[330,248],"hk_w_dreidel":[330,400],"hk_w_candle":[150,485],"hk_w_coin1":[220,141],"hk_w_coin2":[200,184],"hk_w_cup":[210,402],"hk_w_menorah":[620,666],"hk_w_star":[300,334],"hk_s_menorah":[560,646],"hk_s_star":[260,272],"hk_s_donut":[280,197],"hk_s_donuts":[380,232],"hk_s_coin":[200,201],"hk_s_candle":[190,338],"hk_s_gift":[330,318],"hk_s_dreidel":[230,456],"hk_s_dreidel2":[360,264],"hk_brush":[760,181],"hk_k_star":[240,275],"hk_k_book":[280,298],"hk_k_cup":[220,321],"hk_k_bunting":[330,349],"hk_k_title":[760,506],"hk_k_dreidels":[330,322],"hk_title":[900,290],"hk_bluemenorah":[420,405],"hk_garden_l":[420,966],"hk_garden_r":[420,999],"hk_goldmenorah":[520,668],"hk_dove":[520,502],"hk_dreidelbow":[460,822]});
 const HK = ["Hanukkah"];
@@ -2849,9 +2902,12 @@ const BB_LETTERING = [
 TEMPLATES.unshift(...BB_PICTURES);
 TEMPLATES.splice(TEMPLATES.reduce((a, t, i) => t.themed ? i : a, -1) + 1, 0, ...BB_LETTERING);
 
-const SHEET_PRICE = 29;   // per sheet - keep equal to the Custom Label Sheet variant prices in Shopify
+// Prices shown in the designer. The real prices are the Shopify variants; keep these in step with them.
+// single[i] is the price of i+1 single labels.
+const PRICES = {sheet:29, single:[10, 16, 21, 25]};
+const SHEET_PRICE = PRICES.sheet;
 const state = {
-  age:50, rcounts:{}, mixAll:false, scopePicked:false, qty:1, want:"ready", hasReady:true, occKey:"", rall:false,
+  age:50, rcounts:{}, mixAll:false, scopePicked:false, qty:1, single:0, want:"ready", hasReady:true, occKey:"", rall:false,
   view:"label", wraps:[], lastWrap:"stripe",
   font:"classic", logo:null, rights:false, photo:null, prights:false, photoPos:"YMid",
   path:"ready", rocc:"birthday", ritem:0, rmode:"one", rnote:"",
@@ -2886,7 +2942,9 @@ function ageItems(n){
 const readyNow = () => { const r = READY.find(x => x.id === state.rocc); return r.id === "milestone" ? {...r, items:ageItems(state.age)} : r; };
 const readyWords = it => ({top:it[0], main:it[1], detail:state.rnote, msg:it[2], ready:true});
 const namesMode = () => state.path === "custom" && state.mode === "names";
-const perSheet = () => { const z = sizeNow(); return z.cols * z.rows; };
+const sheetHolds = () => { const z = sizeNow(); return z.cols * z.rows; };
+// Single labels: state.single is how many (0 = full sheets). Everything that counts labels then works from that number.
+const perSheet = () => state.single || sheetHolds();
 const num = (v, base) => typeof v === "function" ? v() : v * base;
 const colors = () => resolvePalette(state.pal < 0 ? customPalette(state.custom) : PALETTES[state.pal], state.dark);
 
@@ -2898,7 +2956,7 @@ function nameList(){
 const spanReady = () => state.path === "ready" && state.rmode === "mixed";
 const readyTarget = () => perSheet() * state.qty;
 function readyCounts(){
-  const key = state.rocc + "|" + state.size + "|" + state.qty + (state.rocc === "milestone" ? "|" + state.age : ""), n = readyNow().items.length, per = readyTarget();
+  const key = state.rocc + "|" + state.size + "|" + state.qty + (state.single ? "|s" + state.single : "") + (state.rocc === "milestone" ? "|" + state.age : ""), n = readyNow().items.length, per = readyTarget();
   if (!state.rcounts[key]){ const base = Math.floor(per / n), extra = per - base * n; state.rcounts[key] = Array.from({length:n}, (_, i) => base + (i < extra ? 1 : 0)); }
   return state.rcounts[key];
 }
@@ -3010,10 +3068,11 @@ function screen(){
   if (photoUsed() && !state.prights) return "Tick the box under your photo to confirm you can print it.";
   if (logoUsed() && !state.rights) return "Tick the box under your logo to confirm you can print it.";
   if (spanReady() && readyTotal() !== readyTarget()){
-    const d = readyTarget() - readyTotal(), what = state.qty > 1 ? `Your ${state.qty} sheets hold` : "Your sheet holds";
+    const d = readyTarget() - readyTotal(), what = state.single ? "You chose" : state.qty > 1 ? `Your ${state.qty} sheets hold` : "Your sheet holds";
     return d > 0 ? `${what} ${readyTarget()} labels. Add ${d} more under Choose your wording.` : `${what} ${readyTarget()} labels. Take ${-d} off under Choose your wording.`;
   }
   if (namesMode() && !list.length) return "Add at least one name to your list.";
+  if (state.single && namesMode() && list.length !== state.single) return `Your list has ${list.length} ${list.length === 1 ? "name" : "names"} and you chose ${state.single} ${state.single === 1 ? "label" : "labels"}. Change the number under How many, or choose a full sheet.`;
   if (needScope()) return `You're ordering ${state.qty} sheets. Under Choose your wording, choose whether every sheet is the same or different.`;
   const text = list.map(w => FIELDS.map(f => w[f.id] || "").join(" ")).join(" ").toLowerCase();
   const whole = b => new RegExp("(^|[^a-zà-ÿ])" + b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^a-zà-ÿ]|$)").test(text);   // whole words only, so names like Annike still print
@@ -3271,11 +3330,14 @@ function buildModes(){
     $("scopeq").innerHTML = `You're ordering ${q} sheets. Should they match?` + (open ? ` <span class="ask-tag">Choose one</span>` : "");
     $("mixscope").innerHTML = chip("repeat", `Every sheet the same<small>Write ${per} labels. We print that sheet ${q} times.</small>`, !open && !state.mixAll)
       + chip("all", `Every sheet different<small>Write all ${q * per} labels, ${per} to a sheet.</small>`, !open && state.mixAll);
-    $("mixhint").textContent = q < 2
+    $("mixhint").textContent = state.single ? (state.single > 1 ? `You have ${state.single} labels to write. Type a label's words below, then tap Next label.` : "Type your label's words below.") : q < 2
       ? `One sheet holds ${per} labels. Type a label's words below, then tap Next label. Want more than ${per} different labels? Add sheets in step 2.`
       : state.mixAll ? `${q} sheets of ${per} gives you ${q * per} labels to write. Type a label's words below, then tap Next label.`
       : open ? "Type a label's words below, then tap Next label."
       : `Type a label's words below, then tap Next label. ${q === 2 ? "Both" : "All " + q} sheets print the same ${per} labels.`; }
+  $("howmany").innerHTML = chip("sheet", `Full sheets<small>${sheetHolds()} labels a sheet · $${PRICES.sheet}</small>`, !state.single) + chip("single", `Just a few labels<small>1 to ${PRICES.single.length} labels · from $${PRICES.single[0]}</small>`, !!state.single);
+  $("singlewrap").hidden = !state.single;
+  $("singleqty").innerHTML = PRICES.single.map((p, i) => `<option value="${i + 1}"${i + 1 === state.single ? " selected" : ""}>${i + 1} ${i ? "labels" : "label"} · $${p}</option>`).join("");
   buildQty();
 }
 function buildQty(){
@@ -3321,10 +3383,10 @@ const UI_DEPS = [   // in dependency order: sizes sets W/H, templates may reassi
   [() => buildOccasions(), () => [state.group, state.sub].join("|")],
   [() => buildTemplates(), () => [state.group, state.sub, state.size, !!state.logo, !!state.photo].join("|")],
   [() => buildPath(),      () => [state.path, state.hasReady, state.rocc, state.age].join("|")],
-  [() => buildReady(),     () => [state.rocc, state.rmode, state.age, state.size, state.qty, readyTotal(), !!(tplById(state.tpl) || {}).number].join("|")],
+  [() => buildReady(),     () => [state.rocc, state.rmode, state.age, state.size, state.qty, state.single, readyTotal(), !!(tplById(state.tpl) || {}).number].join("|")],
   [() => buildSwatches(),  () => [state.pal, state.custom, state.dark].join("|")],
   [() => buildFonts(),     () => state.font],
-  [() => buildModes(),     () => [state.mode, state.qty, state.size, state.mixAll, state.scopePicked, state.nameField, state.path, state.rmode].join("|")],
+  [() => buildModes(),     () => [state.mode, state.qty, state.single, state.size, state.mixAll, state.scopePicked, state.nameField, state.path, state.rmode].join("|")],
   [() => buildLogo(),      () => [state.logo && state.logo.url, state.rights].join("|")],
   [() => buildPhoto(),     () => [state.photo && state.photo.url, state.prights, state.photoPos].join("|")],
   [() => buildViews(),     () => state.view],
@@ -3401,7 +3463,7 @@ function render(){
       $("labnext").textContent = state.sel === n - 1 ? "All done" : "Next label";
     }
   }
-  $("qtywrap").hidden = namesMode();
+  $("qtywrap").hidden = namesMode() || !!state.single;
   buildQty();
   { const q = state.qty, tot = q * per, sh = q === 1 ? "1 sheet" : q + " sheets", note = $("qtynote");
     note.hidden = false;
@@ -3411,7 +3473,7 @@ function render(){
       $("pallock").hidden = !lk;
       $("pallocktext").textContent = lk === "colors" ? "This design keeps its own colors so it always matches the artwork. Your words and lettering can still change."
         : "This design's artwork needs a light background, so the dark option is off. Your color choice still changes the words.";
-      const fixedHead = !t.zones.main;
+      const fixedHead = !t.zones.main && !t.names;   // designs that draw the names themselves still take any wording
       off("rgrid", false); $("saylock").hidden = !fixedHead; $("fieldlock").hidden = !fixedHead;   // sayings stay selectable on art-headline designs; the saying's main line just has no zone and drops out
     }
     $("palhint").hidden = !(t.fillBg || t.picture) || !!(t.tint && t.tint.lock);
@@ -3431,6 +3493,11 @@ function render(){
       : everySheet() ? "Every label is its own. You'll write each one under Choose your wording."
       : multi ? (q > 1 ? (needScope() ? "Under Choose your wording, tell us whether every sheet is the same or different." : `Each sheet is a copy of the first. <button type="button" class="linkbtn" id="qtydiff">Make every sheet different</button>`) : "Add a sheet for a copy of this one, or to write more labels.")
       : `All ${tot} labels will match. Want each label different? Choose that under Choose your wording.`);
+    if (state.single){ const n = state.single, price = PRICES.single[n - 1], top = n === PRICES.single.length;
+      note.innerHTML = `<strong>${n} ${n === 1 ? "label" : "labels"} · $${price}.</strong> ` + (top ? `A full sheet of ${sheetHolds()} is only $${PRICES.sheet - price} more. <button type="button" class="linkbtn" id="tosheet">Get the full sheet</button>`
+        : n === 1 ? `Need ${PRICES.single.length + 1} or more? A full sheet of ${sheetHolds()} is $${PRICES.sheet}.` : multi ? "Each one can be different. Write them under Choose your wording." : "They'll all match. Want each one different? Choose that under Choose your wording.");
+      $("ordersum").innerHTML = `<strong>${n} ${n === 1 ? "label" : "labels"} · $${price}</strong>`;
+      $("pernote").innerHTML = `Single ${sizeNow().name.toLowerCase()} labels (${sizeNow().label}), printed to order.`; }
   }
   $("approvetext").textContent = multi ? "I checked every label. Print them exactly as shown." : "I checked the spelling and layout. Print it exactly as shown.";
 
@@ -3498,7 +3565,7 @@ async function showWrap(w){
 /* ---------- hand-off to the store: save a design, restore it, and lay out its print pages ----------
    exportDesign() is what the storefront sends when the customer adds to cart.
    applyDesign() and printPages() are what the print service runs after the order is paid. */
-const DESIGN_KEYS = ["size","qty","group","sub","tpl","pal","custom","dark","font","path","want","rocc","ritem","rmode","rcounts","age","rnote","words","mode","mix","mixAll","names","nameField","photoPos","wraps"];
+const DESIGN_KEYS = ["size","qty","group","sub","tpl","pal","custom","dark","font","path","want","rocc","ritem","rmode","rcounts","age","rnote","words","mode","mix","mixAll","names","nameField","photoPos","wraps","single"];
 function exportDesign(){
   const d = {v:1};
   DESIGN_KEYS.forEach(k => d[k] = JSON.parse(JSON.stringify(state[k])));
@@ -3513,6 +3580,7 @@ function exportDesign(){
 }
 function applyDesign(d){
   DESIGN_KEYS.forEach(k => { if (k in d) state[k] = JSON.parse(JSON.stringify(d[k])); });
+  state.single = Math.max(0, Math.min(PRICES.single.length, +d.single || 0)); if (state.single) state.qty = 1;
   state.logo = d.logo ? {...d.logo, url:d.logo.data} : null; state.rights = !!d.logo;
   state.photo = d.photo ? {...d.photo, url:d.photo.data} : null; state.prights = !!d.photo;
   setSize(sizeNow()); Object.assign(F, fontNow().f);
@@ -3523,7 +3591,8 @@ function applyDesign(d){
   $("stage").classList.remove("idle"); render();
 }
 // One standalone SVG per distinct sheet, with cut guides removed. copies is how many times to print the set.
-function printPages(){
+function printPages(opts = {}){
+  if (state.single && opts.singles !== "sheet") return piecePages(labelItems(opts.tag));   // single labels print one piece per page unless sheets are asked for
   makeSheets();
   const sz = sizeNow(), sheets = [...$("sheets").querySelectorAll("svg.sheet")], per = perSheet(), list = labels();
   const repeats = namesMode() || list.length > per ? 1 : state.qty;
@@ -3536,6 +3605,57 @@ function printPages(){
   });
   $("output").hidden = true;
   return {widthIn:sz.sw / 100, heightIn:sz.sh / 100, copies:repeats, labelsPerSheet:per, pages, problem:screen() || ""};
+}
+// ---------- single labels on quarter-sheet pieces ----------
+// A piece is a quarter of a letter sheet (4.25 x 5.5 in) with the label centred on it, matching the Cricut cut files.
+// Champagne is turned upright to fit; minis sit two to a piece. Each page of the PDF is one piece.
+const PIECE = {w:425, h:550, gap:25};
+function pieceLayout(){
+  const rot = W > 380, fw = rot ? H : W, fh = rot ? W : H, k = W < 230 && H < 230 ? 2 : 1, block = k * fh + (k - 1) * PIECE.gap;
+  return {rot, fw, fh, k, x:(PIECE.w - fw) / 2, y:(PIECE.h - block) / 2};
+}
+// The labels of the design now loaded, as items ready to place: inner drawing, bleed color and an optional order tag.
+function labelItems(tag){
+  makeSheets();
+  const t = tplById(state.tpl), c = colors(), bg = (t.tint ? t.tint(c) : c).bg, out = [];
+  $("sheets").querySelectorAll("svg.sheet > svg").forEach(el => out.push({inner:el.innerHTML, bg, tag:tag || ""}));
+  $("output").hidden = true;
+  return out;
+}
+function piecePages(items){
+  const L = pieceLayout(), pages = [], slots = [];
+  for (let i = 0; i < items.length; i += L.k){
+    const part = items.slice(i, i + L.k); let body = `<rect width="${PIECE.w}" height="${PIECE.h}" fill="#ffffff"/>`;
+    part.forEach((it, j) => { const x = L.x, y = L.y + j * (L.fh + PIECE.gap);
+      const art = `<rect x="${-BLEED}" y="${-BLEED}" width="${W + 2 * BLEED}" height="${H + 2 * BLEED}" fill="${it.bg}"/><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${it.inner}</svg>`;
+      body += L.rot ? `<g transform="translate(${x + L.fw} ${y}) rotate(90)">${art}</g>` : `<g transform="translate(${x} ${y})">${art}</g>`;
+      slots.push({page:pages.length + 1, pos:j + 1, tag:it.tag}); });
+    const tags = [...new Set(part.map(it => it.tag).filter(Boolean))].join(" / ");
+    if (tags) body += `<text x="${PIECE.w / 2}" y="${PIECE.h - 14}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#777">${esc(tags)}</text>`;   // on the backing, outside the label
+    const arts = [...new Set(body.match(/#(?:art|xm)-[\w-]+/g) || [])].map(x => x.slice(1));
+    pages.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${PIECE.w / 100}in" height="${PIECE.h / 100}in" viewBox="0 0 ${PIECE.w} ${PIECE.h}"><defs>${WC_DEFS}${arts.map(id => $(id) ? $(id).outerHTML : "").join("")}</defs>${body}</svg>`);
+  }
+  return {widthIn:PIECE.w / 100, heightIn:PIECE.h / 100, copies:1, labelsPerSheet:L.k, cols:1, pieces:true, pages, slots, problem:screen() || ""};
+}
+// Single labels from several orders, laid out together on full sheets. designs: [{design, tag}], all for one bottle size.
+// Returns print pages like printPages(), plus slots: which order's label sits in which position.
+function gangPages(designs, singles){
+  if (singles !== "sheet"){ const all = []; designs.forEach(({design, tag}) => { applyDesign(design); all.push(...labelItems(tag)); }); return piecePages(all); }
+  const items = [];
+  designs.forEach(({design, tag}) => { applyDesign(design); makeSheets();
+    const t = tplById(state.tpl), c = colors(), bg = (t.tint ? t.tint(c) : c).bg;
+    $("sheets").querySelectorAll("svg.sheet > svg").forEach(el => items.push({inner:el.innerHTML, bg, tag})); });
+  $("output").hidden = true;
+  const sz = sizeNow(), hold = sheetHolds(), pages = [], slots = [];
+  for (let i = 0; i < items.length; i += hold){
+    const cell = k => [sz.left + (k % sz.cols) * (W + sz.gx), sz.top + Math.floor(k / sz.cols) * (H + sz.gy)], part = items.slice(i, i + hold);
+    let body = `<rect width="${sz.sw}" height="${sz.sh}" fill="#ffffff"/>`;
+    part.forEach((it, k) => { const [x, y] = cell(k); body += `<rect x="${x - BLEED}" y="${y - BLEED}" width="${W + 2 * BLEED}" height="${H + 2 * BLEED}" fill="${it.bg}"/>`; });
+    part.forEach((it, k) => { const [x, y] = cell(k); body += `<svg x="${x}" y="${y}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${it.inner}</svg>`; slots.push({page:pages.length + 1, pos:k + 1, tag:it.tag}); });
+    const arts = [...new Set(body.match(/#(?:art|xm)-[\w-]+/g) || [])].map(x => x.slice(1));
+    pages.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${sz.sw / 100}in" height="${sz.sh / 100}in" viewBox="0 0 ${sz.sw} ${sz.sh}"><defs>${WC_DEFS}${arts.map(id => $(id) ? $(id).outerHTML : "").join("")}</defs>${body}</svg>`);
+  }
+  return {widthIn:sz.sw / 100, heightIn:sz.sh / 100, copies:1, labelsPerSheet:hold, cols:sz.cols, pages, slots, problem:""};
 }
 const GHOST = "Your name here";
 function markGhost(svg){
@@ -3602,7 +3722,7 @@ function makeSheets(){
   if (logoUsed()) rows.push(["Logo", `${state.logo.name} · ` + (state.logo.vector ? "vector file" : `${state.logo.w} × ${state.logo.h} px`) + " · customer confirmed permission"]);
   rows.push(
     ["Label stock", sz.stock + " · " + sz.label],
-    ["Quantity", sheets + (sheets === 1 ? " sheet" : " sheets") + " · " + (namesMode() ? list.length : sheets * per) + " labels"],
+    ["Quantity", state.single ? state.single + (state.single === 1 ? " single label" : " single labels") : sheets + (sheets === 1 ? " sheet" : " sheets") + " · " + (namesMode() ? list.length : sheets * per) + " labels"],
     ["Proof", "Approved by customer " + new Date().toLocaleString([], {dateStyle:"medium", timeStyle:"short"})]);
   $("ticket").innerHTML = rows.map(r => `<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join("");
   $("output").hidden = false;
@@ -3696,6 +3816,11 @@ function fillNamesToSheet(){ const per = perSheet(), cur = nameList(); if (!cur.
 document.addEventListener("click", e => { if (e.target.id === "fillnames"){ const n = $("names"); n.focus(); try { n.setSelectionRange(n.value.length, n.value.length); } catch {} n.scrollIntoView({block:"center"}); } });
 document.addEventListener("click", e => { if (e.target.id === "fillrepeat"){ fillNamesToSheet(); } });
 $("rnote").addEventListener("input", e => { state.rnote = e.target.value; changed(); });
+// Full sheets or just a few labels. Panels that count labels rebuild through their state.single dependency keys.
+function setSingle(n){ state.single = n; if (n) state.qty = 1; state.sel = 0; if (state.mode === "mix") syncMix(); changed(); }
+pick("howmany", ".chip", b => setSingle(b.dataset.id === "single" ? (state.single || 1) : 0));
+$("singleqty").addEventListener("change", e => setSingle(+e.target.value));
+document.addEventListener("click", e => { if (e.target.id === "tosheet") setSingle(0); });
 pick("groups", ".chip", b => { state.group = b.dataset.id; state.sub = 0; state.want = "ready"; applyOccasion(); });
 pick("subs", ".chip", b => { state.sub = +b.dataset.id; state.want = "ready"; applyOccasion(); });
 pick("templates", ".tpl", b => { state.tpl = b.dataset.id; state.tplPicked = true; changed(); });

@@ -34,10 +34,25 @@ async function openDesigner(page) {
 
 // One render at a time. A small Render instance does not have the memory for several browsers pages at once.
 let queue = Promise.resolve();
-export function renderDesign(design) {
-  const job = queue.then(() => renderNow(design));
+export function renderDesign(design, opts = {}) {
+  const job = queue.then(() => renderNow(design, false, opts));
   queue = job.catch(() => {});
   return job;
+}
+// Several orders' single labels on shared sheets, with a pick list as the last page. items: [{design, tag}], one bottle size.
+export function renderGang(items) {
+  const job = queue.then(() => renderNow(items, true, {}));
+  queue = job.catch(() => {});
+  return job;
+}
+// The pick list: which positions on which sheet belong to which order. Positions count left to right, top to bottom.
+function pickList(out) {
+  const W = out.widthIn * 100, H = out.heightIn * 100, runs = [];
+  for (const s of out.slots) { const r = runs[runs.length - 1]; if (r && r.tag === s.tag && r.page === s.page) r.to = s.pos; else runs.push({ page: s.page, from: s.pos, to: s.pos, tag: s.tag }); }
+  const esc = t => String(t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const rows = runs.map((r, i) => `<text x="60" y="${150 + i * 26}" font-size="16">Sheet ${r.page} · ${r.from === r.to ? "position " + r.from : "positions " + r.from + " to " + r.to} · ${esc(r.tag)}</text>`).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${out.widthIn}in" height="${out.heightIn}in" viewBox="0 0 ${W} ${H}" font-family="Helvetica, Arial, sans-serif" fill="#111"><rect width="${W}" height="${H}" fill="#fff"/>`
+    + `<text x="60" y="80" font-size="26" font-weight="bold">Single labels: pick list</text><text x="60" y="108" font-size="13">Print this page on plain paper. Positions count left to right, top to bottom (${out.cols} across).</text>${rows}</svg>`;
 }
 
 // ---------- a designer page kept open between design checks ----------
@@ -77,7 +92,10 @@ export function warmUp() {
   designerPage().catch(err => { lastWarmFail = Date.now(); console.warn("warm-up failed:", err.message); });
 }
 
-async function renderNow(design) {
+// SINGLES_OUTPUT=pieces (default): single labels print one quarter-sheet piece (4.25 x 5.5 in) per page.
+// SINGLES_OUTPUT=sheet: single labels print onto full label sheets, as before.
+const SINGLES = process.env.SINGLES_OUTPUT === "sheet" ? "sheet" : "pieces";
+async function renderNow(design, gang = false, opts = {}) {
   dropWarmPage();                      // a PDF render (photos especially) needs the whole small instance; the next health check re-warms
   const browser = await getBrowser();
   const page = await browser.newPage();
@@ -90,8 +108,10 @@ async function renderNow(design) {
         new Promise(r => setTimeout(r, 12000))
       ]);
     });
-    const out = await page.evaluate(d => { applyDesign(d); return printPages(); }, design);
+    const out = await page.evaluate((d, g, singles, tag) => { if (g) return gangPages(d, singles); applyDesign(d); return printPages({ singles, tag }); }, design, gang, SINGLES, opts.tag || "");
     if (!out.pages.length) throw new Error("The design produced no print pages.");
+    const sheets = out.pages.length;
+    if (gang && !out.pieces) out.pages.push(pickList(out));   // pieces carry their order number on the backing, so they need no pick list
 
     // Lay the sheets out one per PDF page, at the exact sheet size, with no browser margins.
     await page.evaluate(o => {
@@ -121,7 +141,7 @@ async function renderNow(design) {
       width: out.widthIn + "in", height: out.heightIn + "in",
       printBackground: true, preferCSSPageSize: true, margin: { top: 0, right: 0, bottom: 0, left: 0 }
     });
-    return { pdf: Buffer.from(pdf), pages: out.pages.length, copies: out.copies, labelsPerSheet: out.labelsPerSheet,
+    return { pdf: Buffer.from(pdf), sheets, pieces: !!out.pieces, slots: out.slots || null, pages: out.pages.length, copies: out.copies, labelsPerSheet: out.labelsPerSheet,
              widthIn: out.widthIn, heightIn: out.heightIn, problem: out.problem };
   } finally {
     await page.close().catch(() => {});

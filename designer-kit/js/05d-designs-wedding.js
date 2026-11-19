@@ -70,3 +70,50 @@ const WD_LETTERING = [
 const WD_NUMBERS = WD_PICTURES.splice(-2);   // the two number designs also serve birthdays, where they should not lead the list
 TEMPLATES.unshift(...WD_PICTURES);
 TEMPLATES.splice(TEMPLATES.reduce((a, t, i) => t.themed ? i : a, -1) + 1, 0, ...WD_NUMBERS, ...WD_LETTERING);
+
+/* ---------- Minimal wedding designs: the couple's names, stacked ---------- */
+// The headline is drawn here, not by a text zone, so it can sit on two lines. It still follows the lettering choice and shrinks to fit.
+// "Emma & Jack", "Emma + Jack" or "Emma and Jack" split at the joining word; any other phrase splits into two even lines.
+function nmSplit(v){
+  v = String(v || "").trim(); if (!v) return [];
+  const m = v.match(/^(.+?)\s*(&|\+|\band\b)\s*(.+)$/i); if (m) return [m[1], /and/i.test(m[2]) ? "&" : m[2], m[3]];
+  const ws = v.split(/\s+/); if (ws.length < 2) return [v];
+  let best = 1, d = 1e9; for (let i = 1; i < ws.length; i++){ const q = Math.abs(ws.slice(0, i).join(" ").length - ws.slice(i).join(" ").length); if (q < d){ d = q; best = i; } }
+  return [ws.slice(0, best).join(" "), "", ws.slice(best).join(" ")];
+}
+const nmHead = () => { const fs = fontNow(), hd = fs.head; return {fam:hd.font, k:hd.script ? fs.scale : .74 * (hd.scale || 1), upper:!hd.script && !!hd.upper, ls:hd.script ? 0 : (hd.ls || 0), weight:hd.weight || 400, italic:!hd.script && !!hd.italic}; };
+const nmText = (v, x, y, size, w, o, fill) => `<text x="${n1(x)}" y="${n1(y)}" text-anchor="middle" font-family="${o.fam}" font-size="${n1(size)}" font-weight="${o.weight || 400}"${o.italic ? ' font-style="italic"' : ""} fill="${fill}"`
+  + ` data-fit="${n1(w)}" data-size="${n1(size)}"${o.ls ? ` style="letter-spacing:${o.ls}em"` : ""}>${esc(o.upper ? v.toUpperCase() : v)}</text>`;
+// Two names (or two lines) around a center line, with the joining mark between them.
+function nmStack(words, c, cx, cy, sz, w, o, sepO, lean = 0){
+  const p = nmSplit(words && words.main); if (!p.length) return "";
+  if (p.length === 1) return nmText(p[0], cx, cy + .3 * sz, sz, w, o, c.ink);
+  if (!p[1]) return nmText(p[0], cx, cy - .2 * sz, sz, w, o, c.ink) + nmText(p[2], cx, cy + .85 * sz, sz, w, o, c.ink);
+  return nmText(p[0], cx - lean, cy - .62 * sz, sz, w, o, c.ink) + nmText(p[1], cx, cy + .14 * sz, sz * (sepO.k || .5), w, sepO, c.ink) + nmText(p[2], cx + lean, cy + .98 * sz, sz, w, o, c.ink);
+}
+const nmDate = {font:F.serif, size:13, ls:.3, upper:true, weight:500};
+const nmZones = (top, detail, msg, w) => ({...(top ? {top:{y:() => top() * H, w:() => w() * .9, font:F.sans, size:10, ls:.3, upper:true}} : {}),
+  detail:{...nmDate, y:() => detail() * H, w:() => w() * .9}, msg:{y:() => msg() * H, w:() => w() * .9, font:F.serif, size:12, italic:true}});
+const nmArch = () => { const m = 10 * S, aw = wide() ? .6 * W : .8 * W, x0 = (W - aw) / 2, r = aw / 2; return {m, aw, x0, r}; };
+const NM_DESIGNS = [
+  {id:"nm-stack", name:"Stacked Names", subs:WD_ALL, names:true, uses:["main"], flow:false,
+   art:(c, words) => { const o = nmHead(), sz = (wide() ? .17 : .16) * H * o.k; return nmStack(words, c, W / 2, (wide() ? .45 : .44) * H, sz, .8 * W, o, {...o, k:.5}, .04 * W); },
+   zones:nmZones(() => .1, () => .8, () => .91, () => .84 * W)},
+  {id:"nm-caps", name:"Names in Capitals", subs:WD_ALL, names:true, uses:["main"], flow:false,
+   art:(c, words) => { const fs = fontNow(), o = {fam:fs.f.serif, upper:true, ls:.16, weight:500}, sz = (wide() ? .115 : .1) * H, cy = (wide() ? .44 : .43) * H, hw = (wide() ? .16 : .22) * W;
+     const rule = y => `<line x1="${n1(W / 2 - hw)}" y1="${n1(y)}" x2="${n1(W / 2 + hw)}" y2="${n1(y)}" stroke="${c.a}" stroke-width="${n1(S)}"/>`;
+     return rule(cy - 1.75 * sz) + nmStack(words, c, W / 2, cy - .1 * sz, sz, .8 * W, o, {fam:fs.f.serif, italic:true, k:.62}) + rule(cy + 1.5 * sz); },
+   zones:nmZones(() => .1, () => (wide() ? .8 : .78), () => .91, () => .84 * W)},
+  {id:"nm-initials", name:"Script Initials", subs:WD_ALL, names:true, uses:["main"], flow:false,
+   art:(c, words) => { const p = nmSplit(words && words.main), o = nmHead(), fs = fontNow(), sz = (wide() ? .36 : .3) * H * o.k, cy = (wide() ? .46 : .4) * H, a = (p[0] || "").trim().charAt(0).toUpperCase(), b = (p[2] || "").trim().charAt(0).toUpperCase(), g = .2 * (wide() ? H * 1.1 : W);
+     const small = {fam:fs.f.sans, upper:true, ls:.3, weight:400}, both = p.length === 3 && p[1];
+     return (both ? nmText(a, W / 2 - g, cy, sz, .3 * W, o, c.ink) + `<line x1="${n1(W / 2)}" y1="${n1(cy - .62 * sz)}" x2="${n1(W / 2)}" y2="${n1(cy + .12 * sz)}" stroke="${c.a}" stroke-width="${n1(1.1 * S)}"/>` + nmText(b, W / 2 + g, cy, sz, .3 * W, o, c.ink)
+       : nmText(a, W / 2, cy, sz, .4 * W, o, c.ink)) + nmText(String((words && words.main) || "").trim(), W / 2, cy + .52 * sz + 10 * S, sm(11 * S * 1.2), .8 * W, small, c.ink); },
+   zones:nmZones(() => .1, () => (wide() ? .82 : .78), () => .92, () => .84 * W)},
+  {id:"nm-arch", name:"Arch & Names", subs:WD_ALL, names:true, uses:["main"], flow:false,
+   art:(c, words) => { const q = nmArch(), o = nmHead(), sz = (wide() ? .15 : .13) * H * o.k, i = 4 * S;
+     const arch = (x0, r, top, sw) => `<path d="M${n1(x0)} ${n1(H - q.m - (top - q.m))} V${n1(top + r)} A${n1(r)} ${n1(r)} 0 0 1 ${n1(x0 + 2 * r)} ${n1(top + r)} V${n1(H - q.m - (top - q.m))} Z" fill="none" stroke="${c.a}" stroke-width="${n1(sw)}"/>`;
+     return arch(q.x0, q.r, q.m, 1.3 * S) + arch(q.x0 + i, q.r - i, q.m + i, .6 * S) + nmStack(words, c, W / 2, (wide() ? .47 : .46) * H, sz, .8 * q.aw, o, {...o, k:.5}); },
+   zones:nmZones(null, () => (wide() ? .78 : .76), () => .87, () => .8 * nmArch().aw)}
+];
+TEMPLATES.splice(TEMPLATES.findIndex(t => t.id === "wd-wreath") + 1, 0, ...NM_DESIGNS);
