@@ -110,6 +110,18 @@ PDFs from the test land in `test/out`. Without `SHOPIFY_SHOP` and the app's Clie
 - `src/fonts.js` — bundled fonts
 - `test/local-test.js` — local checks
 
+## Printing full sheets (P700)
+
+Full-sheet PDFs are laid out edge to edge for the die-cut label stock (champagne OL550 tiles the
+whole 8.5 x 11 sheet with no margins), so the printer must be allowed to print to the paper edge:
+
+- Paper size: **US Letter (Borderless, Retain Size)** — never "Auto Expand", which enlarges the
+  image ~2-3% and misaligns the die-cuts.
+- Scale: **100% / Actual Size** — never "Scale to fit". Preview and Adobe default to fit, which
+  shrinks the page ~95%, leaves a ~1/4 in white border, and misregisters every label.
+- After printing, the label edges should sit exactly on the die-cut outlines with no white strip
+  at any paper edge.
+
 ## Single labels
 
 Customers can order 1 to 4 single labels instead of a sheet. These print on quarter-sheet pieces (4.25 x 5.5 in), one piece per PDF page, with the order number printed small on the backing. Blanks are cut in house with the Cricut cut files, then trimmed into quarters.
