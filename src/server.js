@@ -63,30 +63,52 @@ app.post("/webhooks/orders-paid", express.raw({ type: "*/*", limit: "5mb" }), as
   // instance dies mid-render, the next boot finds the saved notice and finishes the job.
   try { await saveTodo(order.id, { tries: 0, order }); } catch (err) { console.error("could not save order notice", err); }
   res.sendStatus(200);                                           // answer Shopify quickly, then do the work
-  handlePaidOrder(order)
-    .then(() => clearTodo(order.id))                             // kept on failure: the next boot retries it
+  withOrderLock(order.id, () => handlePaidOrder(order))
+    .then(() => clearTodo(order.id))                             // kept on failure: the sweep below retries it
     .catch(err => console.error("order " + order?.id + " failed", err));
 });
 
-// Finish any order a crash or restart interrupted. Runs once, shortly after boot. A job that has
-// already killed the instance twice is not tried a third time — it is flagged on the order and
-// cleared, so one impossible render can never hold the service in a crash loop.
-setTimeout(async () => {
-  const todos = await listTodos();
-  if (!todos.length) return;
-  console.log(`resuming ${todos.length} interrupted order notice(s)`);
-  for (const t of todos) {
-    const order = t.order || t, tries = t.tries || 0;            // t.order since the tries counter; bare order before it
-    if (tries >= 2) {
-      console.error(`order ${order.name || order.id}: gave up after ${tries} interrupted attempts`);
-      await flagOrder(order.admin_graphql_api_id, "The print file could not be made here (the attempt was interrupted twice — likely out of memory; render it with the admin link or on a larger instance).", order.note || "").catch(() => {});
-      await clearTodo(order.id); continue;
+// Finish any order a crash, restart, or failed line left behind. Sweeps shortly after boot and
+// then every ten minutes, so a render that failed under load (#70046's protocol timeout) is
+// tried again without waiting for a redeploy. A job that has already failed twice is not tried
+// a third time — it is flagged on the order and cleared, so one impossible render can never
+// hold the service in a crash loop.
+let sweeping = false;
+async function sweepTodos() {
+  if (sweeping) return;
+  sweeping = true;
+  try {
+    const todos = await listTodos();
+    if (!todos.length) return;
+    console.log(`resuming ${todos.length} interrupted order notice(s)`);
+    for (const t of todos) {
+      const order = t.order || t, tries = t.tries || 0;          // t.order since the tries counter; bare order before it
+      if (tries >= 2) {
+        console.error(`order ${order.name || order.id}: gave up after ${tries} interrupted attempts`);
+        await flagOrder(order.admin_graphql_api_id, "The print file could not be made here (the attempt failed twice — render it with the admin link, or check /log).", order.note || "").catch(() => {});
+        await clearTodo(order.id); continue;
+      }
+      await saveTodo(order.id, { tries: tries + 1, order }).catch(() => {});   // counted BEFORE the attempt, so a crash still counts
+      try { await withOrderLock(order.id, () => handlePaidOrder(order)); await clearTodo(order.id); console.log(`order ${order.name || order.id}: resumed and finished`); }
+      catch (err) { console.error(`order ${order.name || order.id}: resume failed`, err); }
     }
-    await saveTodo(order.id, { tries: tries + 1, order }).catch(() => {});   // counted BEFORE the attempt, so a crash still counts
-    try { await handlePaidOrder(order); await clearTodo(order.id); console.log(`order ${order.name || order.id}: resumed and finished`); }
-    catch (err) { console.error(`order ${order.name || order.id}: resume failed`, err); }
-  }
-}, 15000);
+  } finally { sweeping = false; }
+}
+setTimeout(sweepTodos, 15000);
+setInterval(sweepTodos, 600000);
+
+// One order at a time, per order: the creation and payment notices for the same order land
+// within a second of each other, and running them side by side split an order's lines between
+// two attach passes that then overwrote each other's links (#70023). The second delivery now
+// waits its turn, finds every line already marked done, and attaches nothing.
+const orderChains = new Map();   // order id -> tail of that order's work
+function withOrderLock(id, fn) {
+  const job = (orderChains.get(id) || Promise.resolve()).then(fn, fn);
+  let tail;
+  tail = job.catch(() => {}).then(() => { if (orderChains.get(id) === tail) orderChains.delete(id); });
+  orderChains.set(id, tail);
+  return job;
+}
 
 const inFlight = new Set();   // lines being worked on right now, so twin deliveries never double-print
 async function handlePaidOrder(order) {
@@ -102,7 +124,7 @@ async function handlePaidOrder(order) {
   console.log(`order notice accepted: ${order.name || order.id || "(test)"}, ${lines.length} label line(s)`);
   if (!lines.length) return;
   const orderGid = order.admin_graphql_api_id;
-  const files = [];
+  const files = [], failed = [];
   for (const { li, designId } of lines) {
     const key = `${order.id}_${li.id}`;
     if (await isDone(key)) continue;                             // Shopify can send the same notice more than once
@@ -125,10 +147,14 @@ async function handlePaidOrder(order) {
       await markDone(key, designId);
     } catch (err) {
       console.error("line " + li.id + " failed", err);
+      failed.push(li.title);
       await flagOrder(orderGid, `${li.title}: ${err.message}`, order.note || "").catch(() => {});
     } finally { inFlight.delete(key); }
   }
   if (files.length) { await attachToOrder(orderGid, files, order.note || ""); console.log(`order ${order.name || order.id}: ${files.length} PDF(s) attached`); }
+  // A failed line keeps the saved notice alive, so the ten-minute sweep tries the order again.
+  // Finished lines are marked done, so only the failed ones are redone.
+  if (failed.length) throw new Error(`${failed.length} label line(s) not finished: ${failed.join("; ")}`);
 }
 
 // ---------- 3. test links (need ADMIN_KEY) ----------

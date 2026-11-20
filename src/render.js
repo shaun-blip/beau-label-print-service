@@ -17,6 +17,7 @@ function getBrowser() {
     browserPromise = puppeteer.launch({
       executablePath: CHROME,
       headless: true,
+      protocolTimeout: 300000,   // a photo-heavy render on a busy day can pass the 180s default (#70046 did)
       args: ["--no-sandbox", "--disable-dev-shm-usage", "--font-render-hinting=none", "--allow-file-access-from-files"]
     }).then(b => { b.on("disconnected", () => { browserPromise = null; }); return b; })   // if Chrome ever exits, start a new one next time
       .catch(err => { browserPromise = null; throw err; });
@@ -33,15 +34,27 @@ async function openDesigner(page) {
 }
 
 // One render at a time. A small Render instance does not have the memory for several browsers pages at once.
+// A render that dies on a browser-level fault (protocol timeout, closed target) is given one more
+// go on a freshly started Chrome: the fault is almost always the browser's state, not the design's.
 let queue = Promise.resolve();
+async function renderOnce(arg, gang, opts) {
+  try { return await renderNow(arg, gang, opts); }
+  catch (err) {
+    if (!/timed out|protocol error|target closed|session closed|detached/i.test(String(err && err.message || err))) throw err;
+    console.warn(`render hit a browser fault (${err.message}) — restarting Chrome and trying once more`);
+    const p = browserPromise; browserPromise = null;
+    if (p) await p.then(b => b.close()).catch(() => {});
+    return await renderNow(arg, gang, opts);
+  }
+}
 export function renderDesign(design, opts = {}) {
-  const job = queue.then(() => renderNow(design, false, opts));
+  const job = queue.then(() => renderOnce(design, false, opts));
   queue = job.catch(() => {});
   return job;
 }
 // Several orders' single labels on shared sheets, with a pick list as the last page. items: [{design, tag}], one bottle size.
 export function renderGang(items) {
-  const job = queue.then(() => renderNow(items, true, {}));
+  const job = queue.then(() => renderOnce(items, true, {}));
   queue = job.catch(() => {});
   return job;
 }

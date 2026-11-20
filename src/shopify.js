@@ -73,7 +73,20 @@ export async function uploadPdf(filename, buffer) {
 // Puts the print files on the order: a metafield staff can click, a tag for filtering, and a line in the order note.
 // The three writes are tried independently, so one failing never hides the others; errors are reported together.
 export async function attachToOrder(orderGid, files, existingNote = "") {
-  const lines = files.map(f => `Label print file (${f.title}): ${f.url}  |  print ${f.copies} cop${f.copies === 1 ? "y" : "ies"} of ${f.pages} page${f.pages === 1 ? "" : "s"}`);
+  // Read what is already on the order first, and ADD to it. An order with two different label
+  // lines can attach in two passes (twin deliveries, or a retry after one line failed), and a
+  // plain write would replace the first pass's links with the second's — #70023 lost a sheet's
+  // link exactly that way. The live note is also read here: the one in the webhook payload is a
+  // snapshot from before any attach, so appending to it would drop earlier attach lines too.
+  try {
+    const cur = await gql(`query($id:ID!){ node(id:$id){ ... on Order { note metafield(namespace:"custom_labels",key:"print_files"){ value } } } }`, { id: orderGid });
+    const have = JSON.parse(cur.node?.metafield?.value || "[]");
+    if (Array.isArray(have)) files = [...have.filter(h => !files.some(f => String(f.lineItemId) === String(h.lineItemId))), ...files];
+    if (typeof cur.node?.note === "string") existingNote = cur.node.note;
+  } catch (e) { console.warn("could not read the order's existing print files — writing just the new ones:", e.message); }
+  const lines = files
+    .map(f => `Label print file (${f.title}): ${f.url}  |  print ${f.copies} cop${f.copies === 1 ? "y" : "ies"} of ${f.pages} page${f.pages === 1 ? "" : "s"}`)
+    .filter(l => !existingNote.includes(l.split("?")[0].split(": ").pop()));   // match on the stable file path, ?v= changes on re-upload
   const problems = [];
   const attempt = async (what, fn) => { try { await fn(); } catch (e) { problems.push(what + ": " + e.message); } };
   await attempt("metafield", async () => {
@@ -90,6 +103,9 @@ export async function attachToOrder(orderGid, files, existingNote = "") {
     const tag = await gql(`mutation($id:ID!,$tags:[String!]!){ tagsAdd(id:$id,tags:$tags){ userErrors{ field message } } }`,
       { id: orderGid, tags: ["labels-ready"] });
     userErrors(tag.tagsAdd, "Could not tag the order");
+    // A retry that finally worked should also clear the scare tag (removing an absent tag is a no-op).
+    await gql(`mutation($id:ID!,$tags:[String!]!){ tagsRemove(id:$id,tags:$tags){ userErrors{ field message } } }`,
+      { id: orderGid, tags: ["labels-problem"] }).catch(() => {});
   });
   await attempt("note", async () => {
     const note = [existingNote, ...lines].filter(Boolean).join("\n");
@@ -103,8 +119,16 @@ export async function attachToOrder(orderGid, files, existingNote = "") {
 export async function flagOrder(orderGid, message, existingNote = "") {
   // Tag first: the tag is how staff find problem orders, so it must land even if the note cannot.
   await gql(`mutation($id:ID!,$tags:[String!]!){ tagsAdd(id:$id,tags:$tags){ userErrors{ field message } } }`, { id: orderGid, tags: ["labels-problem"] });
+  // Read the live note (the payload's copy predates any attach lines), and don't repeat a
+  // problem line a retry already wrote — a failing line is now retried on a sweep, not just once.
+  try {
+    const cur = await gql(`query($id:ID!){ node(id:$id){ ... on Order { note } } }`, { id: orderGid });
+    if (typeof cur.node?.note === "string") existingNote = cur.node.note;
+  } catch {}
+  const line = "LABEL PRINT FILE PROBLEM: " + message;
+  if (existingNote.includes(line)) return;
   const upd = await gql(`mutation($input:OrderInput!){ orderUpdate(input:$input){ userErrors{ field message } } }`,
-    { input: { id: orderGid, note: [existingNote, "LABEL PRINT FILE PROBLEM: " + message].filter(Boolean).join("\n") } });
+    { input: { id: orderGid, note: [existingNote, line].filter(Boolean).join("\n") } });
   userErrors(upd.orderUpdate, "Could not update the order note");
 }
 
