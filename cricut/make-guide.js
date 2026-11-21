@@ -12,7 +12,7 @@ const PAGES = [
   { file: "mini", title: "Mini: 8 labels a sheet. Print at 100%, no scaling.",
     label: "1.9375 x 2.0938 in", group: "6.188 x 9.938 in", sit: "1.156 in from the left, 0.531 in from the top" },
 ];
-const NOTE = "All corners are square. Each file holds two groups: the label cuts (pass 1, kiss cut) and trim-quarters (pass 2, cut through — it is the full 8.5 x 11 cross, so place it flush with the mat's top-left corner, same corner as the sheet). Run both passes without taking the sheet off the mat: labels first, then the trim.";
+const NOTE = "All corners are square. Each file holds two groups: the label cuts (pass 1, kiss cut) and trim-quarters (pass 2, cut through). Alignment: duplicate the cross, attach one copy with the labels (pass 1) and keep one alone (pass 2) — each set measures 8.25 x 10.75. On the mat screen, drag the set all the way into the top-left corner and let Design Space stop it at its 1/4-inch margin: that IS the alignment, because the cross starts 1/4 inch in from the sheet edges. Put the sheet flush into the mat grid's top-left corner. Both passes, same corner, sheet never leaves the mat; labels first. The quarter cuts stop 1/4 inch short of the top and left sheet edges — snip those two tabs when separating.";
 
 const pages = PAGES.map((p, i) => {
   const svg = fs.readFileSync(`cricut/BeauBottles-cut-${p.file}.svg`, "utf8");
