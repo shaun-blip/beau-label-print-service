@@ -12,11 +12,11 @@ const PAGES = [
   { file: "mini", title: "Mini: 8 labels a sheet. Print at 100%, no scaling.",
     label: "1.9375 x 2.0938 in", group: "6.188 x 9.938 in", sit: "1.156 in from the left, 0.531 in from the top" },
 ];
-const NOTE = "All corners are square. One-file option: BeauBottles-cut-all.svg holds all three cut groups (17 x 22 in, within Design Space's 23.5 in limit) — upload it once, ungroup, and use the group you need. Check each group against the sizes above after ungrouping.";
+const NOTE = "All corners are square. Each file holds two groups: the label cuts (pass 1, kiss cut) and trim-quarters (pass 2, cut through — it is the full 8.5 x 11 cross, so place it flush with the mat's top-left corner, same corner as the sheet). Run both passes without taking the sheet off the mat: labels first, then the trim.";
 
 const pages = PAGES.map((p, i) => {
   const svg = fs.readFileSync(`cricut/BeauBottles-cut-${p.file}.svg`, "utf8");
-  const cuts = svg.match(/(<g id="labels-[^"]+">.*<\/g>)/)[1];
+  const cuts = svg.match(/(<g id="labels-[^"]+">.*?<\/g>)/)[1];   // the label group only; the guide draws the trim cross itself, in red
   return `<div class="pg">
     <svg viewBox="0 0 612 792" width="8.5in" height="11in">
       <line x1="306" y1="0" x2="306" y2="792" stroke="#e03131" stroke-width="0.75" stroke-dasharray="7 5"/>
@@ -25,7 +25,7 @@ const pages = PAGES.map((p, i) => {
     </svg>
     <div class="txt">
       <h1>${p.title}</h1>
-      <p>Black = Cricut cut lines (label ${p.label}). Red dashes = where you trim into quarters (4.25 x 5.5 in each).</p>
+      <p>Black = label kiss-cut lines (label ${p.label}). Red dashes = the trim-quarters group, second pass, cut through (four 4.25 x 5.5 in pieces).</p>
       <p>In Design Space the cut group should measure ${p.group} and sit ${p.sit} of the sheet.</p>
       ${i === 0 ? `<p class="note">${NOTE}</p>` : ""}
     </div>
