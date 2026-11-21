@@ -37,14 +37,25 @@ async function openDesigner(page) {
 // A render that dies on a browser-level fault (protocol timeout, closed target) is given one more
 // go on a freshly started Chrome: the fault is almost always the browser's state, not the design's.
 let queue = Promise.resolve();
+// A healthy page of label art is well under 1 MB; a page with photos can reach a few MB. A degraded
+// renderer can instead rasterize everything and hand back a gigabyte-size PDF (one batch download
+// hit 998 MB for 6 pages) — treat that like any other browser fault: restart Chrome, render again.
+function assertSane(out) {
+  const perPage = out.pdf.length / Math.max(1, out.sheets);
+  if (perPage > 20e6) {
+    const err = new Error(`PDF came out at ${(out.pdf.length / 1e6).toFixed(0)} MB for ${out.sheets} page(s) — renderer fault`);
+    err.rerender = true; throw err;
+  }
+  return out;
+}
 async function renderOnce(arg, gang, opts) {
-  try { return await renderNow(arg, gang, opts); }
+  try { return assertSane(await renderNow(arg, gang, opts)); }
   catch (err) {
-    if (!/timed out|protocol error|target closed|session closed|detached/i.test(String(err && err.message || err))) throw err;
+    if (!err.rerender && !/timed out|protocol error|target closed|session closed|detached/i.test(String(err && err.message || err))) throw err;
     console.warn(`render hit a browser fault (${err.message}) — restarting Chrome and trying once more`);
     const p = browserPromise; browserPromise = null;
     if (p) await p.then(b => b.close()).catch(() => {});
-    return await renderNow(arg, gang, opts);
+    return assertSane(await renderNow(arg, gang, opts));
   }
 }
 export function renderDesign(design, opts = {}) {
@@ -137,10 +148,23 @@ async function renderNow(design, gang = false, opts = {}) {
       const defs = document.querySelector("body > svg");            // shared artwork and filters stay available
       document.body.innerHTML = (defs ? defs.outerHTML : "") + o.pages.map(p => `<div class="pg">${p}</div>`).join("");
     }, out);
-    // Artwork ships as separate lazy files (data-href): set every href this print references and
-    // wait for the images to decode, or the PDF would print empty boxes where the art belongs.
+    // Artwork ships as separate lazy files (data-href): set the hrefs this print references and
+    // wait for those images to decode, or the PDF would print empty boxes where the art belongs.
+    // ONLY referenced artwork is activated: decoding the whole 400-file catalog on every render
+    // used to chew hundreds of MB and could wedge the renderer for minutes on the small instance.
+    // A #id reference always resolves to the artwork store (the document's FIRST holder of that id);
+    // the per-page <defs> duplicates are never painted, so they stay lazy and unloaded.
     await page.evaluate(async () => {
-      await Promise.all([...document.querySelectorAll("image")].map(el => {
+      const used = new Set((document.body.innerHTML.match(/#(?:art|xm)-[\w-]+/g) || []).map(s => s.slice(1)));
+      const store = document.querySelector("body > svg"), targets = new Set();
+      for (const id of used) {
+        const el = store && store.querySelector(`[id="${CSS.escape(id)}"]`);
+        if (!el) continue;
+        if (el.matches("image")) targets.add(el);          // most art IS a single <image>
+        el.querySelectorAll("image").forEach(i => targets.add(i));
+      }
+      document.querySelectorAll(".pg image").forEach(i => { if (!i.closest("defs")) targets.add(i); });
+      await Promise.all([...targets].map(el => {
         if (el.dataset && el.dataset.href && !el.getAttribute("href")) el.setAttribute("href", el.dataset.href);
         const href = el.getAttribute("href");
         if (!href || href.startsWith("data:")) return null;

@@ -214,7 +214,7 @@ app.get("/batch", admin, safe(async (req, res) => {
     const q = all.filter(e => e.size === size); if (!q.length) return `<section><strong>${SIZE_NAMES[size]}</strong><br><small>Nothing waiting.</small></section>`;
     const labels = q.reduce((a, e) => a + e.count * e.times, 0), upto = q.reduce((a, e) => e.at > a ? e.at : a, "");
     return `<section><strong>${SIZE_NAMES[size]}</strong>: ${labels} label${labels === 1 ? "" : "s"} from ${q.length} order line${q.length === 1 ? "" : "s"}<br><small>${q.map(e => e.order).join(", ")}</small><br>
-      <a class="b" href="/batch/${size}.pdf?key=${key}&upto=${encodeURIComponent(upto)}">Open the PDF</a>
+      <a class="b" target="_blank" rel="noopener" href="/batch/${size}.pdf?key=${key}&upto=${encodeURIComponent(upto)}">Open the PDF</a>
       <form method="post" action="/batch/${size}/done?key=${key}&upto=${encodeURIComponent(upto)}" style="display:inline"><button>Printed: clear these</button></form></section>`;
   });
   res.send(page(`<h1>Single labels to print</h1><p>Each PDF holds every waiting label for that bottle size. Every page is one quarter-sheet piece (4.25 x 5.5 in) with the order number printed on the backing.</p>${parts.join("")}`));
@@ -227,13 +227,24 @@ async function batchItems(size, upto) {
   }
   return items;
 }
+// The last batch PDF per size is kept in memory: opening the same link twice (or reloading the
+// tab) streams the finished file at once instead of rendering the whole gang again.
+const gangCache = new Map();
 app.get("/batch/:size.pdf", admin, safe(async (req, res) => {
   const items = await batchItems(req.params.size, req.query.upto);
   if (!items.length) return res.status(404).send("Nothing waiting for that size.");
-  const out = await renderGang(items);
-  res.set({ "Content-Type": "application/pdf", "X-Sheets": out.sheets, "X-Labels": out.slots.length }).send(out.pdf);
+  const key = `${req.query.upto || ""}|${items.length}`;
+  let hit = gangCache.get(req.params.size);
+  if (!hit || hit.key !== key) {
+    const out = await renderGang(items);
+    hit = { key, pdf: out.pdf, sheets: out.sheets, labels: out.slots.length };
+    gangCache.set(req.params.size, hit);
+  }
+  res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="single-labels-${req.params.size}.pdf"`,
+            "X-Sheets": hit.sheets, "X-Labels": hit.labels }).send(hit.pdf);
 }));
 app.post("/batch/:size/done", admin, safe(async (req, res) => {
+  gangCache.delete(req.params.size);   // those labels are printed; free the memory
   const n = await clearSingles(req.params.size, req.query.upto || new Date().toISOString());
   res.send(page(`<h1>Cleared</h1><p>${n} order line${n === 1 ? "" : "s"} cleared for ${SIZE_NAMES[req.params.size] || req.params.size}.</p><a class="b" href="/batch?key=${encodeURIComponent(req.query.key)}">Back</a>`));
 }));
