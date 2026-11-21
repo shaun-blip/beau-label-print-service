@@ -81,8 +81,13 @@ export async function attachToOrder(orderGid, files, existingNote = "") {
   try {
     const cur = await gql(`query($id:ID!){ node(id:$id){ ... on Order { note metafield(namespace:"custom_labels",key:"print_files"){ value } } } }`, { id: orderGid });
     const have = JSON.parse(cur.node?.metafield?.value || "[]");
-    if (Array.isArray(have)) files = [...have.filter(h => !files.some(f => String(f.lineItemId) === String(h.lineItemId))), ...files];
     if (typeof cur.node?.note === "string") existingNote = cur.node.note;
+    if (Array.isArray(have)) {
+      // a re-render replaces that line's entry; its old link also comes off the note, so staff can never print a stale file
+      const replaced = have.filter(h => files.some(f => String(f.lineItemId) === String(h.lineItemId)));
+      for (const r of replaced) if (r.url) existingNote = existingNote.split("\n").filter(l => !l.includes(String(r.url).split("?")[0])).join("\n");
+      files = [...have.filter(h => !files.some(f => String(f.lineItemId) === String(h.lineItemId))), ...files];
+    }
   } catch (e) { console.warn("could not read the order's existing print files — writing just the new ones:", e.message); }
   const lines = files
     .map(f => `Label print file (${f.title}): ${f.url}  |  print ${f.copies} cop${f.copies === 1 ? "y" : "ies"} of ${f.pages} page${f.pages === 1 ? "" : "s"}`)

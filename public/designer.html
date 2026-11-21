@@ -3597,15 +3597,35 @@ function printPages(opts = {}){
   makeSheets();
   const sz = sizeNow(), sheets = [...$("sheets").querySelectorAll("svg.sheet")], per = perSheet(), list = labels();
   const repeats = namesMode() || list.length > per ? 1 : state.qty;
+  // Full sheets carry 3 mm (0.12 in) of bleed on every side, so the PDF page is 8.74 x 11.24 in.
+  // The die-cut stock runs edge to edge, and Epson borderless "Retain Size" expects the data to
+  // overhang the paper by 3 mm so it can reach the edge WITHOUT scaling or shifting. Labels keep
+  // their exact positions on the paper; edge labels get their background color carried into the
+  // bleed. Print at 100% on paper size "US Letter (Borderless, Retain Size)".
+  const B = 12, bleedRect = (x, y, w, h, f) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"/>`;
   const pages = sheets.map(p => {
     const clone = p.cloneNode(true);
     clone.querySelectorAll(".guide").forEach(g => g.remove());
+    let bleed = "";
+    clone.querySelectorAll(":scope > svg").forEach(el => {
+      const x = +el.getAttribute("x") || 0, y = +el.getAttribute("y") || 0, w = +el.getAttribute("width") || 0, h = +el.getAttribute("height") || 0;
+      const bgEl = el.querySelector("rect"), bg = (bgEl && bgEl.getAttribute("fill")) || "#fff";
+      const atL = x <= 1, atT = y <= 1, atR = x + w >= sz.sw - 1, atB = y + h >= sz.sh - 1;
+      if (atL) bleed += bleedRect(-B, y, B, h, bg);
+      if (atR) bleed += bleedRect(sz.sw, y, B, h, bg);
+      if (atT) bleed += bleedRect(x, -B, w, B, bg);
+      if (atB) bleed += bleedRect(x, sz.sh, w, B, bg);
+      if (atL && atT) bleed += bleedRect(-B, -B, B, B, bg);
+      if (atR && atT) bleed += bleedRect(sz.sw, -B, B, B, bg);
+      if (atL && atB) bleed += bleedRect(-B, sz.sh, B, B, bg);
+      if (atR && atB) bleed += bleedRect(sz.sw, sz.sh, B, B, bg);
+    });
     let body = clone.innerHTML;
     const arts = [...new Set(body.match(/#(?:art|xm)-[\w-]+/g) || [])].map(x => x.slice(1));
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${sz.sw / 100}in" height="${sz.sh / 100}in" viewBox="0 0 ${sz.sw} ${sz.sh}"><defs>${WC_DEFS}${arts.map(id => $(id) ? $(id).outerHTML : "").join("")}</defs>${body}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${(sz.sw + 2 * B) / 100}in" height="${(sz.sh + 2 * B) / 100}in" viewBox="${-B} ${-B} ${sz.sw + 2 * B} ${sz.sh + 2 * B}"><defs>${WC_DEFS}${arts.map(id => $(id) ? $(id).outerHTML : "").join("")}</defs>${bleed}${body}</svg>`;
   });
   $("output").hidden = true;
-  return {widthIn:sz.sw / 100, heightIn:sz.sh / 100, copies:repeats, labelsPerSheet:per, pages, problem:screen() || ""};
+  return {widthIn:(sz.sw + 2 * B) / 100, heightIn:(sz.sh + 2 * B) / 100, copies:repeats, labelsPerSheet:per, pages, problem:screen() || ""};
 }
 // ---------- single labels on quarter-sheet pieces ----------
 // A piece is a quarter of a letter sheet (4.25 x 5.5 in) with the label centred on it, matching the Cricut cut files.

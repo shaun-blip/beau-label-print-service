@@ -169,11 +169,19 @@ const safe = fn => (req, res) => fn(req, res).catch(err => {
 app.get("/state", admin, safe(async (req, res) => res.json(await debugState())));   // which notices arrived, which lines finished
 app.get("/whoami", admin, safe(async (req, res) => res.json(await appInfo())));   // which app + which scopes the live token has
 app.get("/redo/:orderId", admin, safe(async (req, res) => {      // forget an order's done-marks so its next notice reprocesses
+  // ?lines=a,b clears only those line items — so sheets can be re-rendered without touching a
+  // singles line, whose re-run would put an already-printed label back on the batch queue.
   const { promises: fs } = await import("node:fs");
   const path = (await import("node:path")).default;
   const DIR = process.env.DATA_DIR || path.resolve("data");
+  const only = String(req.query.lines || "").split(",").filter(Boolean);
+  const prefix = "done_" + req.params.orderId.replace(/[^0-9]/g, "") + "_";
   let n = 0;
-  for (const f of await fs.readdir(DIR)) if (f.startsWith("done_" + req.params.orderId.replace(/[^0-9]/g, "") + "_")) { await fs.unlink(path.join(DIR, f)); n++; }
+  for (const f of await fs.readdir(DIR)) {
+    if (!f.startsWith(prefix)) continue;
+    if (only.length && !only.includes(f.slice(prefix.length).replace(/\.json$/, ""))) continue;
+    await fs.unlink(path.join(DIR, f)); n++;
+  }
   res.json({ cleared: n });
 }));
 app.get("/log", admin, (req, res) => res.type("text/plain").send(LOG.join("\n") || "(empty since boot)"));
