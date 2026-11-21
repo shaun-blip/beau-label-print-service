@@ -12,7 +12,7 @@ const PAGES = [
   { file: "mini", title: "Mini: 8 labels a sheet. Print at 100%, no scaling.",
     label: "1.9375 x 2.0938 in", group: "6.188 x 9.938 in", sit: "1.156 in from the left, 0.531 in from the top" },
 ];
-const NOTE = "All corners are square. One-file option: BeauBottles-cut-all.svg holds all three cut groups side by side — upload it once in Design Space, ungroup, and use the group you need.";
+const NOTE = "All corners are square. One-file option: BeauBottles-cut-all.svg holds all three cut groups (17 x 22 in, within Design Space's 23.5 in limit) — upload it once, ungroup, and use the group you need. Check each group against the sizes above after ungrouping.";
 
 const pages = PAGES.map((p, i) => {
   const svg = fs.readFileSync(`cricut/BeauBottles-cut-${p.file}.svg`, "utf8");
