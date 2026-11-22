@@ -116,7 +116,8 @@ export function warmUp() {
   designerPage().catch(err => { lastWarmFail = Date.now(); console.warn("warm-up failed:", err.message); });
 }
 
-// SINGLES_OUTPUT=pieces (default): single labels print one quarter-sheet piece (4.25 x 5.5 in) per page.
+// SINGLES_OUTPUT=pieces (default): single labels print on plain US Letter pages, four quarter-sheet
+// pieces (4.25 x 5.5 in) per page, matching the Cricut cut files that cut the labels and quarter the sheet.
 // SINGLES_OUTPUT=sheet: single labels print onto full label sheets, as before.
 const SINGLES = process.env.SINGLES_OUTPUT === "sheet" ? "sheet" : "pieces";
 async function renderNow(design, gang = false, opts = {}) {

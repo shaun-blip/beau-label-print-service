@@ -79,7 +79,7 @@ if (ids["27-single-3-champagne"] && ids["28-single-2-champagne-names"]) {
   let list = ""; for (let i = 0; i < 40 && !(list.includes("#1001") && list.includes("#1002")); i++) { await new Promise(r => setTimeout(r, 1500)); list = await (await fetch(`${BASE}/batch?key=${KEY}`)).text(); }
   const link = (list.match(/href="(\/batch\/champagne\.pdf[^"]+)"/) || [])[1], done = (list.match(/action="(\/batch\/champagne\/done[^"]+)"/) || [])[1];
   const pdf = link ? await fetch(BASE + link.replace(/&amp;/g, "&")) : null;
-  const okPdf = pdf && pdf.ok && pdf.headers.get("x-labels") === "7" && ["1", "7"].includes(pdf.headers.get("x-sheets"));   // 1 shared sheet, or 7 single pieces
+  const okPdf = pdf && pdf.ok && pdf.headers.get("x-labels") === "7" && ["1", "2"].includes(pdf.headers.get("x-sheets"));   // 1 shared label sheet, or 2 letter sheets of 4 quarter pieces
   if (pdf && pdf.ok) fs.writeFileSync(path.join(OUT, "29-singles-batch.pdf"), Buffer.from(await pdf.arrayBuffer()));
   console.log(okPdf ? "ok  " : "FAIL", "singles batch → labels", pdf && pdf.headers.get("x-labels"), "sheets", pdf && pdf.headers.get("x-sheets"));
   const cleared = done ? await (await fetch(BASE + done, { method: "POST" })).text() : "";

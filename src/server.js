@@ -217,7 +217,7 @@ app.get("/batch", admin, safe(async (req, res) => {
       <a class="b" target="_blank" rel="noopener" href="/batch/${size}.pdf?key=${key}&upto=${encodeURIComponent(upto)}">Open the PDF</a>
       <form method="post" action="/batch/${size}/done?key=${key}&upto=${encodeURIComponent(upto)}" style="display:inline"><button>Printed: clear these</button></form></section>`;
   });
-  res.send(page(`<h1>Single labels to print</h1><p>Each PDF holds every waiting label for that bottle size. Every page is one quarter-sheet piece (4.25 x 5.5 in) with the order number printed on the backing.</p>${parts.join("")}`));
+  res.send(page(`<h1>Single labels to print</h1><p>Each PDF holds every waiting label for that bottle size. Every page is a plain US Letter sheet of four quarter-sheet pieces, each with its order number printed on the backing — print at 100%, then the Cricut file cuts the labels and quarters the sheet.</p>${parts.join("")}`));
 }));
 async function batchItems(size, upto) {
   const q = (await listSingles(size)).filter(e => !upto || e.at <= upto), items = [];

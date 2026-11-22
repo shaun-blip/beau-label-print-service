@@ -108,7 +108,9 @@ function printPages(opts = {}){
 }
 // ---------- single labels on quarter-sheet pieces ----------
 // A piece is a quarter of a letter sheet (4.25 x 5.5 in) with the label centred on it, matching the Cricut cut files.
-// Champagne is turned upright to fit; minis sit two to a piece. Each page of the PDF is one piece.
+// Champagne is turned upright to fit; minis sit two to a piece. Four pieces gang onto one plain US Letter page
+// (quarter origins 0,0 / 4.25,0 / 0,5.5 / 4.25,5.5 in), so the sheet prints without a custom paper size and the
+// Cricut files cut the labels and quarter the sheet afterwards.
 const PIECE = {w:425, h:550, gap:25};
 function pieceLayout(){
   const rot = W > 380, fw = rot ? H : W, fh = rot ? W : H, k = W < 230 && H < 230 ? 2 : 1, block = k * fh + (k - 1) * PIECE.gap;
@@ -123,19 +125,25 @@ function labelItems(tag){
   return out;
 }
 function piecePages(items){
-  const L = pieceLayout(), pages = [], slots = [];
-  for (let i = 0; i < items.length; i += L.k){
-    const part = items.slice(i, i + L.k); let body = `<rect width="${PIECE.w}" height="${PIECE.h}" fill="#ffffff"/>`;
-    part.forEach((it, j) => { const x = L.x, y = L.y + j * (L.fh + PIECE.gap);
-      const art = `<rect x="${-BLEED}" y="${-BLEED}" width="${W + 2 * BLEED}" height="${H + 2 * BLEED}" fill="${it.bg}"/><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${it.inner}</svg>`;
-      body += L.rot ? `<g transform="translate(${x + L.fw} ${y}) rotate(90)">${art}</g>` : `<g transform="translate(${x} ${y})">${art}</g>`;
-      slots.push({page:pages.length + 1, pos:j + 1, tag:it.tag}); });
-    const tags = [...new Set(part.map(it => it.tag).filter(Boolean))].join(" / ");
-    if (tags) body += `<text x="${PIECE.w / 2}" y="${PIECE.h - 14}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#777">${esc(tags)}</text>`;   // on the backing, outside the label
+  const L = pieceLayout(), parts = [];
+  for (let i = 0; i < items.length; i += L.k) parts.push(items.slice(i, i + L.k));
+  const pages = [], slots = [];
+  for (let p = 0; p < parts.length; p += 4){
+    let body = `<rect width="${2 * PIECE.w}" height="${2 * PIECE.h}" fill="#ffffff"/>`;
+    parts.slice(p, p + 4).forEach((part, q) => {
+      const qx = (q % 2) * PIECE.w, qy = q < 2 ? 0 : PIECE.h; let piece = "";
+      part.forEach((it, j) => { const x = L.x, y = L.y + j * (L.fh + PIECE.gap);
+        const art = `<rect x="${-BLEED}" y="${-BLEED}" width="${W + 2 * BLEED}" height="${H + 2 * BLEED}" fill="${it.bg}"/><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${it.inner}</svg>`;
+        piece += L.rot ? `<g transform="translate(${x + L.fw} ${y}) rotate(90)">${art}</g>` : `<g transform="translate(${x} ${y})">${art}</g>`;
+        slots.push({page:pages.length + 1, pos:q + 1, tag:it.tag}); });
+      const tags = [...new Set(part.map(it => it.tag).filter(Boolean))].join(" / ");
+      if (tags) piece += `<text x="${PIECE.w / 2}" y="${PIECE.h - 14}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#777">${esc(tags)}</text>`;   // on the backing, outside the label
+      body += `<g transform="translate(${qx} ${qy})">${piece}</g>`;
+    });
     const arts = [...new Set(body.match(/#(?:art|xm)-[\w-]+/g) || [])].map(x => x.slice(1));
-    pages.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${PIECE.w / 100}in" height="${PIECE.h / 100}in" viewBox="0 0 ${PIECE.w} ${PIECE.h}"><defs>${WC_DEFS}${arts.map(id => $(id) ? $(id).outerHTML : "").join("")}</defs>${body}</svg>`);
+    pages.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${2 * PIECE.w / 100}in" height="${2 * PIECE.h / 100}in" viewBox="0 0 ${2 * PIECE.w} ${2 * PIECE.h}"><defs>${WC_DEFS}${arts.map(id => $(id) ? $(id).outerHTML : "").join("")}</defs>${body}</svg>`);
   }
-  return {widthIn:PIECE.w / 100, heightIn:PIECE.h / 100, copies:1, labelsPerSheet:L.k, cols:1, pieces:true, pages, slots, problem:screen() || ""};
+  return {widthIn:2 * PIECE.w / 100, heightIn:2 * PIECE.h / 100, copies:1, labelsPerSheet:4 * L.k, cols:2, pieces:true, pages, slots, problem:screen() || ""};
 }
 // Single labels from several orders, laid out together on full sheets. designs: [{design, tag}], all for one bottle size.
 // Returns print pages like printPages(), plus slots: which order's label sits in which position.
