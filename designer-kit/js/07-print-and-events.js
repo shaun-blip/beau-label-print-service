@@ -45,7 +45,7 @@ async function showWrap(w){
 /* ---------- hand-off to the store: save a design, restore it, and lay out its print pages ----------
    exportDesign() is what the storefront sends when the customer adds to cart.
    applyDesign() and printPages() are what the print service runs after the order is paid. */
-const DESIGN_KEYS = ["size","qty","group","sub","tpl","pal","custom","dark","font","path","want","rocc","ritem","rmode","rcounts","age","rnote","words","mode","mix","mixAll","names","nameField","photoPos","wraps","single"];
+const DESIGN_KEYS = ["size","qty","group","sub","tpl","pal","custom","dark","font","path","want","rocc","ritem","rmode","rcounts","age","rnote","words","mode","mix","mixAll","names","nameField","photoPos","photoX","photoY","wraps","single"];
 function exportDesign(){
   const d = {v:1};
   DESIGN_KEYS.forEach(k => d[k] = JSON.parse(JSON.stringify(state[k])));
@@ -60,6 +60,7 @@ function exportDesign(){
 }
 function applyDesign(d){
   DESIGN_KEYS.forEach(k => { if (k in d) state[k] = JSON.parse(JSON.stringify(d[k])); });
+  if (d.photoX == null){ state.photoX = 50; state.photoY = d.photoPos === "YMin" ? 0 : d.photoPos === "YMax" ? 100 : 50; }   // designs saved before free placement
   state.single = Math.max(0, Math.min(PRICES.single.length, +d.single || 0)); if (state.single) state.qty = 1;
   state.logo = d.logo ? {...d.logo, url:d.logo.data} : null; state.rights = !!d.logo;
   state.photo = d.photo ? {...d.photo, url:d.photo.data} : null; state.prights = !!d.photo;
@@ -376,7 +377,37 @@ pick("fonts", ".fontopt", b => {
 $("photofile").addEventListener("change", e => { if (e.target.files[0]) setPhoto(e.target.files[0]); e.target.value = ""; });
 $("photoremove").addEventListener("click", () => { if (state.photo) URL.revokeObjectURL(state.photo.url); state.photo = null; state.prights = false; changed(); });
 $("prights").addEventListener("change", e => { state.prights = e.target.checked; changed(); });
-pick("photopos", ".chip", b => { state.photoPos = b.dataset.id; changed(); });
+pick("photopos", ".chip", b => { state.photoPos = b.dataset.id; state.photoX = 50; state.photoY = b.dataset.id === "YMin" ? 0 : b.dataset.id === "YMax" ? 100 : 50; changed(); });
+// Drag the photo on the label preview to choose the crop. The drag moves the <image> inside its
+// clipping frame directly (no re-render mid-drag, so the pointer capture survives); the state is
+// committed and the page re-renders once, on release.
+{ const pv = $("preview"); let drag = null;
+  pv.addEventListener("pointerdown", e => {
+    const el = pv.querySelector(".cphoto");
+    if (!el) return;
+    // Templates draw tints and words over the photo, so the pointer rarely lands on the <image> itself.
+    // Instead, any press inside the photo frame's on-screen box starts the drag.
+    const fr = el.parentNode, m = fr.getScreenCTM(); if (!m) return;
+    const w = +fr.getAttribute("width"), h = +fr.getAttribute("height");
+    const p1 = new DOMPoint(0, 0).matrixTransform(m), p2 = new DOMPoint(w, h).matrixTransform(m);
+    if (e.clientX < Math.min(p1.x, p2.x) || e.clientX > Math.max(p1.x, p2.x) || e.clientY < Math.min(p1.y, p2.y) || e.clientY > Math.max(p1.y, p2.y)) return;
+    const mx = Math.max(0, +el.getAttribute("width") - w), my = Math.max(0, +el.getAttribute("height") - h);
+    if (!mx && !my) return;
+    const k = w / Math.max(1e-6, Math.abs(p2.x - p1.x));
+    drag = { el, mx, my, k, ox:+el.getAttribute("x"), oy:+el.getAttribute("y"), sx:e.clientX, sy:e.clientY };
+    pv.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  pv.addEventListener("pointermove", e => {
+    if (!drag) return;
+    const nx = Math.min(0, Math.max(-drag.mx, drag.ox + (e.clientX - drag.sx) * drag.k));
+    const ny = Math.min(0, Math.max(-drag.my, drag.oy + (e.clientY - drag.sy) * drag.k));
+    drag.el.setAttribute("x", nx); drag.el.setAttribute("y", ny);
+    if (drag.mx) state.photoX = Math.round(-nx / drag.mx * 100);
+    if (drag.my) state.photoY = Math.round(-ny / drag.my * 100);
+  });
+  const drop = () => { if (drag){ drag = null; changed(); } };
+  pv.addEventListener("pointerup", drop); pv.addEventListener("pointercancel", drop);
+}
 $("rights").addEventListener("change", e => { state.rights = e.target.checked; changed(); });
 $("approve").addEventListener("change", () => render());   // ticking the box drops the "Your name here" prompt, so what they approve is what prints
 $("nameadd").addEventListener("click", () => { $("sec-name").scrollIntoView({behavior:"smooth", block:"center"}); setTimeout(() => $("rnote").focus({preventScroll:true}), 350); });

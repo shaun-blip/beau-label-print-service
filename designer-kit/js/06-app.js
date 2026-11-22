@@ -5,7 +5,7 @@ const SHEET_PRICE = PRICES.sheet;
 const state = {
   age:50, rcounts:{}, mixAll:false, scopePicked:false, qty:1, single:0, want:"ready", hasReady:true, occKey:"", rall:false,
   view:"label", wraps:[], lastWrap:"stripe",
-  font:"classic", logo:null, rights:false, photo:null, prights:false, photoPos:"YMid",
+  font:"classic", logo:null, rights:false, photo:null, prights:false, photoPos:"YMid", photoX:50, photoY:50,
   path:"ready", rocc:"birthday", ritem:0, rmode:"one", rnote:"",
   size:"champagne", group:"weddings", sub:0, tpl:"garden",
   pal:0, custom:"#c47f8a", dark:false, palEdited:false,
@@ -290,7 +290,8 @@ function buildPhoto(){
   $("photothumb").hidden = $("photoremove").hidden = $("prightswrap").hidden = $("photopos").hidden = !ph;
   if (ph) $("photothumb").src = ph.url;
   $("prights").checked = state.prights;
-  $("photopos").innerHTML = chip("YMin", "Show the top", state.photoPos === "YMin") + chip("YMid", "Show the middle", state.photoPos === "YMid") + chip("YMax", "Show the bottom", state.photoPos === "YMax");
+  $("photopos").innerHTML = chip("YMin", "Show the top", state.photoX === 50 && state.photoY === 0) + chip("YMid", "Show the middle", state.photoX === 50 && state.photoY === 50) + chip("YMax", "Show the bottom", state.photoX === 50 && state.photoY === 100)
+    + `<span class="hint">… or drag the photo on the label to place it exactly.</span>`;
   const warn = ph && ph.small ? `This photo is only ${ph.w} × ${ph.h} pixels and may print soft. Use the original from your phone or camera if you can.` : "";
   $("photowarn").textContent = warn; $("photowarn").hidden = !warn;
 }
@@ -325,7 +326,7 @@ function setPhoto(file){
     if (sm){
       if (state.photo) URL.revokeObjectURL(state.photo.url);
       state.photo = {url:URL.createObjectURL(sm.blob), data:sm.data, name:file.name, w:sm.w, h:sm.h, small:false};
-      state.prights = false; state.photoPos = "YMid";
+      state.prights = false; state.photoPos = "YMid"; state.photoX = 50; state.photoY = 50;
       if (!tplById(state.tpl).photo) state.tpl = "photo1";
       changed(); return;
     }
@@ -335,7 +336,7 @@ function setPhoto(file){
       img.onload = () => {
         if (state.photo) URL.revokeObjectURL(state.photo.url);
         state.photo = {url, data:reader.result, name:file.name, w:img.naturalWidth, h:img.naturalHeight, small:Math.max(img.naturalWidth, img.naturalHeight) < 1000};
-        state.prights = false; state.photoPos = "YMid";
+        state.prights = false; state.photoPos = "YMid"; state.photoX = 50; state.photoY = 50;
         if (!tplById(state.tpl).photo) state.tpl = "photo1";
         changed();
       };
@@ -484,7 +485,7 @@ const UI_DEPS = [   // in dependency order: sizes sets W/H, templates may reassi
   [() => buildFonts(),     () => state.font],
   [() => buildModes(),     () => [state.mode, state.qty, state.single, state.size, state.mixAll, state.scopePicked, state.nameField, state.path, state.rmode].join("|")],
   [() => buildLogo(),      () => [state.logo && state.logo.url, state.rights].join("|")],
-  [() => buildPhoto(),     () => [state.photo && state.photo.url, state.prights, state.photoPos].join("|")],
+  [() => buildPhoto(),     () => [state.photo && state.photo.url, state.prights, state.photoPos, state.photoX, state.photoY].join("|")],
   [() => buildViews(),     () => state.view],
 ];
 function syncDerived(){
@@ -516,6 +517,7 @@ function render(){
   $("peekname").textContent = t.name;
   $("namenudge").hidden = !wantsName;
   $("preview").innerHTML = labelMarkup(t, c, pvWords);
+  $("preview").style.touchAction = t.photo && state.photo ? "none" : "";   // a finger on the photo drags the crop, not the page
   if (flat){ fit($("preview")); if (ghost) markGhost($("preview")); }
   else {
     $("scene").innerHTML = sceneMarkup(labelMarkup(t, c, pvWords), W, H, state.view === "wrap" ? state.lastWrap : null, c.a, "m", state.size, 560);

@@ -318,6 +318,7 @@ textarea.code{width:100%;height:120px;font:12px/1.4 ui-monospace,Menlo,monospace
   .foot-in{padding:28px 16px}
 }
 [hidden]{display:none !important}
+.cphoto{cursor:grab}
 </style>
 </head>
 <body>
@@ -1133,7 +1134,15 @@ function logoMark(x, y, w, h, c){
 // The customer's photo, cropped to fill its frame, or a marked placeholder until one is uploaded.
 function photoMark(x, y, w, h){
   const box = `x="${n1(x)}" y="${n1(y)}" width="${n1(w)}" height="${n1(h)}"`;
-  if (state.photo) return `<rect ${box} fill="#e6ecf1"/><image href="${state.photo.url}" ${box} preserveAspectRatio="xMid${state.photoPos} slice"/>`;
+  if (state.photo){
+    const ph = state.photo;
+    if (ph.w && ph.h){   // the crop covers the frame; photoX/photoY (per cent) pick which part shows — draggable on the preview
+      const s = Math.max(w / ph.w, h / ph.h), dw = ph.w * s, dh = ph.h * s;
+      const fx = (state.photoX == null ? 50 : state.photoX) / 100, fy = (state.photoY == null ? 50 : state.photoY) / 100;
+      return `<rect ${box} fill="#e6ecf1"/><svg ${box} viewBox="0 0 ${n1(w)} ${n1(h)}"><image class="cphoto" href="${ph.url}" x="${n1(-(dw - w) * fx)}" y="${n1(-(dh - h) * fy)}" width="${n1(dw)}" height="${n1(dh)}" preserveAspectRatio="none" style="touch-action:none"/></svg>`;
+    }
+    return `<rect ${box} fill="#e6ecf1"/><image href="${ph.url}" ${box} preserveAspectRatio="xMid${state.photoPos} slice"/>`;   // an old save without photo dimensions keeps the three-way crop
+  }
   const cx = x + w / 2, cy = y + h / 2, k = Math.min(w, h) / 120;
   return `<rect ${box} fill="#e6ecf1"/>` + at(cx, cy - 8 * k, k) + `<circle cx="22" cy="-22" r="8" fill="#c3ced8"/><path d="M-46 22 L-16 -14 L4 8 L16 -4 L46 22Z" fill="#c3ced8"/></g>`
     + `<text x="${n1(cx)}" y="${n1(cy + 34 * k)}" text-anchor="middle" font-family="${F.sans}" font-size="${n1(11 * S)}" fill="#5a6a7b" style="letter-spacing:.2em">YOUR PHOTO</text>`;
@@ -2910,7 +2919,7 @@ const SHEET_PRICE = PRICES.sheet;
 const state = {
   age:50, rcounts:{}, mixAll:false, scopePicked:false, qty:1, single:0, want:"ready", hasReady:true, occKey:"", rall:false,
   view:"label", wraps:[], lastWrap:"stripe",
-  font:"classic", logo:null, rights:false, photo:null, prights:false, photoPos:"YMid",
+  font:"classic", logo:null, rights:false, photo:null, prights:false, photoPos:"YMid", photoX:50, photoY:50,
   path:"ready", rocc:"birthday", ritem:0, rmode:"one", rnote:"",
   size:"champagne", group:"weddings", sub:0, tpl:"garden",
   pal:0, custom:"#c47f8a", dark:false, palEdited:false,
@@ -3195,7 +3204,8 @@ function buildPhoto(){
   $("photothumb").hidden = $("photoremove").hidden = $("prightswrap").hidden = $("photopos").hidden = !ph;
   if (ph) $("photothumb").src = ph.url;
   $("prights").checked = state.prights;
-  $("photopos").innerHTML = chip("YMin", "Show the top", state.photoPos === "YMin") + chip("YMid", "Show the middle", state.photoPos === "YMid") + chip("YMax", "Show the bottom", state.photoPos === "YMax");
+  $("photopos").innerHTML = chip("YMin", "Show the top", state.photoX === 50 && state.photoY === 0) + chip("YMid", "Show the middle", state.photoX === 50 && state.photoY === 50) + chip("YMax", "Show the bottom", state.photoX === 50 && state.photoY === 100)
+    + `<span class="hint">… or drag the photo on the label to place it exactly.</span>`;
   const warn = ph && ph.small ? `This photo is only ${ph.w} × ${ph.h} pixels and may print soft. Use the original from your phone or camera if you can.` : "";
   $("photowarn").textContent = warn; $("photowarn").hidden = !warn;
 }
@@ -3230,7 +3240,7 @@ function setPhoto(file){
     if (sm){
       if (state.photo) URL.revokeObjectURL(state.photo.url);
       state.photo = {url:URL.createObjectURL(sm.blob), data:sm.data, name:file.name, w:sm.w, h:sm.h, small:false};
-      state.prights = false; state.photoPos = "YMid";
+      state.prights = false; state.photoPos = "YMid"; state.photoX = 50; state.photoY = 50;
       if (!tplById(state.tpl).photo) state.tpl = "photo1";
       changed(); return;
     }
@@ -3240,7 +3250,7 @@ function setPhoto(file){
       img.onload = () => {
         if (state.photo) URL.revokeObjectURL(state.photo.url);
         state.photo = {url, data:reader.result, name:file.name, w:img.naturalWidth, h:img.naturalHeight, small:Math.max(img.naturalWidth, img.naturalHeight) < 1000};
-        state.prights = false; state.photoPos = "YMid";
+        state.prights = false; state.photoPos = "YMid"; state.photoX = 50; state.photoY = 50;
         if (!tplById(state.tpl).photo) state.tpl = "photo1";
         changed();
       };
@@ -3389,7 +3399,7 @@ const UI_DEPS = [   // in dependency order: sizes sets W/H, templates may reassi
   [() => buildFonts(),     () => state.font],
   [() => buildModes(),     () => [state.mode, state.qty, state.single, state.size, state.mixAll, state.scopePicked, state.nameField, state.path, state.rmode].join("|")],
   [() => buildLogo(),      () => [state.logo && state.logo.url, state.rights].join("|")],
-  [() => buildPhoto(),     () => [state.photo && state.photo.url, state.prights, state.photoPos].join("|")],
+  [() => buildPhoto(),     () => [state.photo && state.photo.url, state.prights, state.photoPos, state.photoX, state.photoY].join("|")],
   [() => buildViews(),     () => state.view],
 ];
 function syncDerived(){
@@ -3421,6 +3431,7 @@ function render(){
   $("peekname").textContent = t.name;
   $("namenudge").hidden = !wantsName;
   $("preview").innerHTML = labelMarkup(t, c, pvWords);
+  $("preview").style.touchAction = t.photo && state.photo ? "none" : "";   // a finger on the photo drags the crop, not the page
   if (flat){ fit($("preview")); if (ghost) markGhost($("preview")); }
   else {
     $("scene").innerHTML = sceneMarkup(labelMarkup(t, c, pvWords), W, H, state.view === "wrap" ? state.lastWrap : null, c.a, "m", state.size, 560);
@@ -3566,7 +3577,7 @@ async function showWrap(w){
 /* ---------- hand-off to the store: save a design, restore it, and lay out its print pages ----------
    exportDesign() is what the storefront sends when the customer adds to cart.
    applyDesign() and printPages() are what the print service runs after the order is paid. */
-const DESIGN_KEYS = ["size","qty","group","sub","tpl","pal","custom","dark","font","path","want","rocc","ritem","rmode","rcounts","age","rnote","words","mode","mix","mixAll","names","nameField","photoPos","wraps","single"];
+const DESIGN_KEYS = ["size","qty","group","sub","tpl","pal","custom","dark","font","path","want","rocc","ritem","rmode","rcounts","age","rnote","words","mode","mix","mixAll","names","nameField","photoPos","photoX","photoY","wraps","single"];
 function exportDesign(){
   const d = {v:1};
   DESIGN_KEYS.forEach(k => d[k] = JSON.parse(JSON.stringify(state[k])));
@@ -3581,6 +3592,7 @@ function exportDesign(){
 }
 function applyDesign(d){
   DESIGN_KEYS.forEach(k => { if (k in d) state[k] = JSON.parse(JSON.stringify(d[k])); });
+  if (d.photoX == null){ state.photoX = 50; state.photoY = d.photoPos === "YMin" ? 0 : d.photoPos === "YMax" ? 100 : 50; }   // designs saved before free placement
   state.single = Math.max(0, Math.min(PRICES.single.length, +d.single || 0)); if (state.single) state.qty = 1;
   state.logo = d.logo ? {...d.logo, url:d.logo.data} : null; state.rights = !!d.logo;
   state.photo = d.photo ? {...d.photo, url:d.photo.data} : null; state.prights = !!d.photo;
@@ -3897,7 +3909,37 @@ pick("fonts", ".fontopt", b => {
 $("photofile").addEventListener("change", e => { if (e.target.files[0]) setPhoto(e.target.files[0]); e.target.value = ""; });
 $("photoremove").addEventListener("click", () => { if (state.photo) URL.revokeObjectURL(state.photo.url); state.photo = null; state.prights = false; changed(); });
 $("prights").addEventListener("change", e => { state.prights = e.target.checked; changed(); });
-pick("photopos", ".chip", b => { state.photoPos = b.dataset.id; changed(); });
+pick("photopos", ".chip", b => { state.photoPos = b.dataset.id; state.photoX = 50; state.photoY = b.dataset.id === "YMin" ? 0 : b.dataset.id === "YMax" ? 100 : 50; changed(); });
+// Drag the photo on the label preview to choose the crop. The drag moves the <image> inside its
+// clipping frame directly (no re-render mid-drag, so the pointer capture survives); the state is
+// committed and the page re-renders once, on release.
+{ const pv = $("preview"); let drag = null;
+  pv.addEventListener("pointerdown", e => {
+    const el = pv.querySelector(".cphoto");
+    if (!el) return;
+    // Templates draw tints and words over the photo, so the pointer rarely lands on the <image> itself.
+    // Instead, any press inside the photo frame's on-screen box starts the drag.
+    const fr = el.parentNode, m = fr.getScreenCTM(); if (!m) return;
+    const w = +fr.getAttribute("width"), h = +fr.getAttribute("height");
+    const p1 = new DOMPoint(0, 0).matrixTransform(m), p2 = new DOMPoint(w, h).matrixTransform(m);
+    if (e.clientX < Math.min(p1.x, p2.x) || e.clientX > Math.max(p1.x, p2.x) || e.clientY < Math.min(p1.y, p2.y) || e.clientY > Math.max(p1.y, p2.y)) return;
+    const mx = Math.max(0, +el.getAttribute("width") - w), my = Math.max(0, +el.getAttribute("height") - h);
+    if (!mx && !my) return;
+    const k = w / Math.max(1e-6, Math.abs(p2.x - p1.x));
+    drag = { el, mx, my, k, ox:+el.getAttribute("x"), oy:+el.getAttribute("y"), sx:e.clientX, sy:e.clientY };
+    pv.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  pv.addEventListener("pointermove", e => {
+    if (!drag) return;
+    const nx = Math.min(0, Math.max(-drag.mx, drag.ox + (e.clientX - drag.sx) * drag.k));
+    const ny = Math.min(0, Math.max(-drag.my, drag.oy + (e.clientY - drag.sy) * drag.k));
+    drag.el.setAttribute("x", nx); drag.el.setAttribute("y", ny);
+    if (drag.mx) state.photoX = Math.round(-nx / drag.mx * 100);
+    if (drag.my) state.photoY = Math.round(-ny / drag.my * 100);
+  });
+  const drop = () => { if (drag){ drag = null; changed(); } };
+  pv.addEventListener("pointerup", drop); pv.addEventListener("pointercancel", drop);
+}
 $("rights").addEventListener("change", e => { state.rights = e.target.checked; changed(); });
 $("approve").addEventListener("change", () => render());   // ticking the box drops the "Your name here" prompt, so what they approve is what prints
 $("nameadd").addEventListener("click", () => { $("sec-name").scrollIntoView({behavior:"smooth", block:"center"}); setTimeout(() => $("rnote").focus({preventScroll:true}), 350); });

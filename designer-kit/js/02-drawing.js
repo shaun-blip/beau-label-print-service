@@ -81,7 +81,15 @@ function logoMark(x, y, w, h, c){
 // The customer's photo, cropped to fill its frame, or a marked placeholder until one is uploaded.
 function photoMark(x, y, w, h){
   const box = `x="${n1(x)}" y="${n1(y)}" width="${n1(w)}" height="${n1(h)}"`;
-  if (state.photo) return `<rect ${box} fill="#e6ecf1"/><image href="${state.photo.url}" ${box} preserveAspectRatio="xMid${state.photoPos} slice"/>`;
+  if (state.photo){
+    const ph = state.photo;
+    if (ph.w && ph.h){   // the crop covers the frame; photoX/photoY (per cent) pick which part shows — draggable on the preview
+      const s = Math.max(w / ph.w, h / ph.h), dw = ph.w * s, dh = ph.h * s;
+      const fx = (state.photoX == null ? 50 : state.photoX) / 100, fy = (state.photoY == null ? 50 : state.photoY) / 100;
+      return `<rect ${box} fill="#e6ecf1"/><svg ${box} viewBox="0 0 ${n1(w)} ${n1(h)}"><image class="cphoto" href="${ph.url}" x="${n1(-(dw - w) * fx)}" y="${n1(-(dh - h) * fy)}" width="${n1(dw)}" height="${n1(dh)}" preserveAspectRatio="none" style="touch-action:none"/></svg>`;
+    }
+    return `<rect ${box} fill="#e6ecf1"/><image href="${ph.url}" ${box} preserveAspectRatio="xMid${state.photoPos} slice"/>`;   // an old save without photo dimensions keeps the three-way crop
+  }
   const cx = x + w / 2, cy = y + h / 2, k = Math.min(w, h) / 120;
   return `<rect ${box} fill="#e6ecf1"/>` + at(cx, cy - 8 * k, k) + `<circle cx="22" cy="-22" r="8" fill="#c3ced8"/><path d="M-46 22 L-16 -14 L4 8 L16 -4 L46 22Z" fill="#c3ced8"/></g>`
     + `<text x="${n1(cx)}" y="${n1(cy + 34 * k)}" text-anchor="middle" font-family="${F.sans}" font-size="${n1(11 * S)}" fill="#5a6a7b" style="letter-spacing:.2em">YOUR PHOTO</text>`;
