@@ -4,7 +4,7 @@ const PRICES = {sheet:29, single:[10, 16, 21, 25]};
 const SHEET_PRICE = PRICES.sheet;
 const state = {
   age:50, rcounts:{}, mixAll:false, scopePicked:false, qty:1, single:0, want:"ready", hasReady:true, occKey:"", rall:false,
-  view:"label", wraps:[], lastWrap:"stripe",
+  view:"label", wraps:[], lastWrap:"stripe", safe:true,
   font:"classic", logo:null, rights:false, photo:null, prights:false, photoPos:"YMid", photoX:50, photoY:50,
   path:"ready", rocc:"birthday", ritem:0, rmode:"one", rnote:"",
   size:"champagne", group:"weddings", sub:0, tpl:"garden",
@@ -105,9 +105,16 @@ function foldWords(t, words){
   }
   return {w, dropped};
 }
+// Wrap windows (2026-11-23): each wrap's die-cut opening is smaller than the label, so the
+// design must sit inside it, centered — champagne 4 x 2 5/8 in, prosecco (La Marca) 3 wide x
+// 2 5/8 tall, mini 2 x 1 5/8. Label units are 100 per inch. The label and its background color
+// stay full size (they cover the bottle's own label); only the artwork and words scale down.
+// Designs saved before this (no "safe" flag) still print full size, exactly as approved.
+const WRAP_WINDOW = { champagne: {w:400, h:262.5}, prosecco: {w:300, h:262.5}, mini: {w:200, h:162.5} };
 function labelMarkup(t, c, words){
   if (t.tint) c = t.tint(c);
-  let s = `<rect width="${W}" height="${H}" fill="${c.bg}"/>` + t.art(c, words);
+  const bgRect = `<rect width="${W}" height="${H}" fill="${c.bg}"/>`;
+  let s = t.art(c, words);
   words = foldWords(t, words).w;
   // Collect the lines that will print, then stack them with even spacing and center the stack in the design's text area.
   const fs = fontNow(), lines = [];
@@ -147,7 +154,9 @@ function labelMarkup(t, c, words){
        + ` font-weight="${l.weight}"${l.italic ? ' font-style="italic"' : ""} fill="${c[z.fill || "ink"]}"`
        + ` data-fit="${n1(num(z.w, W))}" data-size="${l.size}"${style}>${esc(l.v)}</text>`;
   });
-  return s;
+  const win = state.safe && WRAP_WINDOW[state.size], k = win ? Math.min(1, win.w / W, win.h / H) : 1;
+  if (k >= 1) return bgRect + s;
+  return bgRect + `<g transform="translate(${n1(W * (1 - k) / 2)} ${n1(H * (1 - k) / 2)}) scale(${k.toFixed(4)})">${s}</g>`;
 }
 function fit(svg){
   svg.querySelectorAll("text[data-fit]").forEach(el => {

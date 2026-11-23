@@ -45,7 +45,7 @@ async function showWrap(w){
 /* ---------- hand-off to the store: save a design, restore it, and lay out its print pages ----------
    exportDesign() is what the storefront sends when the customer adds to cart.
    applyDesign() and printPages() are what the print service runs after the order is paid. */
-const DESIGN_KEYS = ["size","qty","group","sub","tpl","pal","custom","dark","font","path","want","rocc","ritem","rmode","rcounts","age","rnote","words","mode","mix","mixAll","names","nameField","photoPos","photoX","photoY","wraps","single"];
+const DESIGN_KEYS = ["size","qty","group","sub","tpl","pal","custom","dark","font","path","want","rocc","ritem","rmode","rcounts","age","rnote","words","mode","mix","mixAll","names","nameField","photoPos","photoX","photoY","wraps","single","safe"];
 function exportDesign(){
   const d = {v:1};
   DESIGN_KEYS.forEach(k => d[k] = JSON.parse(JSON.stringify(state[k])));
@@ -61,6 +61,7 @@ function exportDesign(){
 function applyDesign(d){
   DESIGN_KEYS.forEach(k => { if (k in d) state[k] = JSON.parse(JSON.stringify(d[k])); });
   if (d.photoX == null){ state.photoX = 50; state.photoY = d.photoPos === "YMin" ? 0 : d.photoPos === "YMax" ? 100 : 50; }   // designs saved before free placement
+  state.safe = "safe" in d ? !!d.safe : false;   // designs approved before the wrap windows print full size, as approved
   state.single = Math.max(0, Math.min(PRICES.single.length, +d.single || 0)); if (state.single) state.qty = 1;
   state.logo = d.logo ? {...d.logo, url:d.logo.data} : null; state.rights = !!d.logo;
   state.photo = d.photo ? {...d.photo, url:d.photo.data} : null; state.prights = !!d.photo;
