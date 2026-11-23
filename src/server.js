@@ -208,22 +208,36 @@ app.post("/render", admin, express.json({ limit: "25mb" }), safe(async (req, res
 const SIZE_NAMES = { champagne: "Champagne", prosecco: "Prosecco", mini: "Mini" };
 const page = body => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Single labels to print</title>
 <style>body{font:16px/1.5 system-ui,sans-serif;max-width:640px;margin:32px auto;padding:0 16px;color:#1b2440}h1{font-size:22px}section{border:1px solid #ddd;padding:16px;margin:16px 0}a.b,button{display:inline-block;font:inherit;padding:10px 16px;border:1px solid #1b2440;background:#1b2440;color:#fff;text-decoration:none;cursor:pointer;margin:6px 8px 0 0}button{background:#fff;color:#1b2440}small{color:#555}</style>${body}`;
+// Customer-photo labels print brighter (the printer darkens photos on this stock), and that
+// brightness boost washes out ordinary artwork — so photo designs always get their own PDF.
+// A design counts as photo when a photo was uploaded AND the template actually prints it
+// (every photo template id contains "photo": photo1..4, xm-tartan-photo, xm-ribbon-photo).
+// A misfiled sheet is visible at the printer: photo items say "PHOTO" on the backing.
+const isPhotoDesign = d => !!(d && d.photo && /photo/.test(String(d.tpl)));
 app.get("/batch", admin, safe(async (req, res) => {
-  const key = encodeURIComponent(req.query.key), all = await listSingles();
-  const parts = Object.keys(SIZE_NAMES).map(size => {
-    const q = all.filter(e => e.size === size); if (!q.length) return `<section><strong>${SIZE_NAMES[size]}</strong><br><small>Nothing waiting.</small></section>`;
-    const labels = q.reduce((a, e) => a + e.count * e.times, 0), upto = q.reduce((a, e) => e.at > a ? e.at : a, "");
-    return `<section><strong>${SIZE_NAMES[size]}</strong>: ${labels} label${labels === 1 ? "" : "s"} from ${q.length} order line${q.length === 1 ? "" : "s"}<br><small>${q.map(e => e.order).join(", ")}</small><br>
-      <a class="b" target="_blank" rel="noopener" href="/batch/${size}.pdf?key=${key}&upto=${encodeURIComponent(upto)}">Open the PDF</a>
-      <form method="post" action="/batch/${size}/done?key=${key}&upto=${encodeURIComponent(upto)}" style="display:inline"><button>Printed: clear these</button></form></section>`;
-  });
-  res.send(page(`<h1>Single labels to print</h1><p>Each PDF holds every waiting label for that bottle size. Every page is a plain US Letter sheet of four quarter-sheet pieces, each with its order number printed on the backing — print at 100%, then the Cricut file cuts the labels and quarters the sheet.</p>${parts.join("")}`));
+  const key = encodeURIComponent(req.query.key), all = await listSingles(), parts = [];
+  for (const size of Object.keys(SIZE_NAMES)) {
+    const q = all.filter(e => e.size === size);
+    if (!q.length) { parts.push(`<section><strong>${SIZE_NAMES[size]}</strong><br><small>Nothing waiting.</small></section>`); continue; }
+    const upto = q.reduce((a, e) => e.at > a ? e.at : a, ""), items = await batchItems(size, upto);
+    const n = g => items.filter(i => i.photo === g).reduce((a, i) => a + i.count, 0), nPhoto = n(true), nPlain = n(false);
+    const href = group => `/batch/${size}.pdf?key=${key}&upto=${encodeURIComponent(upto)}&group=${group}`;
+    const links = (nPlain && nPhoto)
+      ? `<a class="b" target="_blank" rel="noopener" href="${href("plain")}">Standard PDF (${nPlain})</a>
+         <a class="b" target="_blank" rel="noopener" href="${href("photo")}">Photo PDF (${nPhoto}) — brightness boost</a>`
+      : `<a class="b" target="_blank" rel="noopener" href="${href(nPhoto ? "photo" : "plain")}">Open the PDF${nPhoto ? " — photos, print with brightness boost" : ""}</a>`;
+    parts.push(`<section><strong>${SIZE_NAMES[size]}</strong>: ${nPlain + nPhoto} label${nPlain + nPhoto === 1 ? "" : "s"} from ${q.length} order line${q.length === 1 ? "" : "s"}<br><small>${q.map(e => e.order).join(", ")}</small><br>
+      ${links}
+      <form method="post" action="/batch/${size}/done?key=${key}&upto=${encodeURIComponent(upto)}" style="display:inline"><button>Printed${nPlain && nPhoto ? " both" : ""}: clear these</button></form></section>`);
+  }
+  res.send(page(`<h1>Single labels to print</h1><p>Each PDF holds the waiting labels for that bottle size. Labels with customer photos come as their own PDF — print those with the brightness boost, and the standard PDF with normal settings. Every page is a plain US Letter sheet of four quarter-sheet pieces, each with its order number printed on the backing — print at 100%, then the Cricut file cuts the labels and quarters the sheet.</p>${parts.join("")}`));
 }));
 async function batchItems(size, upto) {
   const q = (await listSingles(size)).filter(e => !upto || e.at <= upto), items = [];
   for (const e of q) {
     const design = await loadDesign(e.designId); if (!design) continue;
-    for (let i = 0; i < e.times; i++) items.push({ design, tag: `Order ${e.order} · ${e.count} label${e.count === 1 ? "" : "s"}${e.times > 1 ? ` (set ${i + 1} of ${e.times})` : ""}` });
+    const photo = isPhotoDesign(design);
+    for (let i = 0; i < e.times; i++) items.push({ design, photo, count: e.count, tag: `Order ${e.order} · ${e.count} label${e.count === 1 ? "" : "s"}${e.times > 1 ? ` (set ${i + 1} of ${e.times})` : ""}${photo ? " · PHOTO" : ""}` });
   }
   return items;
 }
@@ -231,20 +245,22 @@ async function batchItems(size, upto) {
 // tab) streams the finished file at once instead of rendering the whole gang again.
 const gangCache = new Map();
 app.get("/batch/:size.pdf", admin, safe(async (req, res) => {
-  const items = await batchItems(req.params.size, req.query.upto);
-  if (!items.length) return res.status(404).send("Nothing waiting for that size.");
-  const key = `${req.query.upto || ""}|${items.length}`;
-  let hit = gangCache.get(req.params.size);
+  const group = req.query.group === "photo" ? "photo" : req.query.group === "plain" ? "plain" : "";
+  let items = await batchItems(req.params.size, req.query.upto);
+  if (group) items = items.filter(i => i.photo === (group === "photo"));
+  if (!items.length) return res.status(404).send(`No ${group === "photo" ? "photo " : group === "plain" ? "standard " : ""}labels waiting for that size.`);
+  const key = `${req.query.upto || ""}|${items.length}`, slot = `${req.params.size}|${group}`;
+  let hit = gangCache.get(slot);
   if (!hit || hit.key !== key) {
     const out = await renderGang(items);
     hit = { key, pdf: out.pdf, sheets: out.sheets, labels: out.slots.length };
-    gangCache.set(req.params.size, hit);
+    gangCache.set(slot, hit);
   }
-  res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="single-labels-${req.params.size}.pdf"`,
+  res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="single-labels-${req.params.size}${group ? "-" + group : ""}.pdf"`,
             "X-Sheets": hit.sheets, "X-Labels": hit.labels }).send(hit.pdf);
 }));
 app.post("/batch/:size/done", admin, safe(async (req, res) => {
-  gangCache.delete(req.params.size);   // those labels are printed; free the memory
+  for (const k of [...gangCache.keys()]) if (k.startsWith(req.params.size + "|") || k === req.params.size) gangCache.delete(k);   // those labels are printed; free the memory
   const n = await clearSingles(req.params.size, req.query.upto || new Date().toISOString());
   res.send(page(`<h1>Cleared</h1><p>${n} order line${n === 1 ? "" : "s"} cleared for ${SIZE_NAMES[req.params.size] || req.params.size}.</p><a class="b" href="/batch?key=${encodeURIComponent(req.query.key)}">Back</a>`));
 }));
