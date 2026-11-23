@@ -17,6 +17,11 @@ export async function saveDesign(design) {
 export async function loadDesign(id) {
   try { return JSON.parse(await fs.readFile(file(id), "utf8")).design; } catch { return null; }
 }
+// Rescue hatch: corrects a stored design IN PLACE (same id), so the order that points at it
+// re-renders fixed. Only /designs/:id.json POST uses it, on an existing design.
+export async function overwriteDesign(id, design) {
+  await fs.writeFile(file(id), JSON.stringify({ id, savedAt: new Date().toISOString(), design }));
+}
 // Remembers which order lines are already done, so a repeated Shopify notification does not print twice.
 export async function markDone(key, value) {
   await fs.mkdir(DIR, { recursive: true });

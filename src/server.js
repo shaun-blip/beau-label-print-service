@@ -1,6 +1,6 @@
 import express from "express";
 import crypto from "node:crypto";
-import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState, queueSingle, listSingles, clearSingles, listDone, clearDone } from "./store.js";
+import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState, queueSingle, listSingles, clearSingles, listDone, clearDone, overwriteDesign } from "./store.js";
 import { renderDesign, renderGang, checkDesign, warmUp } from "./render.js";
 import { shopifyReady, uploadPdf, attachToOrder, flagOrder, appInfo, fetchOrder } from "./shopify.js";
 
@@ -208,6 +208,14 @@ app.get("/designs/:id.json", admin, safe(async (req, res) => {   // rescue hatch
   const design = await loadDesign(req.params.id);
   if (!design) return res.sendStatus(404);
   res.json(design);
+}));
+// Rescue hatch: corrects an EXISTING design in place (e.g. a mangled names list), so /rebake
+// then re-renders the order from the fixed design. Refuses ids that do not exist.
+app.post("/designs/:id.json", admin, express.json({ limit: "25mb" }), safe(async (req, res) => {
+  if (!await loadDesign(req.params.id)) return res.sendStatus(404);
+  if (!req.body || req.body.v !== 1) return res.status(422).json({ error: "That does not look like a design." });
+  await overwriteDesign(req.params.id, req.body);
+  res.json({ ok: true, id: req.params.id });
 }));
 // The P700 lands borderless label-stock sheets about 1.5 mm up-left of true (calibrated on
 // order #70207, 2026-11-23), so every FULL-SHEET render ships with this offset baked in —
