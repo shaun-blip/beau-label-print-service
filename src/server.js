@@ -134,7 +134,7 @@ async function handlePaidOrder(order) {
       const design = await loadDesign(designId);
       if (!design) throw new Error(`Design ${designId} was not found.`);
       if (!design.single) design.qty = li.quantity || design.qty;   // the cart quantity is the number of sheets; single labels carry their own count
-      const out = await renderDesign(design, { tag: design.single ? `Order ${order.name || order.id}` : "" });
+      const out = await renderDesign(design, { tag: design.single ? `Order ${order.name || order.id}` : "", ...(design.single ? {} : { dx: SHEET_DX, dy: SHEET_DY }) });
       if (out.problem) throw new Error(out.problem);
       // Single labels also join the batch queue, so they can be printed with other orders' singles on
       // shared sheets. Queued as soon as the render is good (not after the upload): an upload hiccup
@@ -209,18 +209,27 @@ app.get("/designs/:id.json", admin, safe(async (req, res) => {   // rescue hatch
   if (!design) return res.sendStatus(404);
   res.json(design);
 }));
-// ?dx=&dy= (millimeters, −10..10): nudges the whole print on the page, to calibrate out the
-// printer's mechanical feed offset on label stock. Positive dx moves right, positive dy down.
-const nudge = q => ({ dx: Math.max(-10, Math.min(10, parseFloat(q.dx) || 0)), dy: Math.max(-10, Math.min(10, parseFloat(q.dy) || 0)) });
+// The P700 lands borderless label-stock sheets about 1.5 mm up-left of true (calibrated on
+// order #70207, 2026-11-23), so every FULL-SHEET render ships with this offset baked in —
+// champagne, prosecco and mini alike. Letter-paper quarter pieces (/batch) feed true and get
+// none. ?dx=&dy= (millimeters, −10..10, positive = right/down) overrides it for one print,
+// and ?dx=0&dy=0 turns it off.
+const SHEET_DX = parseFloat(process.env.SHEET_DX ?? "1.5"), SHEET_DY = parseFloat(process.env.SHEET_DY ?? "1.5");
+const nudge = (q, design) => {
+  const has = v => v !== undefined && v !== "";
+  const base = design && !design.single ? { dx: SHEET_DX, dy: SHEET_DY } : { dx: 0, dy: 0 };
+  return { dx: Math.max(-10, Math.min(10, has(q.dx) ? parseFloat(q.dx) || 0 : base.dx)),
+           dy: Math.max(-10, Math.min(10, has(q.dy) ? parseFloat(q.dy) || 0 : base.dy)) };
+};
 app.get("/designs/:id.pdf", admin, safe(async (req, res) => {
   const design = await loadDesign(req.params.id);
   if (!design) return res.sendStatus(404);
   if (req.query.qty) design.qty = Math.max(1, Math.min(10, +req.query.qty || 1));
-  const out = await renderDesign(design, nudge(req.query));
+  const out = await renderDesign(design, nudge(req.query, design));
   res.set({ "Content-Type": "application/pdf", "X-Pages": out.pages, "X-Copies": out.copies }).send(out.pdf);
 }));
 app.post("/render", admin, express.json({ limit: "25mb" }), safe(async (req, res) => {
-  const out = await renderDesign(req.body, nudge(req.query));
+  const out = await renderDesign(req.body, nudge(req.query, req.body));
   res.set({ "Content-Type": "application/pdf", "X-Pages": out.pages, "X-Copies": out.copies }).send(out.pdf);
 }));
 
