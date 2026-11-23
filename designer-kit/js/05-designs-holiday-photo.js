@@ -89,7 +89,9 @@ const XM_DESIGNS = [
 let xmN = 0;
 // Lettering artwork is stored as a white stencil, so it prints in whatever ink color the label uses.
 const xmInk = (id, cx, cy, h, col) => { const m = "xk" + (xmN++);
-  return `<mask id="${m}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">${xm(id, cx, cy, h)}</mask><rect width="${W}" height="${H}" fill="${col}" mask="url(#${m})"/>`; };
+  // A filter, not a mask: Chromium's print path mis-sizes the mask region and prints the raw ink
+  // rect as a solid block (order #70046); filters render the same on screen and in the PDF.
+  return `<filter id="${m}" x="-5%" y="-5%" width="110%" height="110%"><feFlood flood-color="${col}"/><feComposite in2="SourceAlpha" operator="in"/></filter><g filter="url(#${m})">${xm(id, cx, cy, h)}</g>`; };
 // Designs whose headline is artwork only take the smaller lines.
 const xmSub = box => { const z = xmZones(box), y = k => () => { const q = box(); return q.y0 + k * (q.y1 - q.y0); };
   // The artwork is a decorative headline; the whole saying still prints below it: eyebrow (top), greeting (main),

@@ -2381,7 +2381,9 @@ const XM_DESIGNS = [
 let xmN = 0;
 // Lettering artwork is stored as a white stencil, so it prints in whatever ink color the label uses.
 const xmInk = (id, cx, cy, h, col) => { const m = "xk" + (xmN++);
-  return `<mask id="${m}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">${xm(id, cx, cy, h)}</mask><rect width="${W}" height="${H}" fill="${col}" mask="url(#${m})"/>`; };
+  // A filter, not a mask: Chromium's print path mis-sizes the mask region and prints the raw ink
+  // rect as a solid block (order #70046); filters render the same on screen and in the PDF.
+  return `<filter id="${m}" x="-5%" y="-5%" width="110%" height="110%"><feFlood flood-color="${col}"/><feComposite in2="SourceAlpha" operator="in"/></filter><g filter="url(#${m})">${xm(id, cx, cy, h)}</g>`; };
 // Designs whose headline is artwork only take the smaller lines.
 const xmSub = box => { const z = xmZones(box), y = k => () => { const q = box(); return q.y0 + k * (q.y1 - q.y0); };
   // The artwork is a decorative headline; the whole saying still prints below it: eyebrow (top), greeting (main),
@@ -2633,7 +2635,7 @@ Object.assign(XM, {"wd_n1":[258,168],"wd_n2":[293,167],"wd_n3":[311,169],"wd_n4"
 const WD_ALL = ["Wedding favors", "Engagement", "Bridal shower", "Bachelorette", "Bridesmaid proposal", "Groomsman proposal", "Rehearsal dinner", "Table bottles", "Wedding thank-you", "Anniversary", "Vow renewal"];
 const WD_DAY = ["Wedding favors", "Rehearsal dinner", "Wedding thank-you"], WD_ENG = ["Engagement"], WD_BRIDAL = ["Bridal shower", "Bachelorette", "Bridesmaid proposal"];
 // Line art is stored white-on-clear and printed in a palette color, like the hand lettering.
-const wdInk = (inner, col) => { const m = "xk" + (xmN++); return `<mask id="${m}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">${inner}</mask><rect width="${W}" height="${H}" fill="${col}" mask="url(#${m})"/>`; };
+const wdInk = (inner, col) => { const m = "xk" + (xmN++); return `<filter id="${m}" x="-5%" y="-5%" width="110%" height="110%"><feFlood flood-color="${col}"/><feComposite in2="SourceAlpha" operator="in"/></filter><g filter="url(#${m})">${inner}</g>`; };   // filter, not mask: see xmInk
 const wdNoMain = z => { const {main, ...rest} = z; return rest; };
 // The number a label is about: the first number typed in its lines, or the age/number from the age field.
 function wdNumber(words){

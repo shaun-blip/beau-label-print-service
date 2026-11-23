@@ -3,7 +3,7 @@ Object.assign(XM, {"wd_n1":[258,168],"wd_n2":[293,167],"wd_n3":[311,169],"wd_n4"
 const WD_ALL = ["Wedding favors", "Engagement", "Bridal shower", "Bachelorette", "Bridesmaid proposal", "Groomsman proposal", "Rehearsal dinner", "Table bottles", "Wedding thank-you", "Anniversary", "Vow renewal"];
 const WD_DAY = ["Wedding favors", "Rehearsal dinner", "Wedding thank-you"], WD_ENG = ["Engagement"], WD_BRIDAL = ["Bridal shower", "Bachelorette", "Bridesmaid proposal"];
 // Line art is stored white-on-clear and printed in a palette color, like the hand lettering.
-const wdInk = (inner, col) => { const m = "xk" + (xmN++); return `<mask id="${m}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">${inner}</mask><rect width="${W}" height="${H}" fill="${col}" mask="url(#${m})"/>`; };
+const wdInk = (inner, col) => { const m = "xk" + (xmN++); return `<filter id="${m}" x="-5%" y="-5%" width="110%" height="110%"><feFlood flood-color="${col}"/><feComposite in2="SourceAlpha" operator="in"/></filter><g filter="url(#${m})">${inner}</g>`; };   // filter, not mask: see xmInk
 const wdNoMain = z => { const {main, ...rest} = z; return rest; };
 // The number a label is about: the first number typed in its lines, or the age/number from the age field.
 function wdNumber(words){
