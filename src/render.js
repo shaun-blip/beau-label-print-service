@@ -64,8 +64,8 @@ export function renderDesign(design, opts = {}) {
   return job;
 }
 // Several orders' single labels on shared sheets, with a pick list as the last page. items: [{design, tag}], one bottle size.
-export function renderGang(items) {
-  const job = queue.then(() => renderOnce(items, true, {}));
+export function renderGang(items, opts = {}) {
+  const job = queue.then(() => renderOnce(items, true, opts));
   queue = job.catch(() => {});
   return job;
 }
@@ -135,6 +135,7 @@ async function renderNow(design, gang = false, opts = {}) {
     });
     const out = await page.evaluate((d, g, singles, tag) => { if (g) return gangPages(d, singles); applyDesign(d); return printPages({ singles, tag }); }, design, gang, SINGLES, opts.tag || "");
     if (!out.pages.length) throw new Error("The design produced no print pages.");
+    out.dx = +opts.dx || 0; out.dy = +opts.dy || 0;
     const sheets = out.pages.length;
     if (gang && !out.pieces) out.pages.push(pickList(out));   // pieces carry their order number on the backing, so they need no pick list
 
@@ -144,7 +145,8 @@ async function renderNow(design, gang = false, opts = {}) {
       const css = document.createElement("style");
       css.textContent = `@page{size:${o.widthIn}in ${o.heightIn}in;margin:0}html,body{margin:0;padding:0;background:#fff}
         .pg{width:${o.widthIn}in;height:${o.heightIn}in;page-break-after:always;break-after:page;overflow:hidden}
-        .pg:last-child{page-break-after:auto;break-after:auto}.pg svg{width:100%;height:100%;display:block}`;
+        .pg:last-child{page-break-after:auto;break-after:auto}.pg svg{width:100%;height:100%;display:block}`
+        + (o.dx || o.dy ? `.pg svg{position:relative;left:${o.dx || 0}mm;top:${o.dy || 0}mm}` : "");   // feed-offset calibration (CSS transform is ignored by the print path)
       document.head.appendChild(css);
       const defs = document.querySelector("body > svg");            // shared artwork and filters stay available
       document.body.innerHTML = (defs ? defs.outerHTML : "") + o.pages.map(p => `<div class="pg">${p}</div>`).join("");

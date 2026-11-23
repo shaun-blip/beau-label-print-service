@@ -190,15 +190,18 @@ app.get("/designs/:id.json", admin, safe(async (req, res) => {   // rescue hatch
   if (!design) return res.sendStatus(404);
   res.json(design);
 }));
+// ?dx=&dy= (millimeters, −10..10): nudges the whole print on the page, to calibrate out the
+// printer's mechanical feed offset on label stock. Positive dx moves right, positive dy down.
+const nudge = q => ({ dx: Math.max(-10, Math.min(10, parseFloat(q.dx) || 0)), dy: Math.max(-10, Math.min(10, parseFloat(q.dy) || 0)) });
 app.get("/designs/:id.pdf", admin, safe(async (req, res) => {
   const design = await loadDesign(req.params.id);
   if (!design) return res.sendStatus(404);
   if (req.query.qty) design.qty = Math.max(1, Math.min(10, +req.query.qty || 1));
-  const out = await renderDesign(design);
+  const out = await renderDesign(design, nudge(req.query));
   res.set({ "Content-Type": "application/pdf", "X-Pages": out.pages, "X-Copies": out.copies }).send(out.pdf);
 }));
 app.post("/render", admin, express.json({ limit: "25mb" }), safe(async (req, res) => {
-  const out = await renderDesign(req.body);
+  const out = await renderDesign(req.body, nudge(req.query));
   res.set({ "Content-Type": "application/pdf", "X-Pages": out.pages, "X-Copies": out.copies }).send(out.pdf);
 }));
 
@@ -249,10 +252,11 @@ app.get("/batch/:size.pdf", admin, safe(async (req, res) => {
   let items = await batchItems(req.params.size, req.query.upto);
   if (group) items = items.filter(i => i.photo === (group === "photo"));
   if (!items.length) return res.status(404).send(`No ${group === "photo" ? "photo " : group === "plain" ? "standard " : ""}labels waiting for that size.`);
-  const key = `${req.query.upto || ""}|${items.length}`, slot = `${req.params.size}|${group}`;
+  const off = nudge(req.query);
+  const key = `${req.query.upto || ""}|${items.length}|${off.dx},${off.dy}`, slot = `${req.params.size}|${group}`;
   let hit = gangCache.get(slot);
   if (!hit || hit.key !== key) {
-    const out = await renderGang(items);
+    const out = await renderGang(items, off);
     hit = { key, pdf: out.pdf, sheets: out.sheets, labels: out.slots.length };
     gangCache.set(slot, hit);
   }
