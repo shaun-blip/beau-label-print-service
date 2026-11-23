@@ -1,6 +1,6 @@
 import express from "express";
 import crypto from "node:crypto";
-import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState, queueSingle, listSingles, clearSingles } from "./store.js";
+import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState, queueSingle, listSingles, clearSingles, listDone } from "./store.js";
 import { renderDesign, renderGang, checkDesign, warmUp } from "./render.js";
 import { shopifyReady, uploadPdf, attachToOrder, flagOrder, appInfo } from "./shopify.js";
 
@@ -203,6 +203,29 @@ app.get("/designs/:id.pdf", admin, safe(async (req, res) => {
 app.post("/render", admin, express.json({ limit: "25mb" }), safe(async (req, res) => {
   const out = await renderDesign(req.body, nudge(req.query));
   res.set({ "Content-Type": "application/pdf", "X-Pages": out.pages, "X-Copies": out.copies }).send(out.pdf);
+}));
+
+// A reprint needs a LIVE render link (the PDFs attached to Shopify orders are files baked at
+// order time — a nudge or any later fix never reaches them). This page lists the finished
+// order lines with their wording, so staff can find an order and print it fresh, nudged.
+app.get("/reprint", admin, safe(async (req, res) => {
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const key = encodeURIComponent(req.query.key), off = nudge(req.query);
+  const qty = req.query.qty ? Math.max(1, Math.min(10, +req.query.qty || 1)) : 0;
+  const rows = [];
+  for (const e of await listDone(25)) {
+    const d = await loadDesign(e.designId); if (!d) continue;
+    const s = d.summary || {};
+    const what = [s.Design, s.Label || s.Labels, s["Added line"] || s.Names].filter(Boolean).join(" · ");
+    const extra = (off.dx || off.dy ? `&dx=${off.dx}&dy=${off.dy}` : "") + (qty && !d.single ? `&qty=${qty}` : "");
+    rows.push(`<section><strong>${esc(what || e.designId)}</strong><br><small>${esc(s.Bottle || "")}${d.single ? " · single labels" : " · full sheets"} · finished ${esc((e.at || "").slice(0, 10))}</small><br>
+      <a class="b" target="_blank" rel="noopener" href="/designs/${esc(e.designId)}.pdf?key=${key}${extra}">Print PDF${off.dx || off.dy ? ` (nudged ${off.dx}/${off.dy} mm)` : ""}</a></section>`);
+  }
+  res.send(page(`<h1>Reprint an order</h1><p>Newest first, last 25 finished lines. Set a nudge and every link below carries it: positive moves the print right/down, in millimeters.</p>
+    <form method="get"><input type="hidden" name="key" value="${esc(req.query.key)}">
+      dx <input name="dx" type="number" step="0.5" min="-10" max="10" value="${off.dx}" style="width:5em"> mm &nbsp;
+      dy <input name="dy" type="number" step="0.5" min="-10" max="10" value="${off.dy}" style="width:5em"> mm &nbsp;
+      sheets <input name="qty" type="number" min="1" max="10" value="${qty || ""}" style="width:4em"> &nbsp;<button>Apply</button></form>${rows.join("")}`));
 }));
 
 // ---------- 4. single labels, printed together (needs ADMIN_KEY) ----------

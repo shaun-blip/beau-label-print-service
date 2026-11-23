@@ -59,6 +59,19 @@ export async function clearSingles(size, upto) {
   await fs.writeFile(QUEUE(), JSON.stringify(keep));
   return q.length - keep.length;
 }
+// The finished order lines, newest first — what /reprint lists.
+export async function listDone(limit = 25) {
+  const names = (await fs.readdir(DIR).catch(() => [])).filter(n => n.startsWith("done_"));
+  const out = [];
+  for (const n of names) {
+    try {
+      const s = await fs.stat(path.join(DIR, n));
+      const j = JSON.parse(await fs.readFile(path.join(DIR, n), "utf8"));
+      out.push({ key: n.slice(5, -5), designId: j.design, at: j.at || s.mtime.toISOString() });
+    } catch {}
+  }
+  return out.sort((a, b) => (b.at || "").localeCompare(a.at || "")).slice(0, limit);
+}
 // What the disk knows, for remote diagnosis: which notices arrived, which lines finished, when.
 export async function debugState() {
   const names = await fs.readdir(DIR).catch(() => []);
