@@ -22,6 +22,9 @@ export async function markDone(key, value) {
   await fs.mkdir(DIR, { recursive: true });
   await fs.writeFile(file("done_" + key), JSON.stringify({ design: value, at: new Date().toISOString() }));
 }
+export async function clearDone(key) {
+  try { await fs.unlink(file("done_" + key)); return true; } catch { return false; }
+}
 export async function isDone(key) {
   try { return JSON.parse(await fs.readFile(file("done_" + key), "utf8")).design; } catch { return null; }
 }

@@ -1,8 +1,8 @@
 import express from "express";
 import crypto from "node:crypto";
-import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState, queueSingle, listSingles, clearSingles, listDone } from "./store.js";
+import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState, queueSingle, listSingles, clearSingles, listDone, clearDone } from "./store.js";
 import { renderDesign, renderGang, checkDesign, warmUp } from "./render.js";
-import { shopifyReady, uploadPdf, attachToOrder, flagOrder, appInfo } from "./shopify.js";
+import { shopifyReady, uploadPdf, attachToOrder, flagOrder, appInfo, fetchOrder } from "./shopify.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -183,6 +183,25 @@ app.get("/redo/:orderId", admin, safe(async (req, res) => {      // forget an or
     await fs.unlink(path.join(DIR, f)); n++;
   }
   res.json({ cleared: n });
+}));
+// Re-renders an order's FULL-SHEET lines with the current renderer and swaps the PDFs attached
+// to the Shopify order (attachToOrder replaces by line and scrubs the old note links). Singles
+// lines are left alone: they print live from /batch (always current) and re-running one would
+// put an already-printed label back on the batch queue. /rebake/70232 → that order, fresh.
+app.get("/rebake/:name", admin, safe(async (req, res) => {
+  const order = await fetchOrder(req.params.name);
+  if (!order) return res.status(404).json({ error: "No order " + req.params.name + " found." });
+  const lines = order.line_items.map(li => ({ li, designId: (li.properties || []).find(p => p.name === DESIGN_PROP)?.value })).filter(x => x.designId);
+  const redone = [];
+  for (const { li, designId } of lines) {
+    const d = await loadDesign(designId);
+    if (!d || d.single) continue;
+    await clearDone(`${order.id}_${li.id}`);
+    redone.push(li.title);
+  }
+  if (!redone.length) return res.json({ order: order.name, rebaked: [], note: "No full-sheet label lines to re-render (singles always print fresh from /batch)." });
+  await withOrderLock(order.id, () => handlePaidOrder(order));
+  res.json({ order: order.name, rebaked: redone, note: "Fresh PDFs are attached to the order; the old links were replaced." });
 }));
 app.get("/log", admin, (req, res) => res.type("text/plain").send(LOG.join("\n") || "(empty since boot)"));
 app.get("/designs/:id.json", admin, safe(async (req, res) => {   // rescue hatch: pull a design to render elsewhere

@@ -40,6 +40,24 @@ const userErrors = (payload, what) => {
   if (payload?.userErrors?.length) throw new Error(what + ": " + payload.userErrors.map(e => e.message).join("; "));
 };
 
+// Fetches one order by its number (e.g. 70232) and reshapes it like the webhook payload, so the
+// same order-processing code can re-run it (see /rebake). financial_status is forced to "paid":
+// only an already-processed order is ever fetched this way.
+export async function fetchOrder(number) {
+  const q = `name:#${String(number).replace(/[^0-9]/g, "")}`;
+  const data = await gql(`query($q:String!){ orders(first:1, query:$q){ nodes{ id legacyResourceId name note
+    lineItems(first:50){ nodes{ id quantity title variantTitle customAttributes{ key value } } } } } }`, { q });
+  const o = data.orders?.nodes?.[0];
+  if (!o) return null;
+  return {
+    id: o.legacyResourceId, name: o.name, note: o.note || "", financial_status: "paid", admin_graphql_api_id: o.id,
+    line_items: o.lineItems.nodes.map(n => ({
+      id: String(n.id).split("/").pop(), quantity: n.quantity, title: n.title, variant_title: n.variantTitle,
+      properties: (n.customAttributes || []).map(a => ({ name: a.key, value: a.value }))
+    }))
+  };
+}
+
 // Uploads a PDF to the store's Files and returns its public URL.
 export async function uploadPdf(filename, buffer) {
   const staged = await gql(`mutation($input:[StagedUploadInput!]!){ stagedUploadsCreate(input:$input){
