@@ -1,6 +1,6 @@
 import express from "express";
 import crypto from "node:crypto";
-import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState, queueSingle, listSingles, clearSingles, listDone, clearDone, overwriteDesign } from "./store.js";
+import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState, queueSingle, listSingles, clearSingles, listDone, clearDone, overwriteDesign, removeSingles, restoreSingle, listRemoved } from "./store.js";
 import { renderDesign, renderGang, checkDesign, warmUp } from "./render.js";
 import { shopifyReady, uploadPdf, attachToOrder, flagOrder, appInfo, fetchOrder } from "./shopify.js";
 
@@ -276,30 +276,49 @@ const page = body => `<!doctype html><meta charset="utf-8"><meta name="viewport"
 // (every photo template id contains "photo": photo1..4, xm-tartan-photo, xm-ribbon-photo).
 // A misfiled sheet is visible at the printer: photo items say "PHOTO" on the backing.
 const isPhotoDesign = d => !!(d && d.photo && /photo/.test(String(d.tpl)));
+const escH = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 app.get("/batch", admin, safe(async (req, res) => {
   const key = encodeURIComponent(req.query.key), all = await listSingles(), parts = [];
   for (const size of Object.keys(SIZE_NAMES)) {
     const q = all.filter(e => e.size === size);
     if (!q.length) { parts.push(`<section><strong>${SIZE_NAMES[size]}</strong><br><small>Nothing waiting.</small></section>`); continue; }
     const upto = q.reduce((a, e) => e.at > a ? e.at : a, ""), items = await batchItems(size, upto);
+    const photoByKey = new Map(items.map(i => [i.key, i.photo]));
     const n = g => items.filter(i => i.photo === g).reduce((a, i) => a + i.count, 0), nPhoto = n(true), nPlain = n(false);
     const href = group => `/batch/${size}.pdf?key=${key}&upto=${encodeURIComponent(upto)}&group=${group}`;
     const links = (nPlain && nPhoto)
       ? `<a class="b" target="_blank" rel="noopener" href="${href("plain")}">Standard PDF (${nPlain})</a>
          <a class="b" target="_blank" rel="noopener" href="${href("photo")}">Photo PDF (${nPhoto}) — brightness boost</a>`
       : `<a class="b" target="_blank" rel="noopener" href="${href(nPhoto ? "photo" : "plain")}">Open the PDF${nPhoto ? " — photos, print with brightness boost" : ""}</a>`;
-    parts.push(`<section><strong>${SIZE_NAMES[size]}</strong>: ${nPlain + nPhoto} label${nPlain + nPhoto === 1 ? "" : "s"} from ${q.length} order line${q.length === 1 ? "" : "s"}<br><small>${q.map(e => e.order).join(", ")}</small><br>
+    const lines = q.map(e => `<label style="display:block;margin:4px 0"><input type="checkbox" name="k" value="${escH(e.key)}"> ${escH(e.order)} · ${e.count * e.times} label${e.count * e.times === 1 ? "" : "s"} · queued ${escH((e.at || "").slice(0, 10))}${photoByKey.get(e.key) ? " · <strong>PHOTO</strong>" : ""} · <a target="_blank" rel="noopener" href="/designs/${escH(e.designId)}.pdf?key=${key}">PDF</a></label>`).join("");
+    parts.push(`<section><strong>${SIZE_NAMES[size]}</strong>: ${nPlain + nPhoto} label${nPlain + nPhoto === 1 ? "" : "s"} from ${q.length} order line${q.length === 1 ? "" : "s"}<br>
       ${links}
-      <form method="post" action="/batch/${size}/done?key=${key}&upto=${encodeURIComponent(upto)}" style="display:inline"><button>Printed${nPlain && nPhoto ? " both" : ""}: clear these</button></form></section>`);
+      <form method="post" action="/batch/${size}/done?key=${key}&upto=${encodeURIComponent(upto)}" style="display:inline"><button>Printed${nPlain && nPhoto ? " both" : ""}: clear these</button></form>
+      <form method="post" action="/batch/${size}/remove?key=${key}" style="margin-top:10px">${lines}<button>Remove selected</button> <small>Removed lines go to the history below and can be restored.</small></form></section>`);
   }
-  res.send(page(`<h1>Single labels to print</h1><p>Each PDF holds the waiting labels for that bottle size. Labels with customer photos come as their own PDF — print those with the brightness boost, and the standard PDF with normal settings. Every page is a plain US Letter sheet of four quarter-sheet pieces, each with its order number printed on the backing — print at 100%, then the Cricut file cuts the labels and quarters the sheet.</p>${parts.join("")}`));
+  const hist = await listRemoved(20);
+  const histHtml = hist.length ? `<section><strong>Removal history</strong> <small>last ${hist.length}</small>${hist.map(h => `<div style="margin:6px 0"><small>${escH((h.removedAt || "").slice(0, 16).replace("T", " "))} · ${SIZE_NAMES[h.size] || escH(h.size)} · ${escH(h.order)} · ${h.count * h.times} label${h.count * h.times === 1 ? "" : "s"} · ${h.how === "printed" ? "cleared after printing" : "removed by hand"}${h.restoredAt ? " · restored" : ""}</small>${h.restoredAt ? "" : ` <form method="post" action="/batch/restore?key=${key}" style="display:inline"><input type="hidden" name="k" value="${escH(h.key)}"><button style="padding:2px 10px">Restore</button></form>`}</div>`).join("")}</section>` : "";
+  res.send(page(`<h1>Single labels to print</h1><p>Each PDF holds the waiting labels for that bottle size. Labels with customer photos come as their own PDF — print those with the brightness boost, and the standard PDF with normal settings. Every page is a plain US Letter sheet of four quarter-sheet pieces, each with its order number printed on the backing — print at 100%, then the Cricut file cuts the labels and quarters the sheet.</p>${parts.join("")}${histHtml}`));
+}));
+// Removes only the ticked order lines — for when the Printed button was forgotten and new
+// orders arrived after the sheets came off the printer. They land in the removal history.
+app.post("/batch/:size/remove", admin, express.urlencoded({ extended: false }), safe(async (req, res) => {
+  const keys = [].concat(req.body.k || []).map(String);
+  const n = keys.length ? await removeSingles(keys) : 0;
+  for (const k of [...gangCache.keys()]) if (k.startsWith(req.params.size + "|") || k === req.params.size) gangCache.delete(k);
+  res.send(page(`<h1>Removed</h1><p>${n} order line${n === 1 ? "" : "s"} removed from ${SIZE_NAMES[req.params.size] || escH(req.params.size)}. They stay in the removal history and can be restored.</p><a class="b" href="/batch?key=${encodeURIComponent(req.query.key)}">Back</a>`));
+}));
+app.post("/batch/restore", admin, express.urlencoded({ extended: false }), safe(async (req, res) => {
+  const ok = await restoreSingle(String(req.body.k || ""));
+  gangCache.clear();
+  res.send(page(`<h1>${ok ? "Restored" : "Not found"}</h1><p>${ok ? "The order line is back in the print queue." : "That line is no longer restorable (already restored, or the history has rolled past it)."}</p><a class="b" href="/batch?key=${encodeURIComponent(req.query.key)}">Back</a>`));
 }));
 async function batchItems(size, upto) {
   const q = (await listSingles(size)).filter(e => !upto || e.at <= upto), items = [];
   for (const e of q) {
     const design = await loadDesign(e.designId); if (!design) continue;
     const photo = isPhotoDesign(design);
-    for (let i = 0; i < e.times; i++) items.push({ design, photo, count: e.count, tag: `Order ${e.order} · ${e.count} label${e.count === 1 ? "" : "s"}${e.times > 1 ? ` (set ${i + 1} of ${e.times})` : ""}${photo ? " · PHOTO" : ""}` });
+    for (let i = 0; i < e.times; i++) items.push({ design, photo, count: e.count, key: e.key, tag: `Order ${e.order} · ${e.count} label${e.count === 1 ? "" : "s"}${e.times > 1 ? ` (set ${i + 1} of ${e.times})` : ""}${photo ? " · PHOTO" : ""}` });
   }
   return items;
 }

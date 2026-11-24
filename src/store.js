@@ -61,10 +61,41 @@ export async function queueSingle(entry) {
   if (!q.some(e => e.key === entry.key)) { q.push({ ...entry, at: new Date().toISOString() }); await fs.writeFile(QUEUE(), JSON.stringify(q)); }
 }
 export async function listSingles(size) { const q = await readQueue(); return size ? q.filter(e => e.size === size) : q; }
+// Every removal from the singles queue is logged — "printed" when the Printed button clears a
+// batch, "manual" when staff remove chosen lines — so a mistaken removal can be seen on /batch
+// and restored. The log keeps the last 500 removals.
+const REMOVED = () => path.join(DIR, "singles-removed.json");
+async function readRemoved() { try { return JSON.parse(await fs.readFile(REMOVED(), "utf8")); } catch { return []; } }
+async function logRemoved(entries, how) {
+  if (!entries.length) return;
+  const log = await readRemoved(), at = new Date().toISOString();
+  for (const e of entries) log.unshift({ ...e, removedAt: at, how });
+  await fs.writeFile(REMOVED(), JSON.stringify(log.slice(0, 500)));
+}
+export async function listRemoved(limit = 20) { return (await readRemoved()).slice(0, limit); }
+// Removes chosen order lines by key, wherever they sit in the queue.
+export async function removeSingles(keys) {
+  const q = await readQueue(), gone = q.filter(e => keys.includes(e.key)), keep = q.filter(e => !keys.includes(e.key));
+  await fs.writeFile(QUEUE(), JSON.stringify(keep));
+  await logRemoved(gone, "manual");
+  return gone.length;
+}
+// Puts one removed line back in the queue. Queued with a fresh timestamp, so a later
+// "Printed: clear these" (which clears up to a moment in time) cannot sweep it by accident.
+export async function restoreSingle(key) {
+  const log = await readRemoved(), e = log.find(x => x.key === key && !x.restoredAt);
+  if (!e) return false;
+  const { removedAt, how, restoredAt, ...entry } = e;
+  await queueSingle({ ...entry, at: new Date().toISOString() });
+  e.restoredAt = new Date().toISOString();
+  await fs.writeFile(REMOVED(), JSON.stringify(log));
+  return true;
+}
 // Removes the entries for one bottle size that were queued up to a moment in time: the ones on the sheets just printed.
 export async function clearSingles(size, upto) {
   const q = await readQueue(), keep = q.filter(e => e.size !== size || e.at > upto);
   await fs.writeFile(QUEUE(), JSON.stringify(keep));
+  await logRemoved(q.filter(e => e.size === size && e.at <= upto), "printed");
   return q.length - keep.length;
 }
 // The finished order lines, newest first — what /reprint lists.
