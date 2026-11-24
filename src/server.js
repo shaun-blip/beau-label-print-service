@@ -200,6 +200,16 @@ app.get("/rebake/:name", admin, safe(async (req, res) => {
     }
     return res.json({ order: order.name, lines: out });
   }
+  // ?fit=1: no label prints full size — every design must sit inside the wrap windows (Shaun,
+  // 2026-11-24). Designs saved before the windows existed are flipped to the fit before the
+  // re-render; designs that already carry a safe flag (new ones) are left exactly as saved.
+  let fitted = 0;
+  if (req.query.fit) {
+    for (const { designId } of lines) {
+      const d = await loadDesign(designId);
+      if (d && !("safe" in d)) { d.safe = true; await overwriteDesign(designId, d); fitted++; }
+    }
+  }
   const redone = [];
   for (const { li, designId } of lines) {
     const d = await loadDesign(designId);
@@ -207,9 +217,9 @@ app.get("/rebake/:name", admin, safe(async (req, res) => {
     await clearDone(`${order.id}_${li.id}`);
     redone.push(li.title);
   }
-  if (!redone.length) return res.json({ order: order.name, rebaked: [], note: "No full-sheet label lines to re-render (singles always print fresh from /batch)." });
+  if (!redone.length) return res.json({ order: order.name, rebaked: [], fitted, note: "No full-sheet label lines to re-render (singles always print fresh from /batch)." });
   await withOrderLock(order.id, () => handlePaidOrder(order));
-  res.json({ order: order.name, rebaked: redone, note: "Fresh PDFs are attached to the order; the old links were replaced." });
+  res.json({ order: order.name, rebaked: redone, fitted, note: "Fresh PDFs are attached to the order; the old links were replaced." });
 }));
 app.get("/log", admin, (req, res) => res.type("text/plain").send(LOG.join("\n") || "(empty since boot)"));
 app.get("/designs/:id.json", admin, safe(async (req, res) => {   // rescue hatch: pull a design to render elsewhere
