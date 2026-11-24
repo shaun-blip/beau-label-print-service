@@ -192,6 +192,14 @@ app.get("/rebake/:name", admin, safe(async (req, res) => {
   const order = await fetchOrder(req.params.name);
   if (!order) return res.status(404).json({ error: "No order " + req.params.name + " found." });
   const lines = order.line_items.map(li => ({ li, designId: (li.properties || []).find(p => p.name === DESIGN_PROP)?.value })).filter(x => x.designId);
+  if (req.query.dry) {   // inspect without rendering: which designs the order carries, and how heavy
+    const out = [];
+    for (const { li, designId } of lines) {
+      const d = await loadDesign(designId);
+      out.push({ title: li.title, designId, found: !!d, single: d ? !!d.single : null, photoBytes: d?.photo?.data?.length || 0, logoBytes: d?.logo?.data?.length || 0 });
+    }
+    return res.json({ order: order.name, lines: out });
+  }
   const redone = [];
   for (const { li, designId } of lines) {
     const d = await loadDesign(designId);
