@@ -91,11 +91,31 @@ export async function restoreSingle(key) {
   await fs.writeFile(REMOVED(), JSON.stringify(log));
   return true;
 }
+// The permanent record of every single-label line cleared as printed, append-only and uncapped
+// (unlike the removal history, which rolls at 500) — the ledger /batch/printed shows.
+const PRINTED = () => path.join(DIR, "printed-log.json");
+async function readPrinted() { try { return JSON.parse(await fs.readFile(PRINTED(), "utf8")); } catch { return []; } }
+export async function listPrinted() { return readPrinted(); }
+// When each size's batch PDF was last opened. A queue line younger than that arrived AFTER the
+// sheets were (presumably) printed — /batch badges it NEW so a late clear doesn't sweep it blind.
+const OPENED = () => path.join(DIR, "batch-opened.json");
+export async function getOpened() { try { return JSON.parse(await fs.readFile(OPENED(), "utf8")); } catch { return {}; } }
+export async function markOpened(size) {
+  const o = await getOpened(); o[size] = new Date().toISOString();
+  await fs.mkdir(DIR, { recursive: true });
+  await fs.writeFile(OPENED(), JSON.stringify(o));
+}
 // Removes the entries for one bottle size that were queued up to a moment in time: the ones on the sheets just printed.
 export async function clearSingles(size, upto) {
   const q = await readQueue(), keep = q.filter(e => e.size !== size || e.at > upto);
   await fs.writeFile(QUEUE(), JSON.stringify(keep));
-  await logRemoved(q.filter(e => e.size === size && e.at <= upto), "printed");
+  const gone = q.filter(e => e.size === size && e.at <= upto);
+  await logRemoved(gone, "printed");
+  if (gone.length) {
+    const log = await readPrinted(), at = new Date().toISOString();
+    for (const e of gone) log.unshift({ ...e, printedAt: at });
+    await fs.writeFile(PRINTED(), JSON.stringify(log));
+  }
   return q.length - keep.length;
 }
 // The finished order lines, newest first — what /reprint lists.

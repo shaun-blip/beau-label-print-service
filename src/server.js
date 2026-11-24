@@ -1,6 +1,6 @@
 import express from "express";
 import crypto from "node:crypto";
-import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState, queueSingle, listSingles, clearSingles, listDone, clearDone, overwriteDesign, removeSingles, restoreSingle, listRemoved } from "./store.js";
+import { saveDesign, loadDesign, markDone, isDone, saveTodo, clearTodo, listTodos, debugState, queueSingle, listSingles, clearSingles, listDone, clearDone, overwriteDesign, removeSingles, restoreSingle, listRemoved, listPrinted, getOpened, markOpened } from "./store.js";
 import { renderDesign, renderGang, checkDesign, warmUp } from "./render.js";
 import { shopifyReady, uploadPdf, attachToOrder, flagOrder, appInfo, fetchOrder } from "./shopify.js";
 
@@ -278,7 +278,7 @@ const page = body => `<!doctype html><meta charset="utf-8"><meta name="viewport"
 const isPhotoDesign = d => !!(d && d.photo && /photo/.test(String(d.tpl)));
 const escH = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 app.get("/batch", admin, safe(async (req, res) => {
-  const key = encodeURIComponent(req.query.key), all = await listSingles(), parts = [];
+  const key = encodeURIComponent(req.query.key), all = await listSingles(), parts = [], opened = await getOpened();
   for (const size of Object.keys(SIZE_NAMES)) {
     const q = all.filter(e => e.size === size);
     if (!q.length) { parts.push(`<section><strong>${SIZE_NAMES[size]}</strong><br><small>Nothing waiting.</small></section>`); continue; }
@@ -290,7 +290,9 @@ app.get("/batch", admin, safe(async (req, res) => {
       ? `<a class="b" target="_blank" rel="noopener" href="${href("plain")}">Standard PDF (${nPlain})</a>
          <a class="b" target="_blank" rel="noopener" href="${href("photo")}">Photo PDF (${nPhoto}) — brightness boost</a>`
       : `<a class="b" target="_blank" rel="noopener" href="${href(nPhoto ? "photo" : "plain")}">Open the PDF${nPhoto ? " — photos, print with brightness boost" : ""}</a>`;
-    const lines = q.map(e => `<label style="display:block;margin:4px 0"><input type="checkbox" name="k" value="${escH(e.key)}"> ${escH(e.order)} · ${e.count * e.times} label${e.count * e.times === 1 ? "" : "s"} · queued ${escH((e.at || "").slice(0, 10))}${photoByKey.get(e.key) ? " · <strong>PHOTO</strong>" : ""} · <a target="_blank" rel="noopener" href="/designs/${escH(e.designId)}.pdf?key=${key}">PDF</a></label>`).join("");
+    const lines = q.map(e => `<label style="display:block;margin:4px 0"><input type="checkbox" name="k" value="${escH(e.key)}"> ${escH(e.order)} · ${e.count * e.times} label${e.count * e.times === 1 ? "" : "s"} · queued ${escH((e.at || "").slice(0, 10))}${photoByKey.get(e.key) ? " · <strong>PHOTO</strong>" : ""}${opened[size] && e.at > opened[size] ? ` · <strong style="color:#1a7f37">NEW</strong>` : ""} · <a target="_blank" rel="noopener" href="/designs/${escH(e.designId)}.pdf?key=${key}">PDF</a></label>`).join("");
+    if (nPlain && nPhoto) { warmGang(size, "plain", items.filter(i => !i.photo), upto); warmGang(size, "photo", items.filter(i => i.photo), upto); }
+    else warmGang(size, nPhoto ? "photo" : "plain", items, upto);
     parts.push(`<section><strong>${SIZE_NAMES[size]}</strong>: ${nPlain + nPhoto} label${nPlain + nPhoto === 1 ? "" : "s"} from ${q.length} order line${q.length === 1 ? "" : "s"}<br>
       ${links}
       <form method="post" action="/batch/${size}/done?key=${key}&upto=${encodeURIComponent(upto)}" style="display:inline"><button>Printed${nPlain && nPhoto ? " both" : ""}: clear these</button></form>
@@ -298,7 +300,16 @@ app.get("/batch", admin, safe(async (req, res) => {
   }
   const hist = await listRemoved(20);
   const histHtml = hist.length ? `<section><strong>Removal history</strong> <small>last ${hist.length}</small>${hist.map(h => `<div style="margin:6px 0"><small>${escH((h.removedAt || "").slice(0, 16).replace("T", " "))} · ${SIZE_NAMES[h.size] || escH(h.size)} · ${escH(h.order)} · ${h.count * h.times} label${h.count * h.times === 1 ? "" : "s"} · ${h.how === "printed" ? "cleared after printing" : "removed by hand"}${h.restoredAt ? " · restored" : ""}</small>${h.restoredAt ? "" : ` <form method="post" action="/batch/restore?key=${key}" style="display:inline"><input type="hidden" name="k" value="${escH(h.key)}"><button style="padding:2px 10px">Restore</button></form>`}</div>`).join("")}</section>` : "";
-  res.send(page(`<h1>Single labels to print</h1><p>Each PDF holds the waiting labels for that bottle size. Labels with customer photos come as their own PDF — print those with the brightness boost, and the standard PDF with normal settings. Every page is a plain US Letter sheet of four quarter-sheet pieces, each with its order number printed on the backing — print at 100%, then the Cricut file cuts the labels and quarters the sheet.</p>${parts.join("")}${histHtml}`));
+  res.send(page(`<h1>Single labels to print</h1><p>Each PDF holds the waiting labels for that bottle size. Labels with customer photos come as their own PDF — print those with the brightness boost, and the standard PDF with normal settings. Every page is a plain US Letter sheet of four quarter-sheet pieces, each with its order number printed on the backing — print at 100%, then the Cricut file cuts the labels and quarters the sheet. <strong style="color:#1a7f37">NEW</strong> marks a line that arrived after that size's PDF was last opened — it is NOT on sheets printed from that PDF. <a href="/batch/printed?key=${key}">Printed history</a></p>${parts.join("")}${histHtml}`));
+}));
+// The permanent ledger of everything cleared as printed, newest first, with lifetime totals.
+app.get("/batch/printed", admin, safe(async (req, res) => {
+  const key = encodeURIComponent(req.query.key), log = await listPrinted();
+  const totals = {};
+  for (const e of log) totals[e.size] = (totals[e.size] || 0) + e.count * e.times;
+  const head = Object.keys(SIZE_NAMES).map(s => `${SIZE_NAMES[s]}: ${totals[s] || 0}`).join(" · ");
+  const rows = log.slice(0, 200).map(e => `<div style="margin:5px 0"><small>${escH((e.printedAt || "").slice(0, 16).replace("T", " "))} · ${SIZE_NAMES[e.size] || escH(e.size)} · ${escH(e.order)} · ${e.count * e.times} label${e.count * e.times === 1 ? "" : "s"}</small></div>`).join("");
+  res.send(page(`<h1>Printed labels</h1><p>Every order line cleared as printed, newest first${log.length > 200 ? ` (showing 200 of ${log.length})` : ""}. Lifetime labels printed — ${head}.</p><section>${rows || "<small>Nothing recorded yet. Lines land here when a batch is cleared with the Printed button.</small>"}</section><a class="b" href="/batch?key=${key}">Back to the queue</a>`));
 }));
 // Removes only the ticked order lines — for when the Printed button was forgotten and new
 // orders arrived after the sheets came off the printer. They land in the removal history.
@@ -325,6 +336,19 @@ async function batchItems(size, upto) {
 // The last batch PDF per size is kept in memory: opening the same link twice (or reloading the
 // tab) streams the finished file at once instead of rendering the whole gang again.
 const gangCache = new Map();
+// Opening /batch starts the renders in the background, so a photo-heavy gang (several minutes
+// on this instance) is usually already cached by the time its link is clicked. One render at a
+// time (renderGang's own queue); `warming` keeps a page reload from queueing duplicates.
+const warming = new Set();
+function warmGang(size, group, items, upto) {
+  const key = `${upto || ""}|${items.length}|0,0`, slot = `${size}|${group}`, tag = slot + "|" + key;
+  if (!items.length || warming.has(tag) || gangCache.get(slot)?.key === key) return;
+  warming.add(tag);
+  renderGang(items, {})
+    .then(out => gangCache.set(slot, { key, pdf: out.pdf, sheets: out.sheets, labels: out.slots.length }))
+    .catch(err => console.warn(`pre-render ${slot} failed (the link will render on demand):`, err.message))
+    .finally(() => warming.delete(tag));
+}
 app.get("/batch/:size.pdf", admin, safe(async (req, res) => {
   const group = req.query.group === "photo" ? "photo" : req.query.group === "plain" ? "plain" : "";
   let items = await batchItems(req.params.size, req.query.upto);
@@ -338,6 +362,7 @@ app.get("/batch/:size.pdf", admin, safe(async (req, res) => {
     hit = { key, pdf: out.pdf, sheets: out.sheets, labels: out.slots.length };
     gangCache.set(slot, hit);
   }
+  await markOpened(req.params.size);   // lines queued after this moment show as NEW on /batch
   res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="single-labels-${req.params.size}${group ? "-" + group : ""}.pdf"`,
             "X-Sheets": hit.sheets, "X-Labels": hit.labels }).send(hit.pdf);
 }));
